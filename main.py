@@ -40,7 +40,22 @@ logging.basicConfig(level=logging.INFO, format='%(message)s')
 # IMPORTANTE: Busca la DB en la misma carpeta que main.py
 DB_NAME = "Bases_de_datos.db" 
 TEMP_DIR = "temp_files" 
+VOLUMEN_PATH = "/app/datos_persistentes"
 
+# Verificamos si estamos en Railway (si existe la carpeta segura)
+if os.path.exists(VOLUMEN_PATH):
+    db_en_volumen = os.path.join(VOLUMEN_PATH, "Bases_de_datos.db")
+    
+    # Si la base de datos NO está en el volumen, copiamos la que subiste a GitHub
+    if not os.path.exists(db_en_volumen):
+        print("--> Inicializando Base de Datos en Volumen Persistente...")
+        shutil.copy("Bases_de_datos.db", db_en_volumen)
+    
+    # Le decimos al sistema que use la base de datos del volumen
+    DB_NAME = db_en_volumen
+    print(f"--> Usando Base de Datos Persistente en: {DB_NAME}")
+else:
+    print("--> Modo Local o Sin Volumen: Usando DB temporal.")
 app = FastAPI()
 
 # --- CONFIGURACIÓN CORS ---
