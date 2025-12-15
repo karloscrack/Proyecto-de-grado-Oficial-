@@ -70,12 +70,19 @@ app.add_middleware(
 # --- FUNCIONES AUXILIARES ---
 def registrar_auditoria(accion, detalle):
     try:
-        hora = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        conn = sqlite3.connect(DB_NAME); c = conn.cursor()
-        c.execute("INSERT INTO Auditoria (Accion, Detalle, Fecha) VALUES (?,?,?)", (accion, detalle, hora))
-        conn.commit(); conn.close()
-    except Exception as e: print(f"⚠️ Error guardando log: {e}")
-
+        # CORRECCIÓN DE HORA: Restamos 5 horas al reloj del servidor para tener hora de Ecuador
+        hora_ecuador = datetime.datetime.now() - datetime.timedelta(hours=5)
+        hora_texto = hora_ecuador.strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Guardamos en la base de datos con la hora corregida
+        conn = sqlite3.connect(DB_NAME)
+        c = conn.cursor()
+        c.execute("INSERT INTO Auditoria (Accion, Detalle, Fecha) VALUES (?,?,?)", (accion, detalle, hora_texto))
+        conn.commit()
+        conn.close()
+    except Exception as e: 
+        print(f"⚠️ Error guardando log: {e}")
+        
 def calcular_hash(ruta):
     h = hashlib.sha256()
     with open(ruta, "rb") as f:
