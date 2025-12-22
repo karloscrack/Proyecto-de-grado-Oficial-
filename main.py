@@ -342,9 +342,17 @@ async def listar():
     conn.close(); return res
 
 @app.get("/todas_evidencias")
-async def todas():
+async def todas(cedula: str = None):
     conn = sqlite3.connect(DB_NAME); c = conn.cursor()
-    c.execute("SELECT id, Url_Archivo, CI_Estudiante FROM Evidencias ORDER BY id DESC")
+    
+    if cedula and cedula.strip():
+        # MODO HISTORIAL: Si el admin pide un alumno específico, mostramos TODO (sin límite)
+        # Esto permite buscar y borrar evidencias antiguas de ese alumno.
+        c.execute("SELECT id, Url_Archivo, CI_Estudiante FROM Evidencias WHERE CI_Estudiante=? ORDER BY id DESC", (cedula,))
+    else:
+        # MODO RÁPIDO: Vista general, solo las últimas 50 para que no haya LAG.
+        c.execute("SELECT id, Url_Archivo, CI_Estudiante FROM Evidencias ORDER BY id DESC LIMIT 50")
+    
     res = [{"id":x[0], "url":x[1], "cedula":x[2]} for x in c.fetchall()]
     conn.close(); return res
 
@@ -424,6 +432,54 @@ async def descargar_multimedia_zip(background_tasks: BackgroundTasks):
     registrar_auditoria("BACKUP FULL", f"Descarga multimedia")
     background_tasks.add_task(borrar_ruta, temp_work_dir)
     return FileResponse(zip_full_path, media_type="application/zip", filename=zip_name)
+# --- AGREGAR EN main.py (Zona de Endpoints GET) ---
+
+@app.get("/resumen_estudiantes_con_evidencias")
+async def resumen_estudiantes():
+    """
+    Devuelve una lista de estudiantes que tienen evidencias subidas,
+    con su foto de perfil y cantidad de archivos.
+    """
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    # Esta consulta agrupa por CI_Estudiante y cuenta cuántos archivos tiene cada uno
+    query = """
+    SELECT u.Nombre, u.Apellido, u.CI, u.Foto, COUNT(e.id) as total
+    FROM Usuarios u
+    JOIN Evidencias e ON u.CI = e.CI_Estudiante
+    GROUP BY u.CI
+    ORDER BY total DESC
+    """
+    c.execute(query)
+    # Formateamos la respuesta
+    res = [
+        {"nombre": x[0], "apellido": x[1], "cedula": x[2], "foto": x[3], "total_evidencias": x[4]} 
+        for x in c.fetchall()
+    ]
+    conn.close()
+    return res
+
+@app.post("/eliminar_evidencias_masivas")
+async def eliminar_masivo(ids: str = Form(...)):
+    """
+    Recibe IDs separados por coma (ej: "12,15,88") y los borra.
+    """
+    lista_ids = ids.split(',')
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    borrados = 0
+    try:
+        for id_ev in lista_ids:
+            c.execute("DELETE FROM Evidencias WHERE id=?", (id_ev,))
+            borrados += 1
+        conn.commit()
+        registrar_auditoria("ELIMINACION MASIVA", f"Se borraron {borrados} archivos.")
+    except Exception as e:
+        conn.close()
+        return {"status": "error", "mensaje": str(e)}
+    
+    conn.close()
+    return {"status": "ok", "borrados": borrados}
 
 if __name__ == "__main__":
     import uvicorn
