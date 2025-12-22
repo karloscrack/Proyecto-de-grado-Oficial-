@@ -393,15 +393,33 @@ async def elim_user(cedula: str):
 
 @app.post("/buscar_estudiante")
 async def buscar_estudiante(cedula: str = Form(...)):
-    conn = sqlite3.connect(DB_NAME); c = conn.cursor()
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    
+    # 1. Buscamos al usuario
     c.execute("SELECT Nombre, Apellido, Foto FROM Usuarios WHERE CI=?", (cedula,))
     p = c.fetchone()
+    
     if p:
-        c.execute("SELECT Url_Archivo FROM Evidencias WHERE CI_Estudiante=?", (cedula,))
-        evs = [{"url": x[0]} for x in c.fetchall()]
+        # 2. Si existe, buscamos sus evidencias (ID y URL)
+        c.execute("SELECT id, Url_Archivo FROM Evidencias WHERE CI_Estudiante=?", (cedula,))
+        
+        # Creamos la lista con ID y URL (Esta es la línea correcta)
+        evs = [{"id": x[0], "url": x[1]} for x in c.fetchall()]
+        
         conn.close()
-        return {"encontrado": True, "datos": {"nombre": p[0], "apellido": p[1], "url_foto": p[2], "galeria": evs}}
-    conn.close(); return {"encontrado": False}
+        return {
+            "encontrado": True, 
+            "datos": {
+                "nombre": p[0], 
+                "apellido": p[1], 
+                "url_foto": p[2], 
+                "galeria": evs
+            }
+        }
+    
+    conn.close()
+    return {"encontrado": False}
 
 @app.get("/crear_backup")
 async def backup(background_tasks: BackgroundTasks):
@@ -432,26 +450,23 @@ async def descargar_multimedia_zip(background_tasks: BackgroundTasks):
     registrar_auditoria("BACKUP FULL", f"Descarga multimedia")
     background_tasks.add_task(borrar_ruta, temp_work_dir)
     return FileResponse(zip_full_path, media_type="application/zip", filename=zip_name)
-# --- AGREGAR EN main.py (Zona de Endpoints GET) ---
+
+# --- AGREGAR EN main.py (Zona de Endpoints) ---
+# --- PEGAR ESTO EN main.py (ANTES DE descargar_seleccion_zip) ---
 
 @app.get("/resumen_estudiantes_con_evidencias")
 async def resumen_estudiantes():
-    """
-    Devuelve una lista de estudiantes que tienen evidencias subidas,
-    con su foto de perfil y cantidad de archivos.
-    """
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-    # Esta consulta agrupa por CI_Estudiante y cuenta cuántos archivos tiene cada uno
+    # Agrupamos por usuario y contamos evidencias
     query = """
     SELECT u.Nombre, u.Apellido, u.CI, u.Foto, COUNT(e.id) as total
     FROM Usuarios u
     JOIN Evidencias e ON u.CI = e.CI_Estudiante
-    GROUP BY u.CI
+    GROUP BY u.CI, u.Nombre, u.Apellido, u.Foto
     ORDER BY total DESC
     """
     c.execute(query)
-    # Formateamos la respuesta
     res = [
         {"nombre": x[0], "apellido": x[1], "cedula": x[2], "foto": x[3], "total_evidencias": x[4]} 
         for x in c.fetchall()
@@ -461,17 +476,18 @@ async def resumen_estudiantes():
 
 @app.post("/eliminar_evidencias_masivas")
 async def eliminar_masivo(ids: str = Form(...)):
-    """
-    Recibe IDs separados por coma (ej: "12,15,88") y los borra.
-    """
     lista_ids = ids.split(',')
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     borrados = 0
     try:
         for id_ev in lista_ids:
-            c.execute("DELETE FROM Evidencias WHERE id=?", (id_ev,))
-            borrados += 1
+            # Primero obtenemos nombre para el log
+            c.execute("SELECT Url_Archivo FROM Evidencias WHERE id=?", (id_ev,))
+            row = c.fetchone()
+            if row:
+                c.execute("DELETE FROM Evidencias WHERE id=?", (id_ev,))
+                borrados += 1
         conn.commit()
         registrar_auditoria("ELIMINACION MASIVA", f"Se borraron {borrados} archivos.")
     except Exception as e:
@@ -480,6 +496,61 @@ async def eliminar_masivo(ids: str = Form(...)):
     
     conn.close()
     return {"status": "ok", "borrados": borrados}
+
+@app.post("/descargar_seleccion_zip")
+async def descargar_seleccion_zip(ids: str = Form(...), background_tasks: BackgroundTasks = None):
+    """
+    Recibe IDs (ej: "12,44,55"), descarga esos archivos de la nube,
+    crea un ZIP y lo envía al usuario en una sola descarga.
+    """
+    lista_ids = ids.split(',')
+    if not lista_ids:
+        raise HTTPException(400, "No hay archivos seleccionados")
+
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    
+    # Buscamos las URLs de esos IDs
+    placeholders = ','.join('?' for _ in lista_ids)
+    query = f"SELECT Url_Archivo FROM Evidencias WHERE id IN ({placeholders})"
+    c.execute(query, lista_ids)
+    resultados = c.fetchall()
+    conn.close()
+
+    if not resultados:
+        raise HTTPException(404, "Archivos no encontrados")
+
+    # Crear carpeta temporal para armar el ZIP
+    temp_dir = tempfile.mkdtemp()
+    zip_name = f"Evidencias_Seleccion_{datetime.datetime.now().strftime('%H%M%S')}.zip"
+    zip_path = os.path.join(temp_dir, zip_name)
+
+    try:
+        with zipfile.ZipFile(zip_path, 'w') as z:
+            for row in resultados:
+                url = row[0]
+                filename = url.split('/')[-1] # Nombre del archivo
+                local_path = os.path.join(temp_dir, filename)
+                
+                # Descargamos de la nube (B2/S3) a la carpeta temporal
+                try:
+                    s3_client.download_file(BUCKET_NAME, f"evidencias/{filename}", local_path)
+                    z.write(local_path, filename) # Lo metemos al ZIP
+                except Exception as e:
+                    print(f"Error descargando {filename}: {e}")
+
+        # Enviamos el ZIP
+        return FileResponse(zip_path, media_type="application/zip", filename=zip_name)
+
+    except Exception as e:
+        return {"error": str(e)}
+    
+    finally:
+        # Limpiamos la basura temporal después de enviar (usando BackgroundTasks si prefieres, o limpieza simple)
+        # Nota: FileResponse en FastAPI a veces requiere cuidado con borrar archivos inmediatamente.
+        # Para simplificar, dejaremos que el SO limpie temp o usaremos background task si está configurada.
+        if background_tasks:
+            background_tasks.add_task(shutil.rmtree, temp_dir)
 
 if __name__ == "__main__":
     import uvicorn
