@@ -24,6 +24,7 @@ body {
     display: flex; 
     flex-direction: column; 
     min-height: 100vh;
+    font-size: 16px; /* Aumentado ligeramente para accesibilidad */
 }
 
 /* =========================================
@@ -41,8 +42,8 @@ body {
 
 .logo { display: flex; align-items: center; }
 .logo a { display: block; }
-.logo Img { height: 80px; margin-right: 15px; transition: transform 0.3s ease; }
-.logo Img:hover { transform: scale(1.05); }
+.logo img { height: 80px; margin-right: 15px; transition: transform 0.3s ease; }
+.logo img:hover { transform: scale(1.05); }
 
 .menu-toggle { display: block; background: none; border: none; font-size: 1.8rem; color: #6A0DAD; cursor: pointer; }
 
@@ -106,6 +107,7 @@ body {
     max-width: 500px;
     margin: 40px auto; 
     text-align: center;
+    position: relative; /* Para posicionar el error */
 }
 
 /* Formularios */
@@ -128,11 +130,12 @@ body {
 }
 .btn-submit:hover { background: #5a0b96; transform: translateY(-3px); }
 
-/* Caja de Error */
+/* Caja de Error Login (MEJORADA) */
 .error-box { 
-    background: #ffebee; border: 2px solid #ffcdd2; color: #b71c1c; 
-    padding: 20px; border-radius: 10px; text-align: center; 
-    margin-top: 20px; font-size: 0.95rem;
+    background: #ffebee; border: 2px solid #ff1744; color: #d50000; 
+    padding: 15px; border-radius: 10px; text-align: center; 
+    margin-bottom: 20px; font-size: 1rem; font-weight: bold;
+    display: none; /* Oculto por defecto */
 }
 
 /* =========================================
@@ -158,7 +161,7 @@ body {
     box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2); 
     display: flex; align-items: center; padding: 30px; margin-bottom: 40px; gap: 30px; 
 }
-.profile-hero Img { 
+.profile-hero img { 
     width: 120px; height: 120px; border-radius: 50%; 
     object-fit: cover; border: 4px solid #6A0DAD; 
 }
@@ -180,16 +183,57 @@ body {
     height: 160px; background: #f0f0f0; display: flex; 
     align-items: center; justify-content: center; overflow: hidden; 
 }
-.card-preview Img, .card-preview video, .gallery-media { width: 100%; height: 100%; object-fit: cover; }
+.card-preview img, .card-preview video, .gallery-media { width: 100%; height: 100%; object-fit: cover; }
 .card-preview i { font-size: 4rem; color: #ccc; }
 .card-info { padding: 10px; text-align: center; font-weight: bold; color: #444; }
 
 /* =========================================
-   6. FOOTER
+   6. LIGHTBOX MEJORADO (VISOR)
+   ========================================= */
+.lightbox { 
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    background: rgba(0,0,0,0.95); z-index: 2000; 
+    display: none; justify-content: center; align-items: center; 
+    flex-direction: column; backdrop-filter: blur(5px); 
+}
+.lightbox.active { display: flex; animation: fadeIn 0.3s; }
+
+/* Contenedor Fijo para evitar saltos */
+.lightbox-content {
+    width: 90%; 
+    height: 80vh; 
+    display: flex; justify-content: center; align-items: center;
+}
+
+.lightbox-content img, .lightbox-content video { 
+    max-width: 100%; 
+    max-height: 100%; 
+    object-fit: contain; /* Clave para no deformar */
+    border-radius: 5px; 
+    box-shadow: 0 5px 20px rgba(0,0,0,0.5); 
+}
+
+/* Nombre del archivo arriba */
+.lightbox-details { 
+    position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.7); color: white; padding: 10px 20px;
+    border-radius: 30px; text-align: center; pointer-events: none;
+}
+.lightbox-details h3 { font-size: 1rem; margin: 0; font-weight: normal; }
+
+.btn-download { background: #2E8B57; color: white; padding: 8px 20px; border-radius: 20px; text-decoration: none; font-weight: bold; display: inline-flex; align-items: center; gap: 8px; transition: 0.3s; }
+.lightbox-close { position: absolute; top: 20px; right: 30px; color: white; font-size: 3rem; cursor: pointer; transition: 0.3s; z-index: 2001; }
+
+.lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); font-size: 3rem; color: white; cursor: pointer; padding: 20px; z-index: 2002; transition: 0.3s; background: rgba(0,0,0,0.3); border-radius: 50%; }
+.lightbox-nav:hover { background: rgba(0,0,0,0.8); }
+.lightbox-prev { left: 20px; } .lightbox-next { right: 20px; }
+
+/* =========================================
+   7. FOOTER
    ========================================= */
 footer { background: #2c2c2c; color: white; padding: 40px 20px; text-align: center; margin-top: auto; }
 .footer-content { max-width: 1200px; margin: 0 auto; }
-.footer-logo Img { height: 100px; margin-bottom: 15px; }
+.footer-logo img { height: 100px; margin-bottom: 15px; }
 .footer-logo h3 { color: #6A0DAD; font-size: 1.8rem; margin: 0; }
 .footer-social { display: flex; justify-content: center; gap: 20px; margin: 25px 0; }
 .footer-social a { 
@@ -201,15 +245,21 @@ footer { background: #2c2c2c; color: white; padding: 40px 20px; text-align: cent
 .copyright { color: #999; font-size: 0.9rem; padding-top: 20px; border-top: 1px solid #444; }
 
 /* =========================================
-   7. RESPONSIVE
+   8. RESPONSIVIDAD (MÓVIL)
    ========================================= */
 @media (max-width: 768px) {
     .header { padding: 0 15px; }
-    .logo Img { height: 60px; }
+    .logo img { height: 60px; }
     .btn-login-header span { display: none; }
+    
     .profile-hero { flex-direction: column; text-align: center; }
     .files-grid, .grid-gallery { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
-    .search-card, .login-card { padding: 25px; margin: 20px auto; }
+    .search-card, .login-card { padding: 25px; margin: 20px auto; width: 95%; max-width: none; }
+    
+    /* Lightbox Móvil */
+    .lightbox-nav { display: none; } /* Ocultar flechas en móvil para usar swipe (futuro) */
+    .lightbox-close { top: 10px; right: 15px; font-size: 2.5rem; }
+    .lightbox-details { top: 10px; width: 70%; font-size: 0.8rem; }
 }
 
 /* --- ESTILOS DE ADMIN ESPECÍFICOS --- */
@@ -229,12 +279,6 @@ footer { background: #2c2c2c; color: white; padding: 40px 20px; text-align: cent
 .drop-zone:hover { background: #f3e5f5; border-color: #6A0DAD; }
 .drop-zone i { font-size: 3.5rem; color: #6A0DAD; margin-bottom: 10px; }
 
-.lightbox { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; display: none; justify-content: center; align-items: center; flex-direction: column; backdrop-filter: blur(5px); }
-.lightbox.active { display: flex; animation: fadeIn 0.3s; }
-.lightbox-content Img, .lightbox-content video { max-width: 90%; max-height: 80vh; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.5); }
-.lightbox-details { color: white; text-align: center; margin-top: 20px; }
-.btn-download { background: #2E8B57; color: white; padding: 8px 20px; border-radius: 20px; text-decoration: none; font-weight: bold; display: inline-flex; align-items: center; gap: 8px; transition: 0.3s; }
-.lightbox-close { position: absolute; top: 20px; right: 30px; color: white; font-size: 2.5rem; cursor: pointer; transition: 0.3s; }
 .info-modal, .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2500; display: none; justify-content: center; align-items: center; backdrop-filter: blur(3px); }
 .info-modal.active, .modal.active { display: flex; animation: fadeIn 0.3s; }
 .info-card, .modal-content { background: white; width: 90%; max-width: 500px; border-radius: 20px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); text-align: center; border-top: 5px solid #6A0DAD; }
@@ -248,7 +292,7 @@ footer { background: #2c2c2c; color: white; padding: 40px 20px; text-align: cent
 .folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; padding: 20px 0; }
 .folder-card { background: var(--bg-card); border-radius: 15px; padding: 20px; text-align: center; cursor: pointer; border: 1px solid var(--border-color); transition: transform 0.2s, box-shadow 0.2s; position: relative; }
 .folder-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(106, 13, 173, 0.2); border-color: #6A0DAD; }
-.folder-icon Img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #6A0DAD; margin-bottom: 10px; }
+.folder-icon img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #6A0DAD; margin-bottom: 10px; }
 .folder-badge { background: #6A0DAD; color: white; padding: 2px 10px; border-radius: 10px; font-size: 0.8rem; position: absolute; top: 10px; right: 10px; }
 
 /* Barra de Herramientas Flotante (CORREGIDA) */
@@ -256,7 +300,6 @@ footer { background: #2c2c2c; color: white; padding: 40px 20px; text-align: cent
     position: fixed;
     bottom: 30px;
     left: 50%;
-    /* Mueve la barra MUY abajo para que no se asome */
     transform: translateX(-50%) translateY(250%); 
     background: #333;
     color: white;
@@ -286,14 +329,14 @@ footer { background: #2c2c2c; color: white; padding: 40px 20px; text-align: cent
 /* Modal de Progreso (CORREGIDO PARA TEMAS) */
 .progress-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 3000; display: none; justify-content: center; align-items: center; }
 .progress-box {
-    background: var(--bg-card) !important; /* Respeta el tema */
-    color: var(--text-main) !important;    /* Respeta el tema */
+    background: var(--bg-card) !important;
+    color: var(--text-main) !important;
     padding: 30px; border-radius: 15px; width: 300px; text-align: center;
     border: 1px solid var(--border-color);
 }
 .pb-bar-container { 
     width: 100%; 
-    background: var(--input-bg); /* Respeta el tema */
+    background: var(--input-bg);
     border: 1px solid var(--border-color);
     height: 10px; border-radius: 5px; margin-top: 15px; overflow: hidden; 
 }
