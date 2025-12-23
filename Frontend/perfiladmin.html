@@ -116,7 +116,7 @@
 <body>
     
     <header class="header">
-        <div class="logo"><a href="index.html"><img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo"></a></div>
+        <div class="logo"><a href="index.html"><Img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo"></a></div>
         <div class="header-right">
             <button onclick="toggleTheme()" class="theme-toggle" id="themeBtn" title="Cambiar Tema"><i class="fas fa-moon"></i></button>
             <button onclick="cerrarSesion()" class="btn-login-header">Salir</button>
@@ -404,7 +404,7 @@
      <footer>
         <div class="footer-content">
             <div class="footer-logo">
-                <img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
+                <Img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
                 <h3>Unidad Educativa Particular Despertar</h3>
             </div>
             <div class="footer-social">
@@ -746,7 +746,7 @@
                 let mediaHTML = '';
                 if(isV) mediaHTML = `<video src="${grupo.url}#t=0.1" class="compact-media"></video>`;
                 else if(isDoc) mediaHTML = `<div class="compact-media" style="display:flex;align-items:center;justify-content:center;background:#eee;"><i class="fas fa-file-alt" style="font-size:3rem;color:#555;"></i></div>`;
-                else mediaHTML = `<img src="${grupo.url}" class="compact-media">`;
+                else mediaHTML = `<Img src="${grupo.url}" class="compact-media">`;
 
                 d.innerHTML += `<div class="compact-card" onclick="openLightbox('${grupo.url}', '${grupo.usuarios[0]}')">
                     <button type="button" class="mini-trash" onclick='borrarGrupoEvidencia(event, ${idsString})'><i class="fas fa-trash"></i></button>
@@ -793,7 +793,7 @@
             if (isDoc) {
                 content.innerHTML = `<div style="text-align:center; color:white;"><i class="fas fa-file-alt" style="font-size:5rem; margin-bottom:20px;"></i><br><h3>Vista previa no disponible para documentos</h3><p>Usa el botón de abajo para descargar.</p></div>`;
             } else {
-                content.innerHTML = ['mp4','mov','webm'].includes(ext) ? `<video src="${url}" controls autoplay style="max-width:90%; max-height:80vh; border-radius:10px;"></video>` : `<img src="${url}" style="max-width:90%; max-height:80vh; border-radius:10px;">`;
+                content.innerHTML = ['mp4','mov','webm'].includes(ext) ? `<video src="${url}" controls autoplay style="max-width:90%; max-height:80vh; border-radius:10px;"></video>` : `<Img src="${url}" style="max-width:90%; max-height:80vh; border-radius:10px;">`;
             }
             document.getElementById('lbDetails').innerHTML=`<h3>${nombre}</h3>`;
             document.getElementById('lightboxDownload').href = url;
@@ -836,7 +836,7 @@ async function cargarGaleriaGlobal() {
             grid.innerHTML += `
             <div class="folder-card" onclick="abrirCarpeta('${est.cedula}', '${est.nombre} ${est.apellido}')">
                 <span class="folder-badge">${est.total_evidencias} archivos</span>
-                <div class="folder-icon"><img src="${foto}"></div>
+                <div class="folder-icon"><Img src="${foto}"></div>
                 <h4>${est.nombre} ${est.apellido}</h4>
                 <small style="color:#666;">${est.cedula}</small>
             </div>`;
@@ -872,7 +872,7 @@ async function abrirCarpeta(cedula, nombreEstudiante) {
         // Renderizamos las fotos
         evidenciasActualesEnCarpeta.forEach(item => {
             const ext = item.url.split('.').pop().toLowerCase();
-            let media = `<img src="${item.url}" class="compact-media" loading="lazy">`; // loading="lazy" ayuda al navegador
+            let media = `<Img src="${item.url}" class="compact-media" loading="lazy">`; // loading="lazy" ayuda al navegador
             
             if(['mp4','webm','mov'].includes(ext)) {
                 media = `<video src="${item.url}#t=0.1" class="compact-media" preload="metadata"></video><i class="fas fa-play" style="position:absolute;color:white;font-size:2rem;opacity:0.8;"></i>`;
