@@ -94,15 +94,15 @@ def es_parecido(palabra1, palabra2):
 
 def forzar_compresion(ruta_archivo):
     try:
-        img = cv2.imread(ruta_archivo)
-        if img is None: return None
+        Img = cv2.imread(ruta_archivo)
+        if Img is None: return None
         calidad = 85; scale = 1.0
         while True:
             if scale < 1.0:
-                h, w = img.shape[:2]
-                img_temp = cv2.resize(img, (int(w*scale), int(h*scale)), interpolation=cv2.INTER_AREA)
-            else: img_temp = img
-            exito, buffer = cv2.imencode('.jpg', img_temp, [int(cv2.IMWRITE_JPEG_QUALITY), calidad])
+                h, w = Img.shape[:2]
+                Img_temp = cv2.resize(Img, (int(w*scale), int(h*scale)), interpolation=cv2.INTER_AREA)
+            else: Img_temp = Img
+            exito, buffer = cv2.imencode('.jpg', Img_temp, [int(cv2.IMWRITE_JPEG_QUALITY), calidad])
             byte_data = buffer.tobytes()
             peso_mb = len(byte_data) / (1024 * 1024)
             if peso_mb < 4.0: return byte_data
@@ -110,15 +110,15 @@ def forzar_compresion(ruta_archivo):
             if calidad < 30: return byte_data
     except Exception as e: print(f"Error comprimiendo: {e}"); return None
 
-def procesar_foto_grupal(img_bytes):
+def procesar_foto_grupal(Img_bytes):
     encontrados = set()
     try:
-        resp = rekog.detect_faces(Image={'Bytes': img_bytes}, Attributes=['DEFAULT'])
+        resp = rekog.detect_faces(Image={'Bytes': Img_bytes}, Attributes=['DEFAULT'])
         detalles = resp['FaceDetails']
         if not detalles: return encontrados
-        nparr = np.frombuffer(img_bytes, np.uint8)
-        img_cv = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        h_orig, w_orig = img_cv.shape[:2]
+        nparr = np.frombuffer(Img_bytes, np.uint8)
+        Img_cv = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        h_orig, w_orig = Img_cv.shape[:2]
         for idx, cara in enumerate(detalles):
             box = cara['BoundingBox']
             left = int(box['Left'] * w_orig); top = int(box['Top'] * h_orig)
@@ -126,7 +126,7 @@ def procesar_foto_grupal(img_bytes):
             left = max(0, left); top = max(0, top)
             if left + width > w_orig: width = w_orig - left
             if top + height > h_orig: height = h_orig - top
-            cara_recortada = img_cv[top:top+height, left:left+width]
+            cara_recortada = Img_cv[top:top+height, left:left+width]
             _, buffer_cara = cv2.imencode('.jpg', cara_recortada)
             try:
                 search_res = rekog.search_faces_by_image(CollectionId=COLLECTION_ID, Image={'Bytes': buffer_cara.tobytes()}, FaceMatchThreshold=40)
@@ -176,11 +176,11 @@ async def registrar_usuario(nombre: str=Form(...), apellido: str=Form(...), cedu
         
         with open(fname, "wb") as f: shutil.copyfileobj(foto.file, f)
         
-        bytes_img = forzar_compresion(fname)
-        if not bytes_img: 
-            with open(fname, 'rb') as f: bytes_img = f.read()
+        bytes_Img = forzar_compresion(fname)
+        if not bytes_Img: 
+            with open(fname, 'rb') as f: bytes_Img = f.read()
 
-        try: rekog.index_faces(CollectionId=COLLECTION_ID, Image={'Bytes': bytes_img}, ExternalImageId=cedula, DetectionAttributes=['ALL'], QualityFilter='AUTO')
+        try: rekog.index_faces(CollectionId=COLLECTION_ID, Image={'Bytes': bytes_Img}, ExternalImageId=cedula, DetectionAttributes=['ALL'], QualityFilter='AUTO')
         except Exception as aws_err: os.remove(fname); raise HTTPException(400, f"Error AWS: {aws_err}")
 
         s3_path = f"perfiles/perfil_{cedula}.{ext}"
@@ -201,12 +201,12 @@ async def agregar_referencia(cedula: str = Form(...), foto: UploadFile = UploadF
         fname = f"{folder_local}/ref_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.jpg"
         with open(fname, "wb") as f: shutil.copyfileobj(foto.file, f)
         
-        bytes_img = forzar_compresion(fname)
-        if not bytes_img: 
-            with open(fname, 'rb') as f: bytes_img = f.read()
+        bytes_Img = forzar_compresion(fname)
+        if not bytes_Img: 
+            with open(fname, 'rb') as f: bytes_Img = f.read()
         
         try:
-            rekog.index_faces(CollectionId=COLLECTION_ID, Image={'Bytes': bytes_img}, ExternalImageId=cedula, QualityFilter='AUTO')
+            rekog.index_faces(CollectionId=COLLECTION_ID, Image={'Bytes': bytes_Img}, ExternalImageId=cedula, QualityFilter='AUTO')
             registrar_auditoria("ENTRENAMIENTO", f"Nueva foto de referencia para {cedula}")
             return {"mensaje": "Referencia agregada."}
         except Exception as e: return {"error": f"Error AWS: {e}"}
@@ -291,12 +291,12 @@ async def subir_evidencia(cedula_destino: str = Form(None), archivo: UploadFile 
                 cam.release()
             except Exception as e: print(f"Error video: {e}")
         elif es_imagen:
-            img_bytes = forzar_compresion(fname)
-            if img_bytes:
-                personas = procesar_foto_grupal(img_bytes)
+            Img_bytes = forzar_compresion(fname)
+            if Img_bytes:
+                personas = procesar_foto_grupal(Img_bytes)
                 if personas: dest.update(personas)
                 try:
-                    resp_txt = rekog.detect_text(Image={'Bytes': img_bytes})
+                    resp_txt = rekog.detect_text(Image={'Bytes': Img_bytes})
                     txt = " ".join([t['DetectedText'] for t in resp_txt['TextDetections'] if t['Type'] == 'LINE'])
                     if txt: dest.update(buscar_estudiantes_texto_smart(txt))
                 except: pass
