@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mi Perfil - Unidad Educativa Despertar</title>
-    <link rel="stylesheet" href="[https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css](https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css)">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="diseno.css"> 
     
     <style>
@@ -378,9 +378,9 @@
                 <h3>Unidad Educativa Particular Despertar</h3>
             </div>
             <div class="footer-social">
-                <a href="[https://www.facebook.com/uepdespertar](https://www.facebook.com/uepdespertar)"><i class="fab fa-facebook-f"></i></a>
-                <a href="[https://www.youtube.com/@DespertarSKAS](https://www.youtube.com/@DespertarSKAS)"><i class="fab fa-youtube"></i></a>
-                <a href="[https://www.instagram.com/skas_despertar](https://www.instagram.com/skas_despertar)"><i class="fab fa-instagram"></i></a>
+                <a href="https://www.facebook.com/uepdespertar"><i class="fab fa-facebook-f"></i></a>
+                <a href="https://www.youtube.com/@DespertarSKAS"><i class="fab fa-youtube"></i></a>
+                <a href="https://www.instagram.com/skas_despertar"><i class="fab fa-instagram"></i></a>
             </div>
             <div class="copyright">
                 <p>© 2025 Plataforma Educativa - Unidad Educativa Particular Despertar. Todos los derechos reservados.</p>
@@ -389,7 +389,8 @@
     </footer>
 
     <script>
-        const baseUrl = "[https://proyecto-de-grado-oficial-production.up.railway.app](https://proyecto-de-grado-oficial-production.up.railway.app)";
+        // CORREGIDO: DOBLE BARRA //
+        const baseUrl = "https://proyecto-de-grado-oficial-production.up.railway.app";
 
         // --- ACCESIBILIDAD ---
         function toggleTextSize() { document.body.classList.toggle('large-text'); }
@@ -454,7 +455,7 @@
                     document.getElementById('userNameDisplay').textContent = `${primerNombre} ${primerApellido}`;
                     
                     if(data.datos.url_foto) document.getElementById('profilePhoto').src = data.datos.url_foto;
-                    else document.getElementById('profilePhoto').src = "[https://via.placeholder.com/150](https://via.placeholder.com/150)";
+                    else document.getElementById('profilePhoto').src = "https://via.placeholder.com/150";
 
                     currentGallery = data.datos.galeria || [];
                     if (data.datos.url_foto) {
