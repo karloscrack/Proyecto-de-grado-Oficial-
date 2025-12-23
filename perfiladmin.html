@@ -65,43 +65,13 @@
         .compact-card { border-radius: 8px; overflow: hidden; position: relative; cursor: pointer; transition: transform 0.2s; height: 180px; }
         .compact-card:hover { transform: scale(1.03); z-index: 5; }
         .compact-media { width: 100%; height: 100%; object-fit: cover; }
-        .compact-info { position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.8); color: white !important; padding: 5px; font-size: 0.70rem; text-align: center; opacity: 0; transition: opacity 0.2s; max-height: 50%; overflow-y: auto; }
-        .compact-card:hover .compact-info { opacity: 1; }
-        .mini-trash { position: absolute; top: 5px; right: 5px; background: rgba(229, 57, 53, 1); color: white; width: 30px; height: 30px; border-radius: 50%; border: 2px solid white; cursor: pointer; display: none; align-items: center; justify-content: center; font-size: 0.9rem; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
-        .compact-card:hover .mini-trash { display: flex; }
-
-        .drop-zone { border: 3px dashed #b39ddb; border-radius: 15px; padding: 40px; text-align: center; cursor: pointer; background: var(--input-bg); transition: 0.3s; position: relative; }
-        .drop-zone:hover, .drop-zone.dragover { background: var(--hover-item); border-color: #6A0DAD; transform: scale(1.02); }
-        .drop-zone i { font-size: 3.5rem; color: #6A0DAD; margin-bottom: 10px; }
-
+        
         .progress-container { width: 100%; background-color: var(--border-color); border-radius: 10px; margin: 15px 0; display: none; overflow: hidden; height: 25px; position: relative; }
         .progress-bar { height: 100%; width: 0%; background-color: #6A0DAD; transition: width 0.4s ease; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.8rem; font-weight: bold; }
         .upload-log-box { background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 8px; max-height: 200px; overflow-y: auto; padding: 10px; margin-top: 15px; display: none; text-align: left; font-size: 0.9rem; }
         .log-item { padding: 5px; border-bottom: 1px solid var(--border-color); }
         .log-item.success { color: #2E8B57; } .log-item.warning { color: #F9A825; } .log-item.error { color: #c62828; }
-        .wide-container { width: 100%; margin-top: 20px; }
-        .table-responsive { width: 100%; overflow-x: auto; margin-top: 10px; border-radius: 10px; }
-        .modern-table { width: 100%; border-collapse: collapse; min-width: 600px; }
-        .modern-table th, .modern-table td { padding: 15px; text-align: left; }
-        .action-btn { width: 32px; height: 32px; border-radius: 5px; border: none; cursor: pointer; color: white; margin-right: 5px; transition: 0.2s; }
-        .action-btn:hover { transform: scale(1.1); }
-        .btn-photo { background: #6A0DAD; } .btn-key { background: #fb8c00; } .btn-power { background: #43a047; } .btn-power.off { background: #757575; } .btn-trash { background: #e53935; }
-        .badge { padding: 5px 10px; border-radius: 15px; font-size: 0.75rem; font-weight: bold; }
-        .badge-admin { background: #e3f2fd; color: #1565c0; } .badge-student { background: #e8f5e9; color: #2e7d32; }
-        .maint-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; padding: 20px; }
-        .maint-card { border-radius: 20px; padding: 30px; text-align: center; transition: 0.3s; }
-        .maint-card:hover { transform: translateY(-10px); }
-        .maint-icon-box { width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto; font-size: 2.5rem; }
-        .maint-backup .maint-icon-box { background: #e8f5e9; color: #2E8B57; } .maint-clean .maint-icon-box { background: #fff8e1; color: #f9a825; }
-        .lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); font-size: 3rem; color: white; cursor: pointer; padding: 20px; z-index: 2002; transition: 0.3s; background: rgba(0,0,0,0.3); border-radius: 50%; }
-        .lightbox-nav:hover { background: rgba(0,0,0,0.8); }
-        .lightbox-prev { left: 20px; } .lightbox-next { right: 20px; }
-        .lightbox-footer { position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.8); color: white; padding: 15px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-        .btn-download-lb { background: #2E8B57; color: white; text-decoration: none; padding: 8px 20px; border-radius: 20px; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 8px; }
-        .upload-content, .security-content { display: none; animation: fadeIn 0.3s; }
-        .upload-content.active, .security-content.active { display: block; }
-        .menu-link i { width: 30px; text-align: center; margin-right: 10px; }
-
+        
         /* ESTILOS NUEVOS PARA SELECTOR DE USUARIOS */
         .user-picker-container { margin-top: 10px; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background: var(--input-bg); }
         .picked-users { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
@@ -110,7 +80,6 @@
         .user-results { max-height: 150px; overflow-y: auto; display: none; border-top: 1px solid var(--border-color); padding-top: 5px; }
         .user-result-item { padding: 8px; cursor: pointer; border-radius: 5px; font-size: 0.9rem; display: flex; justify-content: space-between; }
         .user-result-item:hover { background-color: var(--hover-item); }
-        .doc-icon { font-size: 3rem; color: #c62828; margin-bottom: 10px; display: block; }
     </style>
 </head>
 <body>
@@ -151,13 +120,8 @@
 
     <div class="lightbox" id="lightbox">
         <span onclick="closeLightbox()" class="lightbox-close">&times;</span>
-        <div class="lightbox-nav lightbox-prev" onclick="navegarLightbox(-1)"><i class="fas fa-chevron-left"></i></div>
-        <div class="lightbox-nav lightbox-next" onclick="navegarLightbox(1)"><i class="fas fa-chevron-right"></i></div>
         <div class="lightbox-content" id="lightboxContent"></div>
-        <div class="lightbox-footer">
-            <div class="lb-details" id="lbDetails"><h3>...</h3><p>...</p></div>
-            <a href="#" class="btn-download-lb" id="lightboxDownload" download target="_blank"><i class="fas fa-download"></i> Descargar</a>
-        </div>
+        <div id="lightboxControls" style="display:flex; gap:15px; margin-top:20px;"></div>
     </div>
 
     <div class="container">
@@ -277,47 +241,53 @@
         </div>
 
         <div id="galeria" class="panel-section">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        <h3 id="tituloGaleria" style="color:#6A0DAD; display:flex; align-items:center; gap:10px;">
-            <i class="fas fa-folder-open"></i> Carpetas de Estudiantes
-        </h3>
-        
-        <div id="controlesGaleria" style="display:none; gap: 10px;"> 
-    <button onclick="volverACarpetas()" class="action-pill btn-back-pill">
-        <i class="fas fa-arrow-left"></i> Volver
-    </button>
-    <button onclick="activarSeleccion()" id="btnSelectMode" class="action-pill btn-select-pill">
-        <i class="fas fa-check-circle"></i> Seleccionar
-    </button>
-</div>
-    </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:15px;">
+                <h3 id="tituloGaleria" style="color:var(--text-main); display:flex; align-items:center; gap:10px; margin:0;">
+                    <i class="fas fa-folder-open" style="color:#6A0DAD;"></i> Carpetas de Estudiantes
+                </h3>
+                
+                <div id="buscadorContainer" style="flex-grow:1; max-width:400px; position:relative;">
+                    <input type="text" id="inputBuscador" placeholder="Buscar estudiante por nombre..." onkeyup="filtrarCarpetas()" 
+                    style="width:100%; padding:10px 15px; border-radius:20px; border:1px solid var(--border-color); background:var(--input-bg); color:var(--text-main);">
+                    <i class="fas fa-search" style="position:absolute; right:15px; top:12px; color:var(--text-sec);"></i>
+                </div>
 
-    <div id="vistaCarpetas" class="folder-grid"></div>
+                <div id="controlesGaleria" style="display:none; gap:10px;">
+                    <button onclick="volverACarpetas()" class="action-pill btn-back-pill">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </button>
+                    <button onclick="activarSeleccion()" id="btnSelectMode" class="action-pill btn-select-pill">
+                        <i class="fas fa-check-circle"></i> Seleccionar
+                    </button>
+                </div>
+            </div>
 
-    <div id="vistaArchivos" class="compact-grid" style="display:none;"></div>
-    
-    <div id="noEvidenciaMsg" style="display:none; text-align:center; padding:40px;">
-        <i class="fas fa-search" style="font-size:3rem; color:#ccc;"></i>
-        <p>No hay evidencias aquí.</p>
-    </div>
+            <div id="vistaCarpetas" class="folder-grid"></div>
 
-    <div id="barraSeleccion" class="selection-toolbar">
-        <span id="contadorSeleccion">0 seleccionados</span>
-        <button onclick="descargarSeleccionados()"><i class="fas fa-download"></i> Descargar</button>
-        <button onclick="borrarSeleccionados()" class="btn-danger"><i class="fas fa-trash"></i> Borrar</button>
-        <button onclick="cancelarSeleccion()" style="background:transparent; color:white; border:1px solid white;">X</button>
-    </div>
-</div>
+            <div id="vistaArchivos" class="compact-grid" style="display:none;"></div>
+            
+            <div id="noEvidenciaMsg" style="display:none; text-align:center; padding:40px;">
+                <i class="fas fa-search" style="font-size:3rem; color:#ccc;"></i>
+                <p>No hay evidencias aquí.</p>
+            </div>
 
-<div id="modalProgreso" class="progress-modal">
-    <div class="progress-box">
-        <h3 style="color:#6A0DAD;">Procesando...</h3>
-        <p id="textoProgreso">Por favor espera</p>
-        <div class="pb-bar-container">
-            <div id="barraProgresoFill" class="pb-fill"></div>
+            <div id="barraSeleccion" class="selection-toolbar">
+                <span id="contadorSeleccion">0 seleccionados</span>
+                <button onclick="descargarSeleccionados()"><i class="fas fa-download"></i> Descargar</button>
+                <button onclick="borrarSeleccionados()" class="btn-danger"><i class="fas fa-trash"></i> Borrar</button>
+                <button onclick="cancelarSeleccion()" style="background:transparent; color:white; border:1px solid white;">X</button>
+            </div>
         </div>
-    </div>
-</div>
+
+        <div id="modalProgreso" class="progress-modal">
+            <div class="progress-box">
+                <h3 style="color:#6A0DAD;">Procesando...</h3>
+                <p id="textoProgreso">Por favor espera</p>
+                <div class="pb-bar-container">
+                    <div id="barraProgresoFill" class="pb-fill"></div>
+                </div>
+            </div>
+        </div>
 
         <div id="seguridad" class="panel-section">
             <div class="search-card" style="margin-bottom:20px;">
@@ -420,8 +390,14 @@
 
     <script>
         const baseUrl = "https://proyecto-de-grado-oficial-production.up.railway.app";
-        let usuariosGlobal = []; let evidenciasGlobal = []; let evidenciasActuales = []; let lightboxIndex = 0; 
-        let selectedUsers = []; // Array para los usuarios seleccionados manualmente
+        let usuariosGlobal = [];
+        let selectedUsers = []; // Array para los usuarios seleccionados manualmente en subida manual
+        
+        // VARIABLES GLOBALES GALERÍA
+        let modoSeleccion = false;
+        let itemsSeleccionados = []; // Array de IDs
+        let evidenciasActualesEnCarpeta = [];
+        let listaEstudiantesGlobal = []; // Para el buscador
 
         function toggleTheme() {
             const body = document.body;
@@ -452,17 +428,10 @@
             const ultimaSeccion = localStorage.getItem('admin_ultima_seccion') || 'registro';
             verSeccion(ultimaSeccion);
             cargarUsuarios(); 
-            if (ultimaSeccion === 'galeria') {
-                const ultimaBusqueda = localStorage.getItem('admin_ultima_busqueda_evidencia') || "";
-                if (ultimaBusqueda) {
-                    document.getElementById('filtroEvidencia').value = ultimaBusqueda;
-                    setTimeout(() => filtrarGaleria(), 500);
-                }
-            }
             
             setupDragAndDrop('dropZoneIA', 'inputArchivosIA', 'fileCountIA', true);
             setupDragAndDrop('dropZoneManual', 'inputArchivoManual', 'manualFileName', false);
-            setupUserSearch(); // Inicializar el buscador de usuarios manual
+            setupUserSearch(); 
         };
 
         const menu = document.getElementById('sideMenu'); 
@@ -473,14 +442,16 @@
         function cerrarSesion() { const t=localStorage.getItem('admin_theme'); localStorage.clear(); if(t) localStorage.setItem('admin_theme', t); window.location.href = "index.html"; }
         
         function verSeccion(id) {
+            cancelarSeleccion(); // IMPORTANTE: Cerrar barra flotante al cambiar sección
             localStorage.setItem('admin_ultima_seccion', id);
             document.querySelectorAll('.panel-section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.option-card').forEach(c => c.classList.remove('active'));
             document.getElementById(id).classList.add('active');
             const btnMap = { 'archivos': 'btn-archivos', 'registro': 'btn-registro', 'galeria': 'btn-galeria', 'seguridad': 'btn-seguridad', 'mantenimiento': 'btn-mantenimiento' };
             if(btnMap[id]) document.getElementById(btnMap[id]).classList.add('active');
+            
             if(id==='registro' || id==='usuarios') cargarUsuarios();
-            if(id==='galeria') { cargarUsuarios(); cargarGaleriaGlobal(); }
+            if(id==='galeria') cargarGaleriaGlobal();
             if(id==='seguridad') cargarLogs();
         }
 
@@ -520,7 +491,201 @@
         }
 
         // ============================================
-        // LÓGICA DEL BUSCADOR INTELIGENTE DE USUARIOS
+        // LÓGICA GALERÍA Y CARPETAS (CORREGIDA)
+        // ============================================
+        async function cargarGaleriaGlobal() {
+            // Restaurar vista inicial
+            document.getElementById('vistaCarpetas').style.display = 'grid';
+            document.getElementById('vistaArchivos').style.display = 'none';
+            document.getElementById('controlesGaleria').style.display = 'none';
+            document.getElementById('buscadorContainer').style.display = 'block'; // Mostrar buscador
+            document.getElementById('tituloGaleria').innerHTML = '<i class="fas fa-folder-open" style="color:#6A0DAD;"></i> Carpetas de Estudiantes';
+            document.getElementById('noEvidenciaMsg').style.display = 'none';
+            
+            cancelarSeleccion(); 
+
+            try {
+                const res = await fetch(`${baseUrl}/resumen_estudiantes_con_evidencias`);
+                if(!res.ok) throw new Error("Error conectando");
+                listaEstudiantesGlobal = await res.json(); 
+                renderizarCarpetas(listaEstudiantesGlobal);
+            } catch (e) { console.error(e); }
+        }
+
+        function renderizarCarpetas(lista) {
+            const grid = document.getElementById('vistaCarpetas');
+            grid.innerHTML = '';
+            if(lista.length === 0) { 
+                document.getElementById('noEvidenciaMsg').style.display = 'block';
+                return; 
+            }
+            document.getElementById('noEvidenciaMsg').style.display = 'none';
+
+            lista.forEach(est => {
+                const foto = est.foto || 'https://via.placeholder.com/150';
+                grid.innerHTML += `
+                <div class="folder-card" onclick="abrirCarpeta('${est.cedula}', '${est.nombre} ${est.apellido}')">
+                    <span class="folder-badge">${est.total_evidencias}</span>
+                    <div class="folder-icon"><img src="${foto}"></div>
+                    <h4 style="color:var(--text-main); margin:10px 0;">${est.nombre} ${est.apellido}</h4>
+                    <small style="color:var(--text-sec);">${est.cedula}</small>
+                </div>`;
+            });
+        }
+
+        function filtrarCarpetas() {
+            const texto = document.getElementById('inputBuscador').value.toLowerCase();
+            const filtrados = listaEstudiantesGlobal.filter(est => 
+                est.nombre.toLowerCase().includes(texto) || 
+                est.apellido.toLowerCase().includes(texto) ||
+                est.cedula.includes(texto)
+            );
+            renderizarCarpetas(filtrados);
+        }
+
+        async function abrirCarpeta(cedula, nombreEstudiante) {
+            document.getElementById('vistaCarpetas').style.display = 'none';
+            document.getElementById('buscadorContainer').style.display = 'none'; // Ocultar buscador dentro de carpeta
+            document.getElementById('vistaArchivos').style.display = 'grid';
+            document.getElementById('controlesGaleria').style.display = 'flex';
+            document.getElementById('tituloGaleria').innerHTML = `<i class="fas fa-user"></i> ${nombreEstudiante}`;
+            
+            const grid = document.getElementById('vistaArchivos');
+            grid.innerHTML = '<p style="text-align:center; width:100%;">Cargando evidencias...</p>';
+
+            try {
+                const res = await fetch(`${baseUrl}/todas_evidencias?cedula=${cedula}`);
+                evidenciasActualesEnCarpeta = await res.json();
+                
+                grid.innerHTML = '';
+                if (evidenciasActualesEnCarpeta.length === 0) { grid.innerHTML = '<p>Carpeta vacía.</p>'; return; }
+
+                evidenciasActualesEnCarpeta.forEach((item, index) => {
+                    const ext = item.url.split('.').pop().toLowerCase();
+                    let media = `<img src="${item.url}" class="compact-media">`;
+                    if(['mp4','webm'].includes(ext)) media = `<div style="position:relative;width:100%;height:100%;background:#000;"><video src="${item.url}#t=0.1" class="compact-media"></video><i class="fas fa-play-circle" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:white;font-size:2rem;"></i></div>`;
+                    else if(['pdf','docx'].includes(ext)) media = `<div class="compact-media" style="display:flex;align-items:center;justify-content:center;background:var(--input-bg);"><i class="fas fa-file-alt" style="font-size:3rem;color:var(--text-sec);"></i></div>`;
+
+                    grid.innerHTML += `
+                    <div class="compact-card" id="card-${item.id}" onclick="clickTarjeta(${item.id}, ${index})">
+                        <div class="select-checkbox" id="check-${item.id}"></div>
+                        ${media}
+                    </div>`;
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        function volverACarpetas() {
+            cargarGaleriaGlobal(); // Incluye cancelarSeleccion
+        }
+
+        function clickTarjeta(id, index) {
+            if (modoSeleccion) {
+                toggleSeleccionAdmin(id); 
+            } else {
+                abrirLightboxAdmin(index);
+            }
+        }
+
+        function abrirLightboxAdmin(index) {
+            const item = evidenciasActualesEnCarpeta[index];
+            const url = item.url;
+            const lightbox = document.getElementById('lightbox');
+            const content = document.getElementById('lightboxContent');
+            const controlsDiv = document.getElementById('lightboxControls');
+            
+            content.innerHTML = '';
+            const ext = url.split('.').pop().toLowerCase();
+            
+            if(['jpg','png','jpeg','gif'].includes(ext)) content.innerHTML = `<img src="${url}" style="max-height:80vh; max-width:100%;">`;
+            else if(['mp4','webm'].includes(ext)) content.innerHTML = `<video src="${url}" controls autoplay style="max-height:80vh; max-width:100%;"></video>`;
+            else content.innerHTML = `<div style="color:white;text-align:center;padding:50px;"><i class="fas fa-file" style="font-size:4rem;"></i><p>Archivo</p></div>`;
+
+            // BOTONES DE LIGHTBOX (DESCARGAR + BORRAR)
+            controlsDiv.innerHTML = `
+                <a href="${url}" download target="_blank" class="action-pill" style="text-decoration:none; color:#333;">
+                    <i class="fas fa-download"></i> Descargar
+                </a>
+                <button onclick="borrarIndividual(${item.id})" class="action-pill" style="background:#e53935; color:white; border:none;">
+                    <i class="fas fa-trash"></i> Borrar
+                </button>
+            `;
+
+            lightbox.classList.add('active');
+        }
+
+        async function borrarIndividual(id) {
+            if(!confirm("¿Estás seguro de borrar esta evidencia permanentemente?")) return;
+            
+            try {
+                const res = await fetch(`${baseUrl}/borrar_evidencia/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if(data.msg === "Eliminada") {
+                    alert("Evidencia eliminada.");
+                    document.getElementById('lightbox').classList.remove('active'); 
+                    
+                    // Recargar carpeta
+                    const cedula = evidenciasActualesEnCarpeta[0].cedula;
+                    const estudiante = listaEstudiantesGlobal.find(e => e.cedula === cedula);
+                    if(estudiante) abrirCarpeta(cedula, `${estudiante.nombre} ${estudiante.apellido}`);
+                } else {
+                    alert("Error al borrar.");
+                }
+            } catch(e) { alert("Error de conexión"); }
+        }
+
+        function closeLightbox() { document.getElementById('lightbox').classList.remove('active'); }
+
+        // ============================================
+        // SELECCIÓN MÚLTIPLE (ADMIN)
+        // ============================================
+        function activarSeleccion() {
+            modoSeleccion = !modoSeleccion;
+            const btn = document.getElementById('btnSelectMode');
+            const cards = document.querySelectorAll('.compact-card');
+            const barra = document.getElementById('barraSeleccion');
+
+            if (modoSeleccion) {
+                btn.innerHTML = '<i class="fas fa-times"></i> Cancelar';
+                btn.classList.add('active'); // Rojo
+                cards.forEach(c => c.classList.add('selecting'));
+                barra.classList.add('active');
+            } else {
+                cancelarSeleccion();
+            }
+        }
+
+        function cancelarSeleccion() {
+            modoSeleccion = false;
+            itemsSeleccionados = [];
+            document.querySelectorAll('.compact-card').forEach(c => c.classList.remove('selecting', 'selected'));
+            document.getElementById('barraSeleccion').classList.remove('active');
+            
+            const btn = document.getElementById('btnSelectMode');
+            if(btn) {
+                btn.innerHTML = '<i class="fas fa-check-circle"></i> Seleccionar';
+                btn.classList.remove('active');
+            }
+            document.getElementById('contadorSeleccion').innerText = "0 seleccionados";
+        }
+
+        function toggleSeleccionAdmin(id) {
+            const index = itemsSeleccionados.indexOf(id);
+            const card = document.getElementById(`card-${id}`);
+            
+            if (index === -1) {
+                if(itemsSeleccionados.length >= 25) return alert("Máximo 25 items.");
+                itemsSeleccionados.push(id);
+                card.classList.add('selected');
+            } else {
+                itemsSeleccionados.splice(index, 1);
+                card.classList.remove('selected');
+            }
+            document.getElementById('contadorSeleccion').innerText = `${itemsSeleccionados.length} seleccionados`;
+        }
+
+        // ============================================
+        // LÓGICA DEL BUSCADOR DE USUARIOS (SUBIDA MANUAL)
         // ============================================
         function setupUserSearch() {
             const input = document.getElementById('inputUserSearch');
@@ -529,27 +694,22 @@
             input.addEventListener('input', function() {
                 const val = this.value.toLowerCase().trim();
                 resultsDiv.innerHTML = '';
-                
                 if(val.length < 2) { resultsDiv.style.display = 'none'; return; }
                 
-                const matches = usuariosGlobal.filter(u => {
-                    const fullName = `${u.nombre} ${u.apellido} ${u.cedula}`.toLowerCase();
-                    // Filtramos los que ya están seleccionados
-                    return fullName.includes(val) && !selectedUsers.includes(u.cedula);
-                });
+                const matches = usuariosGlobal.filter(u => 
+                    (`${u.nombre} ${u.apellido} ${u.cedula}`.toLowerCase().includes(val)) && !selectedUsers.includes(u.cedula)
+                );
 
                 if(matches.length > 0) {
                     resultsDiv.style.display = 'block';
                     matches.forEach(u => {
                         const div = document.createElement('div');
                         div.className = 'user-result-item';
-                        div.innerHTML = `<span>${u.nombre} ${u.apellido}</span> <small style="color:var(--text-sec);">(${u.cedula})</small>`;
+                        div.innerHTML = `<span>${u.nombre} ${u.apellido}</span> <small>(${u.cedula})</small>`;
                         div.onclick = () => addUserToSelection(u);
                         resultsDiv.appendChild(div);
                     });
-                } else {
-                    resultsDiv.style.display = 'none';
-                }
+                } else { resultsDiv.style.display = 'none'; }
             });
         }
 
@@ -560,8 +720,6 @@
             chip.className = 'user-chip';
             chip.innerHTML = `${user.nombre} <span onclick="removeUserFromSelection('${user.cedula}', this)">&times;</span>`;
             container.appendChild(chip);
-            
-            // Limpiar buscador
             document.getElementById('inputUserSearch').value = '';
             document.getElementById('userResults').style.display = 'none';
         }
@@ -569,6 +727,18 @@
         function removeUserFromSelection(cedula, btnElement) {
             selectedUsers = selectedUsers.filter(c => c !== cedula);
             btnElement.parentElement.remove();
+        }
+
+        // ============================================
+        // FUNCIONES DE CARGA Y PROGRESO
+        // ============================================
+        function mostrarProgreso(mostrar, texto="") {
+            const modal = document.getElementById('modalProgreso');
+            if(mostrar) {
+                document.getElementById('textoProgreso').innerText = texto;
+                document.getElementById('barraProgresoFill').style.width = '0%';
+                modal.style.display = 'flex';
+            } else { modal.style.display = 'none'; }
         }
 
         // SUBIDA IA
@@ -591,7 +761,7 @@
                 const f = files[i];
                 const fd = new FormData(); fd.append('archivo', f); 
                 const tempLogId = `log-temp-${i}`;
-                logBox.innerHTML += `<div id="${tempLogId}" class="log-item" style="color:#666;"><i class="fas fa-spinner fa-spin"></i> Analizando: ${f.name}...</div>`;
+                logBox.innerHTML += `<div id="${tempLogId}" class="log-item"><i class="fas fa-spinner fa-spin"></i> Analizando: ${f.name}...</div>`;
                 logBox.scrollTop = logBox.scrollHeight;
 
                 try { 
@@ -608,7 +778,7 @@
                         msgHTML = `<div class="log-item success"><i class="fas fa-check-circle"></i> <strong>${f.name}:</strong> Asignado a ${nombres}</div>`;
                     } else if (data.status === "alerta") {
                         warningCount++;
-                        msgHTML = `<div class="log-item warning"><i class="fas fa-exclamation-triangle"></i> <strong>${f.name}:</strong> No asignado. <br><small>${data.motivo}</small></div>`;
+                        msgHTML = `<div class="log-item warning"><i class="fas fa-exclamation-triangle"></i> <strong>${f.name}:</strong> No asignado.</div>`;
                     } else { 
                         msgHTML = `<div class="log-item error"><i class="fas fa-times-circle"></i> <strong>${f.name}:</strong> Error: ${data.motivo}</div>`;
                     }
@@ -619,16 +789,14 @@
                 }
                 processed++; const percent = Math.round((processed / total) * 100);
                 pBar.style.width = `${percent}%`; pBar.innerText = `${percent}%`;
-                await new Promise(r => setTimeout(r, 50));
             }
             btn.disabled = false; btn.innerText = "Procesar Evidencias";
             fileInputIA.value = ""; document.getElementById('fileCountIA').innerText = "0 archivos seleccionados"; 
-            logBox.innerHTML += `<div class="log-item" style="background:#f0f0f0; text-align:center; font-weight:bold; margin-top:10px;">🏁 Finalizado: ${successCount} asignados, ${warningCount} sin coincidencia.</div>`;
-            logBox.scrollTop = logBox.scrollHeight;
+            logBox.innerHTML += `<div class="log-item" style="text-align:center; font-weight:bold; margin-top:10px;">🏁 Finalizado: ${successCount} asignados.</div>`;
             cargarGaleriaGlobal(); 
         }
         
-        // SUBIDA MANUAL ACTUALIZADA
+        // SUBIDA MANUAL
         document.getElementById('manualForm').onsubmit = async function(e) {
             e.preventDefault(); 
             const archivoInput = this.querySelector('input[type="file"]');
@@ -636,13 +804,12 @@
             const pCont = document.getElementById('progressManual');
             const pBar = document.getElementById('progressBarManual');
 
-            // VALIDACIONES
-            if (archivoInput.files.length === 0) return alert("Por favor selecciona un archivo.");
-            if (selectedUsers.length === 0) return alert("Debes buscar y seleccionar al menos un usuario de la lista.");
+            if (archivoInput.files.length === 0) return alert("Selecciona un archivo.");
+            if (selectedUsers.length === 0) return alert("Debes seleccionar usuarios.");
 
             const fd = new FormData();
             fd.append('archivo', archivoInput.files[0]);
-            fd.append('cedulas', selectedUsers.join(',')); // Enviar array de cédulas seleccionadas
+            fd.append('cedulas', selectedUsers.join(','));
 
             btn.disabled = true; btn.innerText = "Subiendo...";
             pCont.style.display = 'block'; pBar.style.width = '50%'; pBar.innerText = '50%';
@@ -652,33 +819,76 @@
                 const j = await r.json(); 
                 pBar.style.width = '100%'; pBar.innerText = '100%';
                 
-                if(j.error) {
-                    alert("Error: " + j.error);
-                } else if(j.status === "alerta") {
-                    alert("Alerta: " + j.mensaje);
-                } else {
+                if(j.error) alert("Error: " + j.error);
+                else {
                     alert("Evidencia asignada correctamente."); 
                     this.reset(); 
                     document.getElementById('manualFileName').innerText = "Clic o arrastra aquí tu archivo";
-                    document.getElementById('pickedUsers').innerHTML = ''; // Limpiar visualmente
-                    selectedUsers = []; // Limpiar array
+                    document.getElementById('pickedUsers').innerHTML = ''; 
+                    selectedUsers = []; 
                     setTimeout(() => { pCont.style.display = 'none'; pBar.style.width = '0%'; }, 2000);
                     cargarGaleriaGlobal(); 
                 }
-            } catch(e) { 
-                alert("Error de conexión"); 
-            } finally {
-                btn.disabled = false; btn.innerText = "Subir y Asignar";
-            }
+            } catch(e) { alert("Error de conexión"); } finally { btn.disabled = false; btn.innerText = "Subir y Asignar"; }
         };
 
-        // ... RESTO DE FUNCIONES (REGISTRO, USUARIOS, BACKUP, ETC) IGUALES AL V10 ...
-        // (Por brevedad, asegúrate de mantener las funciones de descargarMultimedia, descargarBackup, etc que ya arreglamos)
-        
+        // ACCIONES MASIVAS
+        async function borrarSeleccionados() {
+            if(itemsSeleccionados.length === 0) return;
+            if(!confirm(`¿Eliminar ${itemsSeleccionados.length} archivos?`)) return;
+
+            mostrarProgreso(true, "Eliminando archivos...");
+            const barra = document.getElementById('barraProgresoFill');
+            let width = 10; barra.style.width = width + '%';
+            
+            const formData = new FormData();
+            formData.append('ids', itemsSeleccionados.join(','));
+
+            try {
+                const res = await fetch(`${baseUrl}/eliminar_evidencias_masivas`, { method: "POST", body: formData });
+                const data = await res.json();
+                barra.style.width = '100%';
+
+                if (data.status === 'ok') {
+                    setTimeout(() => {
+                        mostrarProgreso(false);
+                        alert("Archivos eliminados.");
+                        // Refrescar carpeta
+                        const cedula = evidenciasActualesEnCarpeta[0]?.cedula;
+                        if(cedula) {
+                            const est = listaEstudiantesGlobal.find(e => e.cedula === cedula);
+                            if(est) abrirCarpeta(cedula, `${est.nombre} ${est.apellido}`);
+                        } else { cargarGaleriaGlobal(); }
+                    }, 500);
+                } else { alert("Error: " + data.mensaje); mostrarProgreso(false); }
+            } catch (e) { alert("Error de conexión"); mostrarProgreso(false); }
+        }
+
+        async function descargarSeleccionados() {
+            if(itemsSeleccionados.length === 0) return;
+            const btn = document.querySelector('#barraSeleccion button');
+            const textoOriginal = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Zipeando...'; btn.disabled = true;
+
+            const formData = new FormData(); formData.append('ids', itemsSeleccionados.join(','));
+
+            try {
+                const response = await fetch(`${baseUrl}/descargar_seleccion_zip`, { method: "POST", body: formData });
+                if (!response.ok) throw new Error("Error ZIP");
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = `Descarga_Masiva_${new Date().getTime()}.zip`;
+                document.body.appendChild(a); a.click(); a.remove();
+                cancelarSeleccion();
+            } catch (error) { alert("Error: " + error.message); } 
+            finally { btn.innerHTML = textoOriginal; btn.disabled = false; }
+        }
+
+        // RESTO DE FUNCIONES (REGISTRO, CARGA USUARIOS)
         document.getElementById('registerForm').onsubmit = async function(e) { 
             e.preventDefault(); const fileInput = document.getElementById('inputFotosRegistro'); const files = fileInput.files; const btn = this.querySelector('button[type="submit"]');
             if (files.length === 0) return alert("Selecciona al menos una foto.");
-            btn.innerText = "Enviando a AWS..."; btn.disabled = true;
+            btn.innerText = "Enviando..."; btn.disabled = true;
             const fd = new FormData(this); fd.set('foto', files[0]);
             try {
                 const r = await fetch(`${baseUrl}/registrar_usuario`, { method: "POST", body: fd });
@@ -691,9 +901,8 @@
                         }
                     }
                     alert("Usuario registrado."); this.reset(); cargarUsuarios();
-                } else { const err = await r.json(); alert(err.detail || "Error al registrar"); }
-            } catch (e) { alert("Error de comunicación."); cargarUsuarios(); 
-            } finally { btn.innerText = "Registrar"; btn.disabled = false; }
+                } else { const err = await r.json(); alert(err.detail || "Error"); }
+            } catch (e) { alert("Error."); } finally { btn.innerText = "Registrar"; btn.disabled = false; }
         };
 
         async function cargarUsuarios() { try { const r=await fetch(`${baseUrl}/listar_usuarios?t=${Date.now()}`); usuariosGlobal=await r.json(); renderizarUsuarios(usuariosGlobal); } catch(e){} }
@@ -721,343 +930,13 @@
         function abrirModalRef(ci) { document.getElementById('refCedula').value=ci; document.getElementById('modalRef').classList.add('active'); }
         document.getElementById('refForm').onsubmit = async function(e) { e.preventDefault(); const fd=new FormData(this); await fetch(`${baseUrl}/agregar_referencia_facial`,{method:"POST",body:fd}); alert("Foto agregada"); document.getElementById('modalRef').classList.remove('active'); };
         async function toggleUsuario(ci) { await fetch(`${baseUrl}/alternar_estado_usuario/${ci}`,{method:'PUT'}); cargarUsuarios(); }
-        async function eliminarUsuario(ci) { if(confirm("¿Eliminar usuario? Se borrará también de Amazon.")) { await fetch(`${baseUrl}/eliminar_usuario/${ci}`,{method:'DELETE'}); cargarUsuarios(); } }
-
-        async function cargarGaleriaGlobal() { try { const r=await fetch(`${baseUrl}/todas_evidencias?t=${Date.now()}`); evidenciasGlobal=await r.json(); evidenciasActuales=evidenciasGlobal; renderGaleria(evidenciasActuales); } catch(e){} }
-
-        function renderGaleria(lista) {
-            const d = document.getElementById('gridGaleria'); const m = document.getElementById('noEvidenciaMsg'); d.innerHTML='';
-            if(!lista || lista.length===0) { m.style.display='block'; return; } else { m.style.display='none'; }
-            const agrupados = {};
-            lista.forEach(item => {
-                const url = item.url; if (!agrupados[url]) { agrupados[url] = { url: url, ids_evidencia: [], usuarios: [] }; }
-                agrupados[url].ids_evidencia.push(item.id);
-                const user = usuariosGlobal.find(u => u.cedula === item.cedula);
-                const nombreMostrar = user ? `${user.nombre} ${user.apellido}` : `CI: ${item.cedula}`;
-                if (!agrupados[url].usuarios.includes(nombreMostrar)) { agrupados[url].usuarios.push(nombreMostrar); }
-            });
-            Object.values(agrupados).forEach((grupo, i) => {
-                const ext = grupo.url.split('.').pop().toLowerCase(); 
-                const isV = ['mp4','mov','webm'].includes(ext);
-                const isDoc = ['pdf','docx','xlsx','pptx','txt'].includes(ext);
-                const idsString = JSON.stringify(grupo.ids_evidencia);
-                const listaNombresHTML = grupo.usuarios.map(u => `<div><i class="fas fa-user-tag"></i> ${u}</div>`).join('');
-                
-                let mediaHTML = '';
-                if(isV) mediaHTML = `<video src="${grupo.url}#t=0.1" class="compact-media"></video>`;
-                else if(isDoc) mediaHTML = `<div class="compact-media" style="display:flex;align-items:center;justify-content:center;background:#eee;"><i class="fas fa-file-alt" style="font-size:3rem;color:#555;"></i></div>`;
-                else mediaHTML = `<Img src="${grupo.url}" class="compact-media">`;
-
-                d.innerHTML += `<div class="compact-card" onclick="openLightbox('${grupo.url}', '${grupo.usuarios[0]}')">
-                    <button type="button" class="mini-trash" onclick='borrarGrupoEvidencia(event, ${idsString})'><i class="fas fa-trash"></i></button>
-                    ${mediaHTML}
-                    <div class="compact-info">${listaNombresHTML}</div></div>`;
-            });
-        }
-
-        async function borrarGrupoEvidencia(e, ids) { e.stopPropagation(); if(confirm(`¿Eliminar de TODOS (${ids.length})?`)) { for (let id of ids) { await fetch(`${baseUrl}/borrar_evidencia/${id}`, { method: 'DELETE' }); } cargarGaleriaGlobal(); } }
-        
-        async function descargarMultimedia() { 
-            const btn = document.querySelector('button[onclick="descargarMultimedia()"]'); const statusDiv = document.getElementById('maintStatus'); const textoOriginal = btn.innerHTML;
-            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando ZIP...'; statusDiv.innerText = "⏳ Conectando con la nube...";
-            try {
-                const response = await fetch(`${baseUrl}/descargar_multimedia_zip`); if (!response.ok) throw new Error("Error en servidor");
-                statusDiv.innerText = "⬇️ Descargando..."; const blob = await response.blob(); const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a'); a.href = url; a.download = `Respaldo_Multimedia_${new Date().toISOString().slice(0,10)}.zip`; document.body.appendChild(a); a.click(); a.remove(); window.URL.revokeObjectURL(url); statusDiv.innerText = "✅ Listo.";
-            } catch (error) { alert("Error: " + error.message); statusDiv.innerText = "❌ Error."; } finally { btn.disabled = false; btn.innerHTML = textoOriginal; setTimeout(() => { statusDiv.innerText = ""; }, 5000); }
-        }
-
-        async function descargarBackup() { 
-            const btn = document.querySelector('button[onclick="descargarBackup()"]'); const statusDiv = document.getElementById('maintStatus'); const textoOriginal = btn.innerHTML;
-            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...'; statusDiv.innerText = "⏳ Creando respaldo...";
-            try {
-                const response = await fetch(`${baseUrl}/crear_backup`); if(!response.ok) throw new Error("Error backup");
-                const blob = await response.blob(); const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `Backup_DB_${new Date().toISOString().slice(0,10)}.zip`; document.body.appendChild(a); a.click(); a.remove(); window.URL.revokeObjectURL(url); statusDiv.innerText = "✅ Listo.";
-            } catch (error) { alert("Error: " + error.message); statusDiv.innerText = "❌ Error."; } finally { btn.disabled = false; btn.innerHTML = textoOriginal; setTimeout(() => { statusDiv.innerText = ""; }, 5000); }
-        }
-
-        async function limpiezaTotal() { if(!confirm("¿Limpiar?")) return; const btn = document.querySelector('button[onclick="limpiezaTotal()"]'); const statusDiv = document.getElementById('maintStatus'); btn.disabled = true; statusDiv.innerText = "🧹 Limpiando..."; await new Promise(r => setTimeout(r, 1500)); alert("Limpieza completada."); statusDiv.innerText = "✨ Limpio."; btn.disabled = false; setTimeout(() => { statusDiv.innerText = ""; }, 5000); }
-
-        function filtrarGaleria() { 
-            const q=document.getElementById('filtroEvidencia').value.toLowerCase().trim(); localStorage.setItem('admin_ultima_busqueda_evidencia', q); 
-            if(q===""){evidenciasActuales=evidenciasGlobal;renderGaleria(evidenciasGlobal);return;} 
-            evidenciasActuales=evidenciasGlobal.filter(x=>{ const u = usuariosGlobal.find(user => user.cedula === x.cedula); const n = u ? `${u.nombre} ${u.apellido}` : ""; return `${x.cedula} ${n}`.toLowerCase().includes(q); }); 
-            renderGaleria(evidenciasActuales); 
-        }
-        function limpiarBusquedaGaleria() { document.getElementById('filtroEvidencia').value=""; filtrarGaleria(); }
-
-        function openLightbox(url, nombre) { 
-            const ext = url.split('.').pop().toLowerCase(); const content = document.getElementById('lightboxContent');
-            const isDoc = ['pdf','docx','xlsx','pptx','txt'].includes(ext);
-            
-            if (isDoc) {
-                content.innerHTML = `<div style="text-align:center; color:white;"><i class="fas fa-file-alt" style="font-size:5rem; margin-bottom:20px;"></i><br><h3>Vista previa no disponible para documentos</h3><p>Usa el botón de abajo para descargar.</p></div>`;
-            } else {
-                content.innerHTML = ['mp4','mov','webm'].includes(ext) ? `<video src="${url}" controls autoplay style="max-width:90%; max-height:80vh; border-radius:10px;"></video>` : `<Img src="${url}" style="max-width:90%; max-height:80vh; border-radius:10px;">`;
-            }
-            document.getElementById('lbDetails').innerHTML=`<h3>${nombre}</h3>`;
-            document.getElementById('lightboxDownload').href = url;
-            document.getElementById('lightbox').classList.add('active'); 
-        }
-        
-        function closeLightbox() { document.getElementById('lightbox').classList.remove('active'); document.getElementById('lightboxContent').innerHTML=''; }
-        document.getElementById('lightbox').onclick = (e) => { if(e.target.id === 'lightbox') closeLightbox(); };
-        document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') closeLightbox(); });
+        async function eliminarUsuario(ci) { if(confirm("¿Eliminar usuario?")) { await fetch(`${baseUrl}/eliminar_usuario/${ci}`,{method:'DELETE'}); cargarUsuarios(); } }
         async function cargarLogs() { try { const r=await fetch(`${baseUrl}/obtener_logs?t=${Date.now()}`); const l=await r.json(); const t=document.getElementById('tablaLogs'); t.innerHTML=''; l.forEach(x=>t.innerHTML+=`<tr><td>${x.fecha}</td><td><i class="fas fa-info-circle log-icon"></i>${x.accion}</td><td>${x.detalle}</td></tr>`); } catch(e){} }
         document.getElementById('resetPassForm').onsubmit = async function(e) { e.preventDefault(); const fd=new FormData(this); await fetch(`${baseUrl}/restablecer_password`,{method:"POST",body:fd}); alert("Clave actualizada"); this.reset(); };
-        // VARIABLES GLOBALES NUEVAS
-let modoSeleccion = false;
-let itemsSeleccionados = []; // Array de IDs
-let evidenciasActualesEnCarpeta = [];
-
-// 1. CARGA INICIAL: Muestra Carpetas en lugar de fotos sueltas
-async function cargarGaleriaGlobal() {
-    // Reseteamos vistas
-    document.getElementById('vistaCarpetas').style.display = 'grid';
-    document.getElementById('vistaArchivos').style.display = 'none';
-    document.getElementById('controlesGaleria').style.display = 'none';
-    document.getElementById('tituloGaleria').innerHTML = '<i class="fas fa-folder-open"></i> Carpetas de Estudiantes';
-    document.getElementById('noEvidenciaMsg').style.display = 'none';
-
-    try {
-        const res = await fetch(`${baseUrl}/resumen_estudiantes_con_evidencias`);
-        const estudiantes = await res.json();
         
-        const grid = document.getElementById('vistaCarpetas');
-        grid.innerHTML = '';
-
-        if(estudiantes.length === 0) {
-            document.getElementById('noEvidenciaMsg').style.display = 'block';
-            return;
-        }
-
-        estudiantes.forEach(est => {
-            const foto = est.foto || 'Img/Logo-Despertar-SKAS-Unidad-Educativa23.png'; // Fallback si no hay foto
-            grid.innerHTML += `
-            <div class="folder-card" onclick="abrirCarpeta('${est.cedula}', '${est.nombre} ${est.apellido}')">
-                <span class="folder-badge">${est.total_evidencias} archivos</span>
-                <div class="folder-icon"><Img src="${foto}"></div>
-                <h4>${est.nombre} ${est.apellido}</h4>
-                <small style="color:#666;">${est.cedula}</small>
-            </div>`;
-        });
-
-    } catch (e) { console.error(e); alert("Error cargando carpetas"); }
-}
-
-// 2. ABRIR CARPETA ESPECÍFICA (Lazy Loading visual)
-async function abrirCarpeta(cedula, nombreEstudiante) {
-    document.getElementById('vistaCarpetas').style.display = 'none';
-    document.getElementById('vistaArchivos').style.display = 'grid';
-    document.getElementById('controlesGaleria').style.display = 'flex';
-    document.getElementById('tituloGaleria').innerHTML = `<i class="fas fa-user"></i> ${nombreEstudiante}`;
-    
-    const grid = document.getElementById('vistaArchivos');
-    grid.innerHTML = '<p style="text-align:center; width:100%;">Cargando...</p>';
-
-    try {
-        // Usamos el endpoint que ya tenías "todas_evidencias" pero filtrando por cédula
-        // Esto es mucho más rápido que pedir todo
-        const res = await fetch(`${baseUrl}/todas_evidencias?cedula=${cedula}`);
-        evidenciasActualesEnCarpeta = await res.json();
-        
-        grid.innerHTML = '';
-        cancelarSeleccion(); // Resetear selección al entrar
-
-        if (evidenciasActualesEnCarpeta.length === 0) {
-            grid.innerHTML = '<p>Carpeta vacía.</p>';
-            return;
-        }
-
-        // Renderizamos las fotos
-        evidenciasActualesEnCarpeta.forEach(item => {
-            const ext = item.url.split('.').pop().toLowerCase();
-            let media = `<Img src="${item.url}" class="compact-media" loading="lazy">`; // loading="lazy" ayuda al navegador
-            
-            if(['mp4','webm','mov'].includes(ext)) {
-                media = `<video src="${item.url}#t=0.1" class="compact-media" preload="metadata"></video><i class="fas fa-play" style="position:absolute;color:white;font-size:2rem;opacity:0.8;"></i>`;
-            } else if(['pdf','docx'].includes(ext)) {
-                media = `<div class="compact-media" style="background:#eee; display:flex; justify-content:center; align-items:center;"><i class="fas fa-file-alt" style="font-size:3rem; color:#555;"></i></div>`;
-            }
-
-            // Nota: Agregamos el div .select-checkbox y el onclick toggleItem
-            grid.innerHTML += `
-            <div class="compact-card" id="card-${item.id}" onclick="clickTarjeta(${item.id}, '${item.url}', '${nombreEstudiante}')">
-                <div class="select-checkbox" id="check-${item.id}"></div>
-                ${media}
-            </div>`;
-        });
-
-    } catch (e) { console.error(e); }
-}
-
-function volverACarpetas() {
-    cargarGaleriaGlobal();
-}
-
-// 3. LÓGICA DE SELECCIÓN MÚLTIPLE
-function activarSeleccion() {
-    modoSeleccion = !modoSeleccion;
-    const btn = document.getElementById('btnSelectMode');
-    const cards = document.querySelectorAll('.compact-card');
-    const barra = document.getElementById('barraSeleccion');
-
-    if (modoSeleccion) {
-        btn.innerHTML = '<i class="fas fa-times"></i> Cancelar';
-        btn.style.background = "#e53935";
-        cards.forEach(c => c.classList.add('selecting')); // Muestra los cuadros vacíos
-        barra.classList.add('active');
-    } else {
-        cancelarSeleccion();
-    }
-}
-
-function cancelarSeleccion() {
-    modoSeleccion = false;
-    itemsSeleccionados = [];
-    document.querySelectorAll('.compact-card').forEach(c => {
-        c.classList.remove('selecting', 'selected');
-    });
-    document.getElementById('barraSeleccion').classList.remove('active');
-    
-    const btn = document.getElementById('btnSelectMode');
-    if(btn) {
-        btn.innerHTML = '<i class="fas fa-check-square"></i> Seleccionar';
-        btn.style.background = "#6A0DAD";
-    }
-    actualizarContador();
-}
-
-function clickTarjeta(id, url, nombre) {
-    if (modoSeleccion) {
-        // Lógica de Selección
-        const card = document.getElementById(`card-${id}`);
-        const index = itemsSeleccionados.indexOf(id);
-
-        if (index === -1) {
-            // Limitar a 25
-            if(itemsSeleccionados.length >= 25) {
-                alert("Máximo 25 archivos por lote para evitar errores.");
-                return;
-            }
-            itemsSeleccionados.push(id);
-            card.classList.add('selected');
-        } else {
-            itemsSeleccionados.splice(index, 1);
-            card.classList.remove('selected');
-        }
-        actualizarContador();
-    } else {
-        // Lógica Normal (Lightbox)
-        openLightbox(url, nombre);
-    }
-}
-
-function actualizarContador() {
-    document.getElementById('contadorSeleccion').innerText = `${itemsSeleccionados.length} seleccionados`;
-}
-
-// 4. ACCIONES MASIVAS CON BARRA DE PROGRESO
-async function borrarSeleccionados() {
-    if(itemsSeleccionados.length === 0) return;
-    if(!confirm(`¿Seguro que deseas eliminar ${itemsSeleccionados.length} archivos?`)) return;
-
-    mostrarProgreso(true, "Eliminando archivos...");
-    const barra = document.getElementById('barraProgresoFill');
-    
-    // Simulamos progreso visual porque la petición es una sola
-    let width = 10;
-    barra.style.width = width + '%';
-    const fakeInterval = setInterval(() => { if(width < 90) { width += 5; barra.style.width = width + '%'; } }, 100);
-
-    const formData = new FormData();
-    formData.append('ids', itemsSeleccionados.join(','));
-
-    try {
-        const res = await fetch(`${baseUrl}/eliminar_evidencias_masivas`, {
-            method: "POST",
-            body: formData
-        });
-        const data = await res.json();
-        
-        clearInterval(fakeInterval);
-        barra.style.width = '100%';
-
-        if (data.status === 'ok') {
-            setTimeout(() => {
-                mostrarProgreso(false);
-                alert("Archivos eliminados correctamente.");
-                // Recargamos la carpeta actual para refrescar
-                const cedulaActual = evidenciasActualesEnCarpeta[0]?.cedula; // Obtenemos cedula de cualquier item
-                // Como es dificil obtener la cedula exacta sin pasarla, simplemente volvemos a la vista actual recargando el div
-                // O mejor, eliminamos los nodos del DOM visualmente
-                itemsSeleccionados.forEach(id => {
-                    const el = document.getElementById(`card-${id}`);
-                    if(el) el.remove();
-                });
-                cancelarSeleccion();
-            }, 500);
-        } else {
-            alert("Error: " + data.mensaje);
-            mostrarProgreso(false);
-        }
-
-    } catch (e) {
-        alert("Error de conexión");
-        mostrarProgreso(false);
-    }
-}
-
-async function descargarSeleccionados() {
-    if(itemsSeleccionados.length === 0) return;
-
-    // Feedback visual
-    const btn = document.querySelector('#barraSeleccion button'); // El botón de descarga
-    const textoOriginal = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Zipeando...';
-    btn.disabled = true;
-
-    const formData = new FormData();
-    formData.append('ids', itemsSeleccionados.join(','));
-
-    try {
-        const response = await fetch(`${baseUrl}/descargar_seleccion_zip`, {
-            method: "POST",
-            body: formData
-        });
-
-        if (!response.ok) throw new Error("Error generando ZIP");
-
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Descarga_Masiva_${new Date().getTime()}.zip`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-        
-        cancelarSeleccion(); // Salir del modo selección al terminar
-
-    } catch (error) {
-        alert("Hubo un error en la descarga: " + error.message);
-    } finally {
-        btn.innerHTML = textoOriginal;
-        btn.disabled = false;
-    }
-}
-
-function mostrarProgreso(mostrar, texto="") {
-    const modal = document.getElementById('modalProgreso');
-    if(mostrar) {
-        document.getElementById('textoProgreso').innerText = texto;
-        document.getElementById('barraProgresoFill').style.width = '0%';
-        modal.style.display = 'flex';
-    } else {
-        modal.style.display = 'none';
-    }
-}
+        async function descargarMultimedia() { try { const r = await fetch(`${baseUrl}/descargar_multimedia_zip`); const b = await r.blob(); const u = window.URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = "Media_Backup.zip"; document.body.appendChild(a); a.click(); a.remove(); } catch(e){ alert("Error descarga"); } }
+        async function descargarBackup() { try { const r = await fetch(`${baseUrl}/crear_backup`); const b = await r.blob(); const u = window.URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = "DB_Backup.zip"; document.body.appendChild(a); a.click(); a.remove(); } catch(e){ alert("Error descarga"); } }
+        async function limpiezaTotal() { if(confirm("¿Limpiar sistema?")) alert("Limpieza realizada (Simulada)."); }
     </script>
 </body>
 </html>
