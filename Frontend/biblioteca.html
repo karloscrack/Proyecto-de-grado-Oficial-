@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Unidad Educativa Despertar</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="diseno.css">
+    <style>
+        /* =========================================
+           1. AJUSTES DE RESPONSIVIDAD Y TEMA
+           ========================================= */
+        
+        /* Variables de colores para el Tema */
+        :root {
+            /* ⚠️ IMPORTANTE: Asegúrate de que este nombre de archivo sea EXACTO al que tienes en tu carpeta Img */
+            --bg-image: url("Img/Gemini_Generated_Image_pv6zv4pv6zv4pv6z~2.jpg"); 
+            
+            /* CORRECCIÓN: Usamos linear-gradient para que sea válido como 'imagen' */
+            --bg-overlay: linear-gradient(rgba(255, 255, 255, 0.0), rgba(255, 255, 255, 0.0)); 
+            
+            --bg-card: rgba(255, 255, 255, 0.95);
+            --bg-header: rgba(255, 255, 255, 0.95);
+            --bg-menu: #ffffff;
+            --bg-footer: #f5f5f5; 
+            --text-main: #333;
+            --text-sec: #666;
+            --input-bg: #fff;
+            --border-color: #ccc;
+            --icon-color: #6A0DAD;
+        }
+
+        body.dark-mode {
+            /* Misma imagen en modo oscuro */
+            --bg-image: url("Img/Gemini_Generated_Image_pv6zv4pv6zv4pv6z~2.jpg");
+
+            /* CORRECCIÓN: Degradado oscuro válido */
+            --bg-overlay: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7));
+            
+            --bg-card: #1e1e1e;
+            --bg-header: #1e1e1e;
+            --bg-menu: #1e1e1e;
+            --bg-footer: #121212;
+            --text-main: #f0f0f0;
+            --text-sec: #ccc;
+            --input-bg: #2d2d2d;
+            --border-color: #444;
+            --icon-color: #fff;
+        }
+
+        body {
+            /* Aplicación de la imagen de fondo */
+            background-image: var(--bg-overlay), var(--bg-image);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            background-blend-mode: normal; /* Cambiado a normal para evitar conflictos visuales */
+            
+            transition: background-color 0.3s ease;
+            color: var(--text-main);
+            background-color: var(--bg-card); 
+            margin: 0;
+        }
+
+        /* Aplicar modo oscuro a los elementos */
+        .login-card {
+            background-color: var(--bg-card) !important;
+            color: var(--text-main);
+            transition: 0.3s;
+        }
+
+        .header {
+            background: var(--bg-header) !important;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .side-menu {
+            background: var(--bg-menu) !important;
+            color: var(--text-main);
+        }
+        
+        .side-menu a {
+            color: var(--text-main) !important;
+        }
+
+        /* Inputs en modo oscuro */
+        input {
+            background-color: var(--input-bg) !important;
+            color: var(--text-main) !important;
+            border: 1px solid var(--border-color) !important;
+        }
+
+        /* Títulos y textos */
+        h2, h3, label { color: var(--text-main) !important; }
+        p { color: var(--text-sec) !important; }
+
+        /* Botón de Tema */
+        .theme-toggle {
+            background: transparent;
+            border: 2px solid var(--icon-color);
+            color: var(--icon-color);
+            width: 35px; height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: 0.3s;
+            margin-right: 15px;
+        }
+        .theme-toggle:hover { transform: scale(1.1); }
+        .rotate-anim { animation: spin 0.5s ease-in-out; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Icono del menú */
+        .menu-toggle { color: var(--icon-color) !important; }
+
+        /* --- RESPONSIVIDAD (MÓVIL) --- */
+        @media (max-width: 768px) {
+            .login-card {
+                width: 90% !important; /* Más ancho en celular */
+                padding: 20px !important;
+            }
+            .header {
+                padding: 10px 15px !important;
+            }
+            .logo img {
+                height: 50px !important; /* Ajuste para que no rompa el header */
+            }
+        }
+        /* Color del texto del footer */
+.footer-logo h3 {
+    color: #6A0DAD !important; /* Cambia este código por el color que quieras (ej: white, black, red) */
+}
+    </style>
+</head>
+<body>
+    
+    <header class="header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div class="logo">
+        <a href="index.html"><img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo"></a>
+    </div>
+    
+    <div class="header-right" style="display: flex; align-items: center; gap: 15px;">
+        <button onclick="toggleTheme()" class="theme-toggle" id="themeBtn" title="Cambiar Tema">
+            <i class="fas fa-moon"></i>
+        </button>
+        
+        <button onclick="window.location.href='index.html'" class="btn-login-header">Salir</button>
+        
+        <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+    </div>
+</header>
+    
+    <div class="overlay" id="overlay"></div>
+    <div class="side-menu" id="sideMenu">
+        <button class="close-menu" id="closeMenu" style="color: var(--text-main);">&times;</button>
+        <h3>Menú</h3>
+        <ul>
+            <li><a href="index.html"><i class="fas fa-home"></i> Inicio</a></li>
+            <li><a href="biblioteca.html" style="color:#6A0DAD; font-weight:bold;"><i class="fas fa-sign-in-alt"></i> Iniciar Sesión</a></li>
+        </ul>
+    </div>
+    
+    <div class="login-container" style="display: flex; justify-content: center; align-items: center; min-height: 80vh; padding: 20px;">
+        <div class="login-card" style="padding: 40px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-width: 400px; width: 100%; text-align: center;">
+            <div class="login-icon"><i class="fas fa-user-graduate" style="font-size: 3rem; color: #6A0DAD; margin-bottom: 20px;"></i></div>
+            <h2 style="color: #6A0DAD; margin-bottom: 10px;">Acceso al Portafolio</h2>
+            <p style="color: #666; margin-bottom: 30px;">Ingresa tus credenciales institucionales.</p>
+            
+            <form id="loginForm">
+                <div class="form-group" style="text-align: left; margin-bottom: 15px;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">Número de Cédula:</label>
+                    <input type="text" id="cedula" name="cedula" placeholder="Ej: 1234567890 " required style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
+                </div>
+                
+                <div class="form-group" style="text-align: left; margin-bottom: 20px;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">Contraseña:</label>
+                    <input type="password" id="contrasena" name="contrasena" placeholder="Tu clave secreta" required style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
+                </div>
+                
+                <button type="submit" class="btn-submit" id="loginBtn" style="width: 100%; padding: 12px; background: #6A0DAD; color: white; border: none; border-radius: 25px; font-weight: bold; cursor: pointer; transition: 0.3s;">
+                    Ingresar
+                </button>
+            </form>
+
+            <div id="errorMessage" class="error-box" style="margin-top: 15px; display: none; color: #d32f2f; background: #ffebee; padding: 10px; border-radius: 5px; border: 1px solid #ffcdd2;">
+                <i class="fas fa-exclamation-circle"></i> 
+                <strong>Error:</strong> Credenciales incorrectas o problema de conexión.
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <div class="footer-content">
+            <div class="footer-logo">
+                <img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
+                <h3>Unidad Educativa Particular Despertar</h3>
+            </div>
+            <div class="footer-social">
+                <a href="https://www.facebook.com/uepdespertar"><i class="fab fa-facebook-f"></i></a>
+                <a href="https://www.youtube.com/@DespertarSKAS"><i class="fab fa-youtube"></i></a>
+                <a href="https://www.instagram.com/skas_despertar"><i class="fab fa-instagram"></i></a>
+            </div>
+            <div class="copyright">
+                <p>© 2025 Plataforma Educativa - Unidad Educativa Particular Despertar. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // --- LÓGICA DE TEMA (MODO OSCURO) ---
+        function toggleTheme() {
+            const body = document.body;
+            const btn = document.getElementById('themeBtn');
+            const icon = btn.querySelector('i');
+
+            // Animación
+            icon.classList.add('rotate-anim');
+            setTimeout(() => icon.classList.remove('rotate-anim'), 500);
+
+            body.classList.toggle('dark-mode');
+
+            if (body.classList.contains('dark-mode')) {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+                localStorage.setItem('global_theme', 'dark');
+            } else {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+                localStorage.setItem('global_theme', 'light');
+            }
+        }
+
+        // Cargar tema guardado
+        window.onload = function() {
+            const savedTheme = localStorage.getItem('global_theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                const icon = document.querySelector('#themeBtn i');
+                if(icon) icon.classList.replace('fa-moon', 'fa-sun');
+            }
+        };
+
+        // --- MENÚ LATERAL ---
+        const menu = document.getElementById('sideMenu');
+        const overlay = document.getElementById('overlay');
+        const menuToggle = document.getElementById('menuToggle');
+        const closeMenu = document.getElementById('closeMenu');
+
+        function toggleMenu() {
+            if(menu) menu.classList.toggle('active');
+            if(overlay) overlay.classList.toggle('active');
+        }
+
+        if(menuToggle) menuToggle.addEventListener('click', toggleMenu);
+        if(closeMenu) closeMenu.addEventListener('click', toggleMenu);
+        if(overlay) overlay.addEventListener('click', toggleMenu);
+        
+        // --- LÓGICA DE LOGIN ---
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault(); 
+            
+            const errorBox = document.getElementById('errorMessage');
+            const btn = document.getElementById('loginBtn');
+            const originalText = btn.innerHTML;
+            
+            errorBox.style.display = 'none';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+            btn.disabled = true;
+
+            const datos = new FormData(this);
+            const baseUrl = "https://proyecto-de-grado-oficial-production.up.railway.app";
+
+            try {
+                const res = await fetch(`${baseUrl}/iniciar_sesion?t=${Date.now()}`, {
+                    method: "POST",
+                    body: datos
+                });
+
+                const data = await res.json();
+
+                if (data.encontrado) {
+                    localStorage.setItem('usuario_cedula', datos.get('cedula'));
+                    localStorage.setItem('usuario_contrasena', datos.get('contrasena'));
+                    localStorage.setItem('usuario_tipo', data.datos.tipo);
+                    
+                    if (data.datos.tipo === 0) {
+                        window.location.href = "perfiladmin.html";
+                    } else {
+                        window.location.href = "perfil.html";
+                    }
+                } else {
+                    if (data.mensaje === "Cuenta desactivada") {
+                        errorBox.innerHTML = '<i class="fas fa-user-lock"></i> <strong>Acceso Denegado:</strong><br>Su usuario está desactivado. Comuníquese con el administrador.';
+                    } else {
+                        errorBox.innerHTML = '<i class="fas fa-user-times"></i> Usuario o contraseña incorrectos.';
+                    }
+                    errorBox.style.display = 'block';
+                }
+
+            } catch (error) {
+                console.error(error);
+                errorBox.innerHTML = '<i class="fas fa-wifi"></i> Error de conexión. Revisa el servidor.';
+                errorBox.style.display = 'block';
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

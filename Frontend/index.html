@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plataforma Educativa IA</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="diseno.css">
+    
+    <style>
+        /* =========================================
+           1. SISTEMA DE TEMAS (NUEVO)
+           ========================================= */
+        :root {
+            /* MODO CLARO (Default) */
+            --bg-body: #f5f5f5;
+            --bg-header: rgba(255, 255, 255, 0.95);
+            --bg-menu: #ffffff;
+            --bg-footer: #2c2c2c; /* Footer siempre oscuro por diseño, o cambiable */
+            --text-main: #333333;
+            --text-header: #333333;
+            --border-color: #e0e0e0;
+            --shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            --icon-color: #6A0DAD;
+            --hover-bg: #f3e5f5;
+        }
+
+        body.dark-mode {
+            /* MODO OSCURO */
+            --bg-body: #121212;
+            --bg-header: rgba(30, 30, 30, 0.95);
+            --bg-menu: #1e1e1e;
+            --text-main: #e0e0e0;
+            --text-header: #ffffff;
+            --border-color: #333333;
+            --shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            --icon-color: #ffffff;
+            --hover-bg: #2c2c2c;
+        }
+
+        /* Aplicación de variables */
+        body { 
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Encabezado adaptable */
+        .header { 
+            background: var(--bg-header) !important; 
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: var(--shadow) !important;
+        }
+
+        /* Menú lateral adaptable */
+        .side-menu {
+            background: var(--bg-menu) !important;
+            color: var(--text-main) !important;
+            border-left: 1px solid var(--border-color);
+        }
+        .side-menu a { color: var(--text-main) !important; }
+        .side-menu a:hover { background-color: var(--hover-bg) !important; }
+        .close-menu { color: var(--text-main) !important; }
+
+        /* Botón de Tema */
+        .theme-toggle {
+            background: transparent;
+            border: 2px solid var(--icon-color);
+            color: var(--icon-color);
+            width: 35px; height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: 0.3s;
+            margin-right: 15px; /* Separación del botón acceder */
+        }
+        .theme-toggle:hover { transform: scale(1.1); }
+
+        /* Animación de rotación */
+        .rotate-anim { animation: spin 0.5s ease-in-out; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* =========================================
+           2. ESTILOS EXISTENTES (CONSERVADOS)
+           ========================================= */
+        .hero { 
+            position: relative; 
+            height: 100vh; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            text-align: center; 
+            color: white; 
+            padding: 0 20px; 
+            overflow: hidden;
+        }
+        
+        .video-background { 
+            position: absolute; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            object-fit: cover; 
+            z-index: -1; 
+        }
+        
+        .hero-overlay { 
+            position: absolute; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.5); 
+            z-index: 0; 
+        }
+        
+        .hero-content { 
+            position: relative; 
+            z-index: 1; 
+            max-width: 800px; 
+            animation: fadeInUp 1s ease-out;
+        }
+        
+        .hero-content h1 { 
+            font-size: 3.5rem; 
+            text-shadow: 2px 2px 10px rgba(0,0,0,0.5); 
+            margin-bottom: 20px; 
+            line-height: 1.2;
+        }
+        
+        .hero-content p { 
+            font-size: 1.5rem; 
+            margin-bottom: 30px; 
+            font-weight: 300;
+        }
+
+        #toggleSoundBtn { 
+            position: absolute; 
+            bottom: 30px; right: 30px; 
+            background: rgba(255,255,255,0.2); 
+            color: white; 
+            border: 1px solid rgba(255,255,255,0.5); 
+            padding: 10px 20px; 
+            border-radius: 30px; 
+            cursor: pointer; 
+            z-index: 2; 
+            backdrop-filter: blur(5px);
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        #toggleSoundBtn:hover { background: rgba(255,255,255,0.4); }
+
+        /* =========================================
+           3. RESPONSIVIDAD MEJORADA (NUEVO)
+           ========================================= */
+        @media (max-width: 768px) {
+            .header { padding: 10px 15px !important; }
+            
+            /* Ajuste de logo en móvil */
+            .logo img { height: 50px !important; }
+            
+            /* Ocultar texto del botón 'Acceder' en móvil para espacio */
+            .btn-login-header span { display: none; }
+            .btn-login-header { padding: 8px 12px !important; }
+            
+            /* Ajustes textos Hero */
+            .hero-content h1 { font-size: 2.2rem; }
+            .hero-content p { font-size: 1.1rem; }
+            
+            /* Botón sonido más pequeño */
+            #toggleSoundBtn { bottom: 80px; right: 20px; padding: 8px 15px; font-size: 0.9rem; }
+            
+            /* Menú lateral más ancho en móvil */
+            .side-menu { width: 85% !important; max-width: 300px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div class="logo">
+            <img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
+        </div>
+        
+        <div style="display: flex; align-items: center;">
+            <button onclick="toggleTheme()" class="theme-toggle" id="themeBtn" title="Cambiar Tema">
+                <i class="fas fa-moon"></i>
+            </button>
+
+            <a href="biblioteca.html" class="btn-login-header">
+                <i class="fas fa-user-circle"></i> <span>Acceder</span>
+            </a>
+
+            <button class="menu-toggle" id="menuToggle" style="margin-left: 15px;"><i class="fas fa-bars"></i></button>
+        </div>
+    </header>
+    
+    <div class="overlay" id="overlay"></div>
+    <div class="side-menu" id="sideMenu">
+        <button class="close-menu" id="closeMenu">&times;</button>
+        <h3>Menú</h3>
+        <ul>
+            <li><a href="index.html"><i class="fas fa-home"></i> Inicio</a></li>
+            <li><a href="biblioteca.html"><i class="fas fa-sign-in-alt"></i> Iniciar Sesión</a></li>
+        </ul>
+    </div>
+    
+    <section class="hero">
+        <video id="bgVideo" class="video-background" autoplay muted loop playsinline>
+    <source src="https://proyecto-grado-karlos-2025.s3.us-east-005.backblazeb2.com/evidencias/manual_174860-852215326.mp4" type="video/mp4">
+    Tu navegador no soporta videos HTML5.
+</video>
+        
+        <div class="hero-overlay"></div>
+        
+        <div class="hero-content">
+            <h1>Tu Repositorio Digital</h1>
+            <p>Organización inteligente de contenido educativo con IA Facial</p>
+            
+            <a href="biblioteca.html" class="btn-submit" style="display:inline-block; width:auto; padding:15px 40px; margin-top:0; text-decoration:none; background-color: #6A0DAD; color: white; border-radius: 50px;">
+                Ingresar al Portafolio
+            </a>
+        </div>
+
+        <button id="toggleSoundBtn">
+            <i class="fas fa-volume-mute"></i> Sonido
+        </button>
+    </section>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-logo">
+                <img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
+                <h3>Unidad Educativa Particular Despertar</h3>
+            </div>
+            <div class="footer-social">
+                <a href="https://www.facebook.com/uepdespertar"><i class="fab fa-facebook-f"></i></a>
+                <a href="https://www.youtube.com/@DespertarSKAS"><i class="fab fa-youtube"></i></a>
+                <a href="https://www.instagram.com/skas_despertar"><i class="fab fa-instagram"></i></a>
+            </div>
+            <div class="copyright">
+                <p>© 2025 Plataforma Educativa - Unidad Educativa Particular Despertar. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+    
+    <script>
+        // --- 1. LÓGICA TEMA CLARO/OSCURO ---
+        function toggleTheme() {
+            const body = document.body;
+            const btn = document.getElementById('themeBtn');
+            const icon = btn.querySelector('i');
+
+            // Animación
+            icon.classList.add('rotate-anim');
+            setTimeout(() => icon.classList.remove('rotate-anim'), 500);
+
+            body.classList.toggle('dark-mode');
+
+            if (body.classList.contains('dark-mode')) {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+                localStorage.setItem('global_theme', 'dark');
+            } else {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+                localStorage.setItem('global_theme', 'light');
+            }
+        }
+
+        // Cargar tema guardado
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('global_theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                const icon = document.querySelector('#themeBtn i');
+                if(icon) {
+                    icon.classList.remove('fa-moon');
+                    icon.classList.add('fa-sun');
+                }
+            }
+        });
+
+        // --- 2. LÓGICA ORIGINAL (MENÚ Y VIDEO) ---
+        document.addEventListener('DOMContentLoaded', function() {
+            const menuToggle = document.getElementById('menuToggle');
+            const sideMenu = document.getElementById('sideMenu');
+            const closeMenu = document.getElementById('closeMenu');
+            const overlay = document.getElementById('overlay');
+            
+            function openMenu() {
+                sideMenu.classList.add('active');
+                overlay.classList.add('active');
+            }
+
+            function closeMenuFunc() {
+                sideMenu.classList.remove('active');
+                overlay.classList.remove('active');
+            }
+
+            if (menuToggle) menuToggle.addEventListener('click', openMenu);
+            if (closeMenu) closeMenu.addEventListener('click', closeMenuFunc);
+            if (overlay) overlay.addEventListener('click', closeMenuFunc);
+            
+            // --- SONIDO DEL VIDEO ---
+            const video = document.getElementById('bgVideo');
+            const soundBtn = document.getElementById('toggleSoundBtn');
+            
+            if(soundBtn && video) {
+                soundBtn.addEventListener('click', function() {
+                    if (video.muted) {
+                        video.muted = false; // Activar sonido
+                        soundBtn.innerHTML = '<i class="fas fa-volume-up"></i> Sonido';
+                        soundBtn.style.background = "rgba(46, 139, 87, 0.8)"; 
+                        soundBtn.style.borderColor = "#2E8B57";
+                    } else {
+                        video.muted = true; // Silenciar
+                        soundBtn.innerHTML = '<i class="fas fa-volume-mute"></i> Sonido';
+                        soundBtn.style.background = "rgba(255,255,255,0.2)";
+                        soundBtn.style.borderColor = "rgba(255,255,255,0.5)";
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

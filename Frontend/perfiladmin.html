@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Panel Avanzado</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="diseno.css"> 
+    
+    <style>
+        /* ESTILOS IGUALES AL ANTERIOR + ESTILOS PARA EL BUSCADOR DE USUARIOS */
+        :root {
+            --bg-image: url('Img/Claro.png'); 
+            --bg-body: #f4f6f9;
+            --bg-card: rgba(255, 255, 255, 0.95);
+            --bg-header: rgba(255, 255, 255, 0.98);
+            --bg-menu: #ffffff;
+            --text-main: #333333;
+            --text-sec: #666666;
+            --border-color: #e0e0e0;
+            --input-bg: #ffffff;
+            --shadow: 0 4px 6px rgba(0,0,0,0.05);
+            --icon-color: #6A0DAD;
+            --hover-item: #f3e5f5;
+        }
+
+        body.dark-mode {
+            --bg-image: url('Img/Oscuro.png'); 
+            --bg-body: #121212;
+            --bg-card: rgba(30, 30, 30, 0.95);
+            --bg-header: rgba(30, 30, 30, 0.98);
+            --bg-menu: #1e1e1e;
+            --text-main: #e0e0e0;
+            --text-sec: #a0a0a0;
+            --border-color: #333333;
+            --input-bg: #2d2d2d;
+            --shadow: 0 4px 6px rgba(0,0,0,0.3);
+            --icon-color: #ffffff;
+            --hover-item: #2c2c2c;
+        }
+
+        body { 
+            background-color: var(--bg-body); 
+            background-image: var(--bg-image) !important;
+            background-size: cover; background-position: center; background-attachment: fixed; background-repeat: no-repeat;
+            color: var(--text-main); transition: all 0.5s ease;
+        }
+
+        .header { background-color: var(--bg-header) !important; box-shadow: var(--shadow); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; padding: 15px 30px !important; }
+        .header-right { display: flex; align-items: center; gap: 15px; }
+        .side-menu { background-color: var(--bg-menu) !important; color: var(--text-main) !important; border-right: 1px solid var(--border-color); }
+        .side-menu .menu-link { color: var(--text-main) !important; }
+        .side-menu .menu-link:hover { background-color: var(--hover-item) !important; }
+        .search-card, .user-card, .compact-card, .maint-card, .modal-content, .option-card { background: var(--bg-card) !important; color: var(--text-main) !important; border: 1px solid var(--border-color) !important; box-shadow: var(--shadow) !important; backdrop-filter: blur(5px); }
+        .option-card.active { border: 2px solid #6A0DAD !important; background-color: var(--hover-item) !important; }
+        input, select, textarea, .search-input { background-color: var(--input-bg) !important; color: var(--text-main) !important; border: 1px solid var(--border-color) !important; }
+        .modern-table { background: var(--bg-card) !important; }
+        .modern-table th { background-color: #6A0DAD; color: white; } 
+        .modern-table td { color: var(--text-main); border-bottom: 1px solid var(--border-color) !important; }
+        .theme-toggle { background: transparent; border: 2px solid var(--icon-color); color: var(--icon-color); width: 35px; height: 35px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; }
+        .theme-toggle:hover { transform: scale(1.1); background-color: var(--hover-item); }
+        .rotate-anim { animation: spin 0.5s ease-in-out; } @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .compact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; margin-top: 20px; }
+        .compact-card { border-radius: 8px; overflow: hidden; position: relative; cursor: pointer; transition: transform 0.2s; height: 180px; }
+        .compact-card:hover { transform: scale(1.03); z-index: 5; }
+        .compact-media { width: 100%; height: 100%; object-fit: cover; }
+        .compact-info { position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.8); color: white !important; padding: 5px; font-size: 0.70rem; text-align: center; opacity: 0; transition: opacity 0.2s; max-height: 50%; overflow-y: auto; }
+        .compact-card:hover .compact-info { opacity: 1; }
+        .mini-trash { position: absolute; top: 5px; right: 5px; background: rgba(229, 57, 53, 1); color: white; width: 30px; height: 30px; border-radius: 50%; border: 2px solid white; cursor: pointer; display: none; align-items: center; justify-content: center; font-size: 0.9rem; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+        .compact-card:hover .mini-trash { display: flex; }
+
+        .drop-zone { border: 3px dashed #b39ddb; border-radius: 15px; padding: 40px; text-align: center; cursor: pointer; background: var(--input-bg); transition: 0.3s; position: relative; }
+        .drop-zone:hover, .drop-zone.dragover { background: var(--hover-item); border-color: #6A0DAD; transform: scale(1.02); }
+        .drop-zone i { font-size: 3.5rem; color: #6A0DAD; margin-bottom: 10px; }
+
+        .progress-container { width: 100%; background-color: var(--border-color); border-radius: 10px; margin: 15px 0; display: none; overflow: hidden; height: 25px; position: relative; }
+        .progress-bar { height: 100%; width: 0%; background-color: #6A0DAD; transition: width 0.4s ease; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.8rem; font-weight: bold; }
+        .upload-log-box { background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 8px; max-height: 200px; overflow-y: auto; padding: 10px; margin-top: 15px; display: none; text-align: left; font-size: 0.9rem; }
+        .log-item { padding: 5px; border-bottom: 1px solid var(--border-color); }
+        .log-item.success { color: #2E8B57; } .log-item.warning { color: #F9A825; } .log-item.error { color: #c62828; }
+        .wide-container { width: 100%; margin-top: 20px; }
+        .table-responsive { width: 100%; overflow-x: auto; margin-top: 10px; border-radius: 10px; }
+        .modern-table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        .modern-table th, .modern-table td { padding: 15px; text-align: left; }
+        .action-btn { width: 32px; height: 32px; border-radius: 5px; border: none; cursor: pointer; color: white; margin-right: 5px; transition: 0.2s; }
+        .action-btn:hover { transform: scale(1.1); }
+        .btn-photo { background: #6A0DAD; } .btn-key { background: #fb8c00; } .btn-power { background: #43a047; } .btn-power.off { background: #757575; } .btn-trash { background: #e53935; }
+        .badge { padding: 5px 10px; border-radius: 15px; font-size: 0.75rem; font-weight: bold; }
+        .badge-admin { background: #e3f2fd; color: #1565c0; } .badge-student { background: #e8f5e9; color: #2e7d32; }
+        .maint-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; padding: 20px; }
+        .maint-card { border-radius: 20px; padding: 30px; text-align: center; transition: 0.3s; }
+        .maint-card:hover { transform: translateY(-10px); }
+        .maint-icon-box { width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto; font-size: 2.5rem; }
+        .maint-backup .maint-icon-box { background: #e8f5e9; color: #2E8B57; } .maint-clean .maint-icon-box { background: #fff8e1; color: #f9a825; }
+        .lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); font-size: 3rem; color: white; cursor: pointer; padding: 20px; z-index: 2002; transition: 0.3s; background: rgba(0,0,0,0.3); border-radius: 50%; }
+        .lightbox-nav:hover { background: rgba(0,0,0,0.8); }
+        .lightbox-prev { left: 20px; } .lightbox-next { right: 20px; }
+        .lightbox-footer { position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.8); color: white; padding: 15px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .btn-download-lb { background: #2E8B57; color: white; text-decoration: none; padding: 8px 20px; border-radius: 20px; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 8px; }
+        .upload-content, .security-content { display: none; animation: fadeIn 0.3s; }
+        .upload-content.active, .security-content.active { display: block; }
+        .menu-link i { width: 30px; text-align: center; margin-right: 10px; }
+
+        /* ESTILOS NUEVOS PARA SELECTOR DE USUARIOS */
+        .user-picker-container { margin-top: 10px; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background: var(--input-bg); }
+        .picked-users { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+        .user-chip { background: #6A0DAD; color: white; padding: 5px 10px; border-radius: 15px; font-size: 0.85rem; display: flex; align-items: center; gap: 5px; }
+        .user-chip span { cursor: pointer; font-weight: bold; margin-left: 5px; }
+        .user-results { max-height: 150px; overflow-y: auto; display: none; border-top: 1px solid var(--border-color); padding-top: 5px; }
+        .user-result-item { padding: 8px; cursor: pointer; border-radius: 5px; font-size: 0.9rem; display: flex; justify-content: space-between; }
+        .user-result-item:hover { background-color: var(--hover-item); }
+        .doc-icon { font-size: 3rem; color: #c62828; margin-bottom: 10px; display: block; }
+    </style>
+</head>
+<body>
+    
+    <header class="header">
+        <div class="logo"><a href="index.html"><img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo"></a></div>
+        <div class="header-right">
+            <button onclick="toggleTheme()" class="theme-toggle" id="themeBtn" title="Cambiar Tema"><i class="fas fa-moon"></i></button>
+            <button onclick="cerrarSesion()" class="btn-login-header">Salir</button>
+            <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+        </div>
+    </header>
+
+    <div class="overlay" id="overlay"></div>
+    <div class="side-menu" id="sideMenu">
+        <button onclick="cerrarMenu()" class="close-menu">&times;</button>
+        <h3>Panel Admin</h3>
+        <button class="menu-link" onclick="verSeccion('registro'); cerrarMenu()"><i class="fas fa-users-cog"></i> Usuarios</button>
+        <button class="menu-link" onclick="verSeccion('archivos'); cerrarMenu()"><i class="fas fa-cloud-upload-alt"></i> Subir Archivos</button>
+        <button class="menu-link" onclick="verSeccion('galeria'); cerrarMenu()"><i class="fas fa-images"></i> Evidencias</button>
+        <button class="menu-link" onclick="verSeccion('seguridad'); cerrarMenu()"><i class="fas fa-shield-alt"></i> Seguridad</button>
+        <button class="menu-link" onclick="verSeccion('mantenimiento'); cerrarMenu()"><i class="fas fa-server"></i> Respaldo</button>
+        <hr>
+        <button class="menu-link" onclick="cerrarSesion()" style="color:#c62828;"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</button>
+    </div>
+
+    <div class="modal" id="modalRef">
+        <div class="modal-content">
+            <h3 style="color:#6A0DAD;">Agregar Foto de Entrenamiento</h3>
+            <form id="refForm" style="margin-top:15px;">
+                <input type="hidden" name="cedula" id="refCedula">
+                <input type="file" name="foto" required style="margin-bottom:15px; width:100%;">
+                <button type="submit" class="btn-submit">Subir</button>
+            </form>
+            <button onclick="document.getElementById('modalRef').classList.remove('active')" style="margin-top:10px; border:none; background:none; color:red;">Cancelar</button>
+        </div>
+    </div>
+
+    <div class="lightbox" id="lightbox">
+        <span onclick="closeLightbox()" class="lightbox-close">&times;</span>
+        <div class="lightbox-nav lightbox-prev" onclick="navegarLightbox(-1)"><i class="fas fa-chevron-left"></i></div>
+        <div class="lightbox-nav lightbox-next" onclick="navegarLightbox(1)"><i class="fas fa-chevron-right"></i></div>
+        <div class="lightbox-content" id="lightboxContent"></div>
+        <div class="lightbox-footer">
+            <div class="lb-details" id="lbDetails"><h3>...</h3><p>...</p></div>
+            <a href="#" class="btn-download-lb" id="lightboxDownload" download target="_blank"><i class="fas fa-download"></i> Descargar</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2 style="color:#6A0DAD; text-align:center; margin-bottom:20px; font-size:1.8rem;">Panel de Administración</h2>
+
+        <div class="admin-options">
+            <div class="option-card active" onclick="verSeccion('registro')" id="btn-registro"><i class="fas fa-users-cog"></i><h3>Usuarios</h3></div>
+            <div class="option-card" onclick="verSeccion('archivos')" id="btn-archivos"><i class="fas fa-cloud-upload-alt"></i><h3>Subir</h3></div>
+            <div class="option-card" onclick="verSeccion('galeria')" id="btn-galeria"><i class="fas fa-photo-video"></i><h3>Evidencias</h3></div>
+            <div class="option-card" onclick="verSeccion('seguridad')" id="btn-seguridad"><i class="fas fa-shield-alt"></i><h3>Seguridad</h3></div>
+            <div class="option-card" onclick="verSeccion('mantenimiento')" id="btn-mantenimiento"><i class="fas fa-database"></i><h3>Backup</h3></div>
+        </div>
+
+        <div id="registro" class="panel-section active">
+            <div class="search-card">
+                <h3>Registrar Nuevo Usuario</h3>
+                <form id="registerForm">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                        <div class="form-group"><input type="text" name="nombre" placeholder="Nombre" required></div>
+                        <div class="form-group"><input type="text" name="apellido" placeholder="Apellido" required></div>
+                    </div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                        <div class="form-group"><input type="text" name="cedula" placeholder="Cédula" required></div>
+                        <div class="form-group"><input type="password" name="contrasena" placeholder="Contraseña" required></div>
+                    </div>
+                    <div class="form-group">
+                        <select name="tipo_usuario">
+                            <option value="1">Estudiante</option>
+                            <option value="0">Administrador</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Fotos de Perfil (Principal + Referencias):</label>
+                        <input type="file" id="inputFotosRegistro" name="foto" required multiple>
+                        <small style="color:var(--text-sec); font-size:0.85rem;">Puedes seleccionar varias fotos (niñez, actual, etc.) para mejorar la IA.</small>
+                    </div>
+                    <button type="submit" class="btn-submit">Registrar</button>
+                </form>
+            </div>
+
+            <div class="wide-container">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+                    <h3 style="color:#6A0DAD; font-size:1.5rem; margin:0;">Lista de Usuarios</h3>
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" id="busquedaUsuarios" placeholder="Buscar por nombre o cédula..." class="search-input" onkeyup="filtrarUsuarios()" style="padding:10px; border-radius:20px; width:250px;">
+                        <button onclick="limpiarBusquedaUsuario()" class="btn-secondary" title="Limpiar"><i class="fas fa-eraser"></i></button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="modern-table">
+                        <thead><tr><th>Usuario</th><th>Cédula</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
+                        <tbody id="listaUsuarios"></tbody>
+                    </table>
+                </div>
+                <div id="noUsersMsg" style="display:none; text-align:center; padding:30px; background:var(--bg-card); border-radius:10px; margin-top:10px;">
+                    <i class="fas fa-search" style="font-size:2rem; color:#ccc; display:block; margin-bottom:10px;"></i>
+                    <p style="color:var(--text-sec);">No se encontraron usuarios con ese criterio.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="archivos" class="panel-section">
+            <div class="search-card">
+                <div class="upload-tabs">
+                    <button class="tab-btn active" onclick="switchUploadTab('ia', this)">🤖 Subida IA</button>
+                    <button class="tab-btn" onclick="switchUploadTab('manual', this)">📝 Manual (Docs/PDF)</button>
+                </div>
+                
+                <div id="tab-ia" class="upload-content active" style="text-align:center;">
+                    <p>Arrastra evidencias (Fotos o Videos) para reconocimiento facial.</p>
+                    <input type="file" id="inputArchivosIA" multiple style="display:none">
+                    <div id="dropZoneIA" class="drop-zone" onclick="document.getElementById('inputArchivosIA').click()">
+                        <i class="fas fa-magic"></i><p>Arrastra y suelta aquí o clic para seleccionar</p>
+                    </div>
+                    <p id="fileCountIA" style="margin-top:10px; font-weight:bold;">0 archivos seleccionados</p>
+                    
+                    <div id="progressIA" class="progress-container">
+                        <div class="progress-bar" id="progressBarIA">0%</div>
+                    </div>
+                    
+                    <button type="button" onclick="subirArchivosIA()" class="btn-submit" id="btnProcesarIA">Procesar Evidencias</button>
+
+                    <div id="logIA" class="upload-log-box">
+                        <p style="color:var(--text-sec); text-align:center; font-style:italic;">Los resultados aparecerán aquí...</p>
+                    </div>
+                </div>
+
+                <div id="tab-manual" class="upload-content">
+                    <form id="manualForm">
+                        <div class="form-group">
+                            <label>Archivo (PDF, Word, Excel, Foto):</label>
+                            <input type="file" name="archivo" id="inputArchivoManual" style="display:none;" required>
+                            <div id="dropZoneManual" class="drop-zone" onclick="document.getElementById('inputArchivoManual').click()" style="padding: 20px;">
+                                <i class="fas fa-file-upload" style="font-size:2rem;"></i>
+                                <p id="manualFileName">Clic o arrastra aquí tu archivo</p>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Asignar a:</label>
+                            <div class="user-picker-container">
+                                <div id="pickedUsers" class="picked-users"></div>
+                                <input type="text" id="inputUserSearch" placeholder="Escribe un nombre para buscar..." style="width:100%; border:none; outline:none; background:transparent;" autocomplete="off">
+                                <div id="userResults" class="user-results"></div>
+                            </div>
+                            <small style="color:var(--text-sec);">Busca y selecciona los usuarios para evitar errores de homónimos.</small>
+                        </div>
+
+                        <div id="progressManual" class="progress-container">
+                            <div class="progress-bar" id="progressBarManual">0%</div>
+                        </div>
+                        <button type="submit" class="btn-submit" id="btnManual">Subir y Asignar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div id="galeria" class="panel-section">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h3 id="tituloGaleria" style="color:#6A0DAD; display:flex; align-items:center; gap:10px;">
+            <i class="fas fa-folder-open"></i> Carpetas de Estudiantes
+        </h3>
+        
+        <div id="controlesGaleria" style="display:none; gap: 10px;"> 
+    <button onclick="volverACarpetas()" class="action-pill btn-back-pill">
+        <i class="fas fa-arrow-left"></i> Volver
+    </button>
+    <button onclick="activarSeleccion()" id="btnSelectMode" class="action-pill btn-select-pill">
+        <i class="fas fa-check-circle"></i> Seleccionar
+    </button>
+</div>
+    </div>
+
+    <div id="vistaCarpetas" class="folder-grid"></div>
+
+    <div id="vistaArchivos" class="compact-grid" style="display:none;"></div>
+    
+    <div id="noEvidenciaMsg" style="display:none; text-align:center; padding:40px;">
+        <i class="fas fa-search" style="font-size:3rem; color:#ccc;"></i>
+        <p>No hay evidencias aquí.</p>
+    </div>
+
+    <div id="barraSeleccion" class="selection-toolbar">
+        <span id="contadorSeleccion">0 seleccionados</span>
+        <button onclick="descargarSeleccionados()"><i class="fas fa-download"></i> Descargar</button>
+        <button onclick="borrarSeleccionados()" class="btn-danger"><i class="fas fa-trash"></i> Borrar</button>
+        <button onclick="cancelarSeleccion()" style="background:transparent; color:white; border:1px solid white;">X</button>
+    </div>
+</div>
+
+<div id="modalProgreso" class="progress-modal">
+    <div class="progress-box">
+        <h3 style="color:#6A0DAD;">Procesando...</h3>
+        <p id="textoProgreso">Por favor espera</p>
+        <div class="pb-bar-container">
+            <div id="barraProgresoFill" class="pb-fill"></div>
+        </div>
+    </div>
+</div>
+
+        <div id="seguridad" class="panel-section">
+            <div class="search-card" style="margin-bottom:20px;">
+                <div class="upload-tabs">
+                    <button class="tab-btn active" onclick="switchSecurityTab('clave', this)">🔑 Cambiar Clave</button>
+                    <button class="tab-btn" onclick="switchSecurityTab('logs', this)">📜 Registros (Logs)</button>
+                </div>
+            </div>
+
+            <div id="sec-clave" class="security-content active">
+                <div class="search-card">
+                    <div style="background:var(--bg-body); padding:20px; border-radius:10px; text-align:center;">
+                        <i class="fas fa-key" style="font-size:3rem; color:#c62828; margin-bottom:15px;"></i>
+                        <h4 style="margin-bottom:20px;">Restablecer Contraseña</h4>
+                        <form id="resetPassForm" style="display:flex; gap:10px; flex-direction:column; max-width:400px; margin:0 auto;">
+                            <input type="text" id="resetCedula" placeholder="Número de Cédula" required style="padding:12px; border-radius:5px;">
+                            <input type="text" id="resetPass" placeholder="Nueva Contraseña" required style="padding:12px; border-radius:5px;">
+                            <button type="submit" class="btn-submit" style="background:#c62828;">Confirmar Cambio</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div id="sec-logs" class="security-content">
+                <div class="wide-container">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <h3 style="color:#6A0DAD; margin:0;">Historial de Actividad</h3>
+                        <button onclick="cargarLogs()" class="btn-secondary">🔄 Actualizar</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:200px;">Fecha y Hora</th>
+                                    <th style="width:200px;">Acción</th>
+                                    <th>Detalles</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaLogs"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="mantenimiento" class="panel-section">
+            <div class="search-card">
+                <h3 style="text-align:center; margin-bottom:20px;">Centro de Mantenimiento</h3>
+                
+                <div id="maintStatus" style="text-align: center; margin-bottom: 20px; font-weight: bold; color: #6A0DAD; height: 20px;"></div>
+
+                <div class="upload-tabs">
+                    <button class="tab-btn active" onclick="switchMaintTab('db', this)">💾 Base de Datos</button>
+                    <button class="tab-btn" onclick="switchMaintTab('media', this)">📸 Multimedia</button>
+                    <button class="tab-btn" onclick="switchMaintTab('clean', this)">🧹 Limpieza</button>
+                </div>
+
+                <div id="maint-db" class="upload-content active" style="text-align:center;">
+                    <div class="maint-icon-box" style="margin: 20px auto; background: #e8f5e9; color: #2E8B57;"><i class="fas fa-database"></i></div>
+                    <h4>Respaldo Completo de BD</h4>
+                    <p style="color:var(--text-sec); font-size:0.9rem; margin-bottom:20px;">Descarga la estructura y registros actuales.</p>
+                    <button onclick="descargarBackup()" class="btn-submit" style="background:#2E8B57; border-radius:30px;"><i class="fas fa-download"></i> Descargar BD</button>
+                </div>
+
+                <div id="maint-media" class="upload-content" style="text-align:center;">
+                    <div class="maint-icon-box" style="margin: 20px auto; background: #e3f2fd; color: #1565c0;"><i class="fas fa-photo-video"></i></div>
+                    <h4>Respaldo de Evidencias</h4>
+                    <p style="color:var(--text-sec); font-size:0.9rem; margin-bottom:20px;">Descargar todas las fotos y videos de la nube (ZIP).</p>
+                    <button onclick="descargarMultimedia()" class="btn-submit" style="background:#1565c0; border-radius:30px;"><i class="fas fa-cloud-download-alt"></i> Descargar ZIP</button>
+                </div>
+
+                <div id="maint-clean" class="upload-content" style="text-align:center;">
+                    <div class="maint-icon-box" style="margin: 20px auto; background: #fff8e1; color: #f9a825;"><i class="fas fa-broom"></i></div>
+                    <h4>Mantenimiento del Sistema</h4>
+                    <p style="color:var(--text-sec); font-size:0.9rem; margin-bottom:20px;">Elimina archivos temporales y optimiza el rendimiento.</p>
+                    <button onclick="limpiezaTotal()" class="btn-submit" style="background:#f9a825; color:#333; border-radius:30px;"><i class="fas fa-trash-alt"></i> Ejecutar Limpieza</button>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+     <footer>
+        <div class="footer-content">
+            <div class="footer-logo">
+                <img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
+                <h3>Unidad Educativa Particular Despertar</h3>
+            </div>
+            <div class="footer-social">
+                <a href="https://www.facebook.com/uepdespertar"><i class="fab fa-facebook-f"></i></a>
+                <a href="https://www.youtube.com/@DespertarSKAS"><i class="fab fa-youtube"></i></a>
+                <a href="https://www.instagram.com/skas_despertar"><i class="fab fa-instagram"></i></a>
+            </div>
+            <div class="copyright">
+                <p>© 2025 Plataforma Educativa - Unidad Educativa Particular Despertar. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const baseUrl = "https://proyecto-de-grado-oficial-production.up.railway.app";
+        let usuariosGlobal = []; let evidenciasGlobal = []; let evidenciasActuales = []; let lightboxIndex = 0; 
+        let selectedUsers = []; // Array para los usuarios seleccionados manualmente
+
+        function toggleTheme() {
+            const body = document.body;
+            const btn = document.getElementById('themeBtn');
+            const icon = btn.querySelector('i');
+            icon.classList.add('rotate-anim'); 
+            setTimeout(() => {
+                body.classList.toggle('dark-mode');
+                if (body.classList.contains('dark-mode')) {
+                    icon.classList.remove('fa-moon'); icon.classList.add('fa-sun'); localStorage.setItem('admin_theme', 'dark');
+                } else {
+                    icon.classList.remove('fa-sun'); icon.classList.add('fa-moon'); localStorage.setItem('admin_theme', 'light');
+                }
+            }, 200); 
+            setTimeout(() => { icon.classList.remove('rotate-anim'); }, 500);
+        }
+
+        window.onload = function() { 
+            if(localStorage.getItem('usuario_tipo') != "0") { window.location.href = "index.html"; return; } 
+            
+            const savedTheme = localStorage.getItem('admin_theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                const icon = document.querySelector('#themeBtn i');
+                if(icon) icon.classList.replace('fa-moon', 'fa-sun');
+            }
+
+            const ultimaSeccion = localStorage.getItem('admin_ultima_seccion') || 'registro';
+            verSeccion(ultimaSeccion);
+            cargarUsuarios(); 
+            if (ultimaSeccion === 'galeria') {
+                const ultimaBusqueda = localStorage.getItem('admin_ultima_busqueda_evidencia') || "";
+                if (ultimaBusqueda) {
+                    document.getElementById('filtroEvidencia').value = ultimaBusqueda;
+                    setTimeout(() => filtrarGaleria(), 500);
+                }
+            }
+            
+            setupDragAndDrop('dropZoneIA', 'inputArchivosIA', 'fileCountIA', true);
+            setupDragAndDrop('dropZoneManual', 'inputArchivoManual', 'manualFileName', false);
+            setupUserSearch(); // Inicializar el buscador de usuarios manual
+        };
+
+        const menu = document.getElementById('sideMenu'); 
+        const overlay = document.getElementById('overlay');
+        document.getElementById('menuToggle').onclick = () => { menu.classList.add('active'); overlay.classList.add('active'); };
+        function cerrarMenu() { menu.classList.remove('active'); overlay.classList.remove('active'); }
+        overlay.onclick = cerrarMenu;
+        function cerrarSesion() { const t=localStorage.getItem('admin_theme'); localStorage.clear(); if(t) localStorage.setItem('admin_theme', t); window.location.href = "index.html"; }
+        
+        function verSeccion(id) {
+            localStorage.setItem('admin_ultima_seccion', id);
+            document.querySelectorAll('.panel-section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.option-card').forEach(c => c.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            const btnMap = { 'archivos': 'btn-archivos', 'registro': 'btn-registro', 'galeria': 'btn-galeria', 'seguridad': 'btn-seguridad', 'mantenimiento': 'btn-mantenimiento' };
+            if(btnMap[id]) document.getElementById(btnMap[id]).classList.add('active');
+            if(id==='registro' || id==='usuarios') cargarUsuarios();
+            if(id==='galeria') { cargarUsuarios(); cargarGaleriaGlobal(); }
+            if(id==='seguridad') cargarLogs();
+        }
+
+        function switchUploadTab(tab, btn) {
+            document.querySelectorAll('.upload-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('#archivos .tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active'); btn.classList.add('active');
+        }
+        function switchSecurityTab(tab, btn) {
+            document.querySelectorAll('.security-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('#seguridad .tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('sec-' + tab).classList.add('active'); btn.classList.add('active');
+            if(tab === 'logs') cargarLogs();
+        }
+        function switchMaintTab(tab, btn) {
+            document.querySelectorAll('#mantenimiento .upload-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('#mantenimiento .tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('maint-' + tab).classList.add('active');
+            btn.classList.add('active');
+        }
+
+        function setupDragAndDrop(zoneId, inputId, labelId, multiple) {
+            const zone = document.getElementById(zoneId);
+            const input = document.getElementById(inputId);
+            const label = document.getElementById(labelId);
+            if(!zone || !input) return;
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => { zone.addEventListener(eventName, e => {e.preventDefault(); e.stopPropagation();}, false); });
+            ['dragenter', 'dragover'].forEach(eventName => { zone.addEventListener(eventName, () => zone.classList.add('dragover'), false); });
+            ['dragleave', 'drop'].forEach(eventName => { zone.addEventListener(eventName, () => zone.classList.remove('dragover'), false); });
+            zone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer; const files = dt.files; input.files = files; 
+                if(multiple) label.innerText = `${files.length} archivos listos`; else if(files.length > 0) label.innerText = files[0].name;
+            }, false);
+            input.addEventListener('change', () => {
+                if(multiple) label.innerText = `${input.files.length} archivos listos`; else if(input.files.length > 0) label.innerText = input.files[0].name;
+            });
+        }
+
+        // ============================================
+        // LÓGICA DEL BUSCADOR INTELIGENTE DE USUARIOS
+        // ============================================
+        function setupUserSearch() {
+            const input = document.getElementById('inputUserSearch');
+            const resultsDiv = document.getElementById('userResults');
+            
+            input.addEventListener('input', function() {
+                const val = this.value.toLowerCase().trim();
+                resultsDiv.innerHTML = '';
+                
+                if(val.length < 2) { resultsDiv.style.display = 'none'; return; }
+                
+                const matches = usuariosGlobal.filter(u => {
+                    const fullName = `${u.nombre} ${u.apellido} ${u.cedula}`.toLowerCase();
+                    // Filtramos los que ya están seleccionados
+                    return fullName.includes(val) && !selectedUsers.includes(u.cedula);
+                });
+
+                if(matches.length > 0) {
+                    resultsDiv.style.display = 'block';
+                    matches.forEach(u => {
+                        const div = document.createElement('div');
+                        div.className = 'user-result-item';
+                        div.innerHTML = `<span>${u.nombre} ${u.apellido}</span> <small style="color:var(--text-sec);">(${u.cedula})</small>`;
+                        div.onclick = () => addUserToSelection(u);
+                        resultsDiv.appendChild(div);
+                    });
+                } else {
+                    resultsDiv.style.display = 'none';
+                }
+            });
+        }
+
+        function addUserToSelection(user) {
+            selectedUsers.push(user.cedula);
+            const container = document.getElementById('pickedUsers');
+            const chip = document.createElement('div');
+            chip.className = 'user-chip';
+            chip.innerHTML = `${user.nombre} <span onclick="removeUserFromSelection('${user.cedula}', this)">&times;</span>`;
+            container.appendChild(chip);
+            
+            // Limpiar buscador
+            document.getElementById('inputUserSearch').value = '';
+            document.getElementById('userResults').style.display = 'none';
+        }
+
+        function removeUserFromSelection(cedula, btnElement) {
+            selectedUsers = selectedUsers.filter(c => c !== cedula);
+            btnElement.parentElement.remove();
+        }
+
+        // SUBIDA IA
+        const fileInputIA = document.getElementById('inputArchivosIA');
+        async function subirArchivosIA() { 
+            const files = fileInputIA.files; 
+            if(!files.length) return alert("Selecciona archivos primero."); 
+            const btn = document.getElementById('btnProcesarIA');
+            const pCont = document.getElementById('progressIA');
+            const pBar = document.getElementById('progressBarIA');
+            const logBox = document.getElementById('logIA');
+            
+            btn.disabled = true; btn.innerText = "Analizando...";
+            pCont.style.display = 'block'; pBar.style.width = '0%'; pBar.innerText = '0%';
+            logBox.style.display = 'block'; logBox.innerHTML = ''; 
+            
+            let processed = 0; const total = files.length; let successCount = 0; let warningCount = 0;
+
+            for(let i = 0; i < total; i++) {
+                const f = files[i];
+                const fd = new FormData(); fd.append('archivo', f); 
+                const tempLogId = `log-temp-${i}`;
+                logBox.innerHTML += `<div id="${tempLogId}" class="log-item" style="color:#666;"><i class="fas fa-spinner fa-spin"></i> Analizando: ${f.name}...</div>`;
+                logBox.scrollTop = logBox.scrollHeight;
+
+                try { 
+                    const res = await fetch(`${baseUrl}/subir_evidencia`, { method:"POST", body:fd });
+                    const data = await res.json();
+                    const tempEl = document.getElementById(tempLogId); if(tempEl) tempEl.remove();
+                    let msgHTML = "";
+                    if (data.status === "exito") {
+                        successCount++;
+                        const nombres = data.asignado_a.map(ced => {
+                            const u = usuariosGlobal.find(user => user.cedula === ced);
+                            return u ? `<b>${u.nombre} ${u.apellido}</b>` : ced;
+                        }).join(", ");
+                        msgHTML = `<div class="log-item success"><i class="fas fa-check-circle"></i> <strong>${f.name}:</strong> Asignado a ${nombres}</div>`;
+                    } else if (data.status === "alerta") {
+                        warningCount++;
+                        msgHTML = `<div class="log-item warning"><i class="fas fa-exclamation-triangle"></i> <strong>${f.name}:</strong> No asignado. <br><small>${data.motivo}</small></div>`;
+                    } else { 
+                        msgHTML = `<div class="log-item error"><i class="fas fa-times-circle"></i> <strong>${f.name}:</strong> Error: ${data.motivo}</div>`;
+                    }
+                    logBox.innerHTML += msgHTML;
+                } catch(e) { 
+                    const tempEl = document.getElementById(tempLogId); if(tempEl) tempEl.remove();
+                    logBox.innerHTML += `<div class="log-item error"><i class="fas fa-bomb"></i> <strong>${f.name}:</strong> Error de conexión.</div>`;
+                }
+                processed++; const percent = Math.round((processed / total) * 100);
+                pBar.style.width = `${percent}%`; pBar.innerText = `${percent}%`;
+                await new Promise(r => setTimeout(r, 50));
+            }
+            btn.disabled = false; btn.innerText = "Procesar Evidencias";
+            fileInputIA.value = ""; document.getElementById('fileCountIA').innerText = "0 archivos seleccionados"; 
+            logBox.innerHTML += `<div class="log-item" style="background:#f0f0f0; text-align:center; font-weight:bold; margin-top:10px;">🏁 Finalizado: ${successCount} asignados, ${warningCount} sin coincidencia.</div>`;
+            logBox.scrollTop = logBox.scrollHeight;
+            cargarGaleriaGlobal(); 
+        }
+        
+        // SUBIDA MANUAL ACTUALIZADA
+        document.getElementById('manualForm').onsubmit = async function(e) {
+            e.preventDefault(); 
+            const archivoInput = this.querySelector('input[type="file"]');
+            const btn = document.getElementById('btnManual');
+            const pCont = document.getElementById('progressManual');
+            const pBar = document.getElementById('progressBarManual');
+
+            // VALIDACIONES
+            if (archivoInput.files.length === 0) return alert("Por favor selecciona un archivo.");
+            if (selectedUsers.length === 0) return alert("Debes buscar y seleccionar al menos un usuario de la lista.");
+
+            const fd = new FormData();
+            fd.append('archivo', archivoInput.files[0]);
+            fd.append('cedulas', selectedUsers.join(',')); // Enviar array de cédulas seleccionadas
+
+            btn.disabled = true; btn.innerText = "Subiendo...";
+            pCont.style.display = 'block'; pBar.style.width = '50%'; pBar.innerText = '50%';
+
+            try { 
+                const r = await fetch(`${baseUrl}/subir_manual`, { method:"POST", body:fd }); 
+                const j = await r.json(); 
+                pBar.style.width = '100%'; pBar.innerText = '100%';
+                
+                if(j.error) {
+                    alert("Error: " + j.error);
+                } else if(j.status === "alerta") {
+                    alert("Alerta: " + j.mensaje);
+                } else {
+                    alert("Evidencia asignada correctamente."); 
+                    this.reset(); 
+                    document.getElementById('manualFileName').innerText = "Clic o arrastra aquí tu archivo";
+                    document.getElementById('pickedUsers').innerHTML = ''; // Limpiar visualmente
+                    selectedUsers = []; // Limpiar array
+                    setTimeout(() => { pCont.style.display = 'none'; pBar.style.width = '0%'; }, 2000);
+                    cargarGaleriaGlobal(); 
+                }
+            } catch(e) { 
+                alert("Error de conexión"); 
+            } finally {
+                btn.disabled = false; btn.innerText = "Subir y Asignar";
+            }
+        };
+
+        // ... RESTO DE FUNCIONES (REGISTRO, USUARIOS, BACKUP, ETC) IGUALES AL V10 ...
+        // (Por brevedad, asegúrate de mantener las funciones de descargarMultimedia, descargarBackup, etc que ya arreglamos)
+        
+        document.getElementById('registerForm').onsubmit = async function(e) { 
+            e.preventDefault(); const fileInput = document.getElementById('inputFotosRegistro'); const files = fileInput.files; const btn = this.querySelector('button[type="submit"]');
+            if (files.length === 0) return alert("Selecciona al menos una foto.");
+            btn.innerText = "Enviando a AWS..."; btn.disabled = true;
+            const fd = new FormData(this); fd.set('foto', files[0]);
+            try {
+                const r = await fetch(`${baseUrl}/registrar_usuario`, { method: "POST", body: fd });
+                if (r.ok) {
+                    if (files.length > 1) {
+                        const cedula = fd.get('cedula');
+                        for (let i = 1; i < files.length; i++) {
+                            const fdRef = new FormData(); fdRef.append('cedula', cedula); fdRef.append('foto', files[i]);
+                            try { await fetch(`${baseUrl}/agregar_referencia_facial`, { method: "POST", body: fdRef }); } catch (err) {}
+                        }
+                    }
+                    alert("Usuario registrado."); this.reset(); cargarUsuarios();
+                } else { const err = await r.json(); alert(err.detail || "Error al registrar"); }
+            } catch (e) { alert("Error de comunicación."); cargarUsuarios(); 
+            } finally { btn.innerText = "Registrar"; btn.disabled = false; }
+        };
+
+        async function cargarUsuarios() { try { const r=await fetch(`${baseUrl}/listar_usuarios?t=${Date.now()}`); usuariosGlobal=await r.json(); renderizarUsuarios(usuariosGlobal); } catch(e){} }
+        
+        function renderizarUsuarios(lista) {
+            const tbody = document.getElementById('listaUsuarios'); const msg = document.getElementById('noUsersMsg'); tbody.innerHTML='';
+            if(!lista || lista.length === 0) { msg.style.display = 'block'; return; } else { msg.style.display = 'none'; }
+            lista.forEach(u => {
+                const rol = u.tipo===0 ? '<span class="badge badge-admin">Admin</span>' : '<span class="badge badge-student">Estudiante</span>';
+                const est = u.activo ? '<span style="color:#2E8B57;font-weight:bold;">Activo</span>' : '<span style="color:#d32f2f;">Inactivo</span>';
+                tbody.innerHTML += `<tr class="${u.activo?'':'inactive'}"><td><strong>${u.nombre} ${u.apellido}</strong></td><td>${u.cedula}</td><td>${rol}</td><td>${est}</td>
+                <td><button class="action-btn btn-photo" onclick="abrirModalRef('${u.cedula}')"><i class="fas fa-camera"></i></button>
+                <button class="action-btn btn-key" onclick="alert('Clave: ${u.contrasena}')"><i class="fas fa-eye"></i></button>
+                <button class="action-btn btn-power ${u.activo?'':'off'}" onclick="toggleUsuario('${u.cedula}')"><i class="fas fa-power-off"></i></button>
+                <button class="action-btn btn-trash" onclick="eliminarUsuario('${u.cedula}')"><i class="fas fa-trash"></i></button></td></tr>`;
+            });
+        }
+        function filtrarUsuarios() { 
+            const q = document.getElementById('busquedaUsuarios').value.toLowerCase().trim();
+            if(q === "") { renderizarUsuarios(usuariosGlobal); return; } 
+            const f = usuariosGlobal.filter(u => `${u.nombre} ${u.apellido} ${u.cedula}`.toLowerCase().includes(q));
+            renderizarUsuarios(f);
+        }
+        function limpiarBusquedaUsuario() { document.getElementById('busquedaUsuarios').value=""; renderizarUsuarios(usuariosGlobal); }
+        function abrirModalRef(ci) { document.getElementById('refCedula').value=ci; document.getElementById('modalRef').classList.add('active'); }
+        document.getElementById('refForm').onsubmit = async function(e) { e.preventDefault(); const fd=new FormData(this); await fetch(`${baseUrl}/agregar_referencia_facial`,{method:"POST",body:fd}); alert("Foto agregada"); document.getElementById('modalRef').classList.remove('active'); };
+        async function toggleUsuario(ci) { await fetch(`${baseUrl}/alternar_estado_usuario/${ci}`,{method:'PUT'}); cargarUsuarios(); }
+        async function eliminarUsuario(ci) { if(confirm("¿Eliminar usuario? Se borrará también de Amazon.")) { await fetch(`${baseUrl}/eliminar_usuario/${ci}`,{method:'DELETE'}); cargarUsuarios(); } }
+
+        async function cargarGaleriaGlobal() { try { const r=await fetch(`${baseUrl}/todas_evidencias?t=${Date.now()}`); evidenciasGlobal=await r.json(); evidenciasActuales=evidenciasGlobal; renderGaleria(evidenciasActuales); } catch(e){} }
+
+        function renderGaleria(lista) {
+            const d = document.getElementById('gridGaleria'); const m = document.getElementById('noEvidenciaMsg'); d.innerHTML='';
+            if(!lista || lista.length===0) { m.style.display='block'; return; } else { m.style.display='none'; }
+            const agrupados = {};
+            lista.forEach(item => {
+                const url = item.url; if (!agrupados[url]) { agrupados[url] = { url: url, ids_evidencia: [], usuarios: [] }; }
+                agrupados[url].ids_evidencia.push(item.id);
+                const user = usuariosGlobal.find(u => u.cedula === item.cedula);
+                const nombreMostrar = user ? `${user.nombre} ${user.apellido}` : `CI: ${item.cedula}`;
+                if (!agrupados[url].usuarios.includes(nombreMostrar)) { agrupados[url].usuarios.push(nombreMostrar); }
+            });
+            Object.values(agrupados).forEach((grupo, i) => {
+                const ext = grupo.url.split('.').pop().toLowerCase(); 
+                const isV = ['mp4','mov','webm'].includes(ext);
+                const isDoc = ['pdf','docx','xlsx','pptx','txt'].includes(ext);
+                const idsString = JSON.stringify(grupo.ids_evidencia);
+                const listaNombresHTML = grupo.usuarios.map(u => `<div><i class="fas fa-user-tag"></i> ${u}</div>`).join('');
+                
+                let mediaHTML = '';
+                if(isV) mediaHTML = `<video src="${grupo.url}#t=0.1" class="compact-media"></video>`;
+                else if(isDoc) mediaHTML = `<div class="compact-media" style="display:flex;align-items:center;justify-content:center;background:#eee;"><i class="fas fa-file-alt" style="font-size:3rem;color:#555;"></i></div>`;
+                else mediaHTML = `<img src="${grupo.url}" class="compact-media">`;
+
+                d.innerHTML += `<div class="compact-card" onclick="openLightbox('${grupo.url}', '${grupo.usuarios[0]}')">
+                    <button type="button" class="mini-trash" onclick='borrarGrupoEvidencia(event, ${idsString})'><i class="fas fa-trash"></i></button>
+                    ${mediaHTML}
+                    <div class="compact-info">${listaNombresHTML}</div></div>`;
+            });
+        }
+
+        async function borrarGrupoEvidencia(e, ids) { e.stopPropagation(); if(confirm(`¿Eliminar de TODOS (${ids.length})?`)) { for (let id of ids) { await fetch(`${baseUrl}/borrar_evidencia/${id}`, { method: 'DELETE' }); } cargarGaleriaGlobal(); } }
+        
+        async function descargarMultimedia() { 
+            const btn = document.querySelector('button[onclick="descargarMultimedia()"]'); const statusDiv = document.getElementById('maintStatus'); const textoOriginal = btn.innerHTML;
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando ZIP...'; statusDiv.innerText = "⏳ Conectando con la nube...";
+            try {
+                const response = await fetch(`${baseUrl}/descargar_multimedia_zip`); if (!response.ok) throw new Error("Error en servidor");
+                statusDiv.innerText = "⬇️ Descargando..."; const blob = await response.blob(); const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = `Respaldo_Multimedia_${new Date().toISOString().slice(0,10)}.zip`; document.body.appendChild(a); a.click(); a.remove(); window.URL.revokeObjectURL(url); statusDiv.innerText = "✅ Listo.";
+            } catch (error) { alert("Error: " + error.message); statusDiv.innerText = "❌ Error."; } finally { btn.disabled = false; btn.innerHTML = textoOriginal; setTimeout(() => { statusDiv.innerText = ""; }, 5000); }
+        }
+
+        async function descargarBackup() { 
+            const btn = document.querySelector('button[onclick="descargarBackup()"]'); const statusDiv = document.getElementById('maintStatus'); const textoOriginal = btn.innerHTML;
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...'; statusDiv.innerText = "⏳ Creando respaldo...";
+            try {
+                const response = await fetch(`${baseUrl}/crear_backup`); if(!response.ok) throw new Error("Error backup");
+                const blob = await response.blob(); const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `Backup_DB_${new Date().toISOString().slice(0,10)}.zip`; document.body.appendChild(a); a.click(); a.remove(); window.URL.revokeObjectURL(url); statusDiv.innerText = "✅ Listo.";
+            } catch (error) { alert("Error: " + error.message); statusDiv.innerText = "❌ Error."; } finally { btn.disabled = false; btn.innerHTML = textoOriginal; setTimeout(() => { statusDiv.innerText = ""; }, 5000); }
+        }
+
+        async function limpiezaTotal() { if(!confirm("¿Limpiar?")) return; const btn = document.querySelector('button[onclick="limpiezaTotal()"]'); const statusDiv = document.getElementById('maintStatus'); btn.disabled = true; statusDiv.innerText = "🧹 Limpiando..."; await new Promise(r => setTimeout(r, 1500)); alert("Limpieza completada."); statusDiv.innerText = "✨ Limpio."; btn.disabled = false; setTimeout(() => { statusDiv.innerText = ""; }, 5000); }
+
+        function filtrarGaleria() { 
+            const q=document.getElementById('filtroEvidencia').value.toLowerCase().trim(); localStorage.setItem('admin_ultima_busqueda_evidencia', q); 
+            if(q===""){evidenciasActuales=evidenciasGlobal;renderGaleria(evidenciasGlobal);return;} 
+            evidenciasActuales=evidenciasGlobal.filter(x=>{ const u = usuariosGlobal.find(user => user.cedula === x.cedula); const n = u ? `${u.nombre} ${u.apellido}` : ""; return `${x.cedula} ${n}`.toLowerCase().includes(q); }); 
+            renderGaleria(evidenciasActuales); 
+        }
+        function limpiarBusquedaGaleria() { document.getElementById('filtroEvidencia').value=""; filtrarGaleria(); }
+
+        function openLightbox(url, nombre) { 
+            const ext = url.split('.').pop().toLowerCase(); const content = document.getElementById('lightboxContent');
+            const isDoc = ['pdf','docx','xlsx','pptx','txt'].includes(ext);
+            
+            if (isDoc) {
+                content.innerHTML = `<div style="text-align:center; color:white;"><i class="fas fa-file-alt" style="font-size:5rem; margin-bottom:20px;"></i><br><h3>Vista previa no disponible para documentos</h3><p>Usa el botón de abajo para descargar.</p></div>`;
+            } else {
+                content.innerHTML = ['mp4','mov','webm'].includes(ext) ? `<video src="${url}" controls autoplay style="max-width:90%; max-height:80vh; border-radius:10px;"></video>` : `<img src="${url}" style="max-width:90%; max-height:80vh; border-radius:10px;">`;
+            }
+            document.getElementById('lbDetails').innerHTML=`<h3>${nombre}</h3>`;
+            document.getElementById('lightboxDownload').href = url;
+            document.getElementById('lightbox').classList.add('active'); 
+        }
+        
+        function closeLightbox() { document.getElementById('lightbox').classList.remove('active'); document.getElementById('lightboxContent').innerHTML=''; }
+        document.getElementById('lightbox').onclick = (e) => { if(e.target.id === 'lightbox') closeLightbox(); };
+        document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') closeLightbox(); });
+        async function cargarLogs() { try { const r=await fetch(`${baseUrl}/obtener_logs?t=${Date.now()}`); const l=await r.json(); const t=document.getElementById('tablaLogs'); t.innerHTML=''; l.forEach(x=>t.innerHTML+=`<tr><td>${x.fecha}</td><td><i class="fas fa-info-circle log-icon"></i>${x.accion}</td><td>${x.detalle}</td></tr>`); } catch(e){} }
+        document.getElementById('resetPassForm').onsubmit = async function(e) { e.preventDefault(); const fd=new FormData(this); await fetch(`${baseUrl}/restablecer_password`,{method:"POST",body:fd}); alert("Clave actualizada"); this.reset(); };
+        // VARIABLES GLOBALES NUEVAS
+let modoSeleccion = false;
+let itemsSeleccionados = []; // Array de IDs
+let evidenciasActualesEnCarpeta = [];
+
+// 1. CARGA INICIAL: Muestra Carpetas en lugar de fotos sueltas
+async function cargarGaleriaGlobal() {
+    // Reseteamos vistas
+    document.getElementById('vistaCarpetas').style.display = 'grid';
+    document.getElementById('vistaArchivos').style.display = 'none';
+    document.getElementById('controlesGaleria').style.display = 'none';
+    document.getElementById('tituloGaleria').innerHTML = '<i class="fas fa-folder-open"></i> Carpetas de Estudiantes';
+    document.getElementById('noEvidenciaMsg').style.display = 'none';
+
+    try {
+        const res = await fetch(`${baseUrl}/resumen_estudiantes_con_evidencias`);
+        const estudiantes = await res.json();
+        
+        const grid = document.getElementById('vistaCarpetas');
+        grid.innerHTML = '';
+
+        if(estudiantes.length === 0) {
+            document.getElementById('noEvidenciaMsg').style.display = 'block';
+            return;
+        }
+
+        estudiantes.forEach(est => {
+            const foto = est.foto || 'Img/Logo-Despertar-SKAS-Unidad-Educativa23.png'; // Fallback si no hay foto
+            grid.innerHTML += `
+            <div class="folder-card" onclick="abrirCarpeta('${est.cedula}', '${est.nombre} ${est.apellido}')">
+                <span class="folder-badge">${est.total_evidencias} archivos</span>
+                <div class="folder-icon"><img src="${foto}"></div>
+                <h4>${est.nombre} ${est.apellido}</h4>
+                <small style="color:#666;">${est.cedula}</small>
+            </div>`;
+        });
+
+    } catch (e) { console.error(e); alert("Error cargando carpetas"); }
+}
+
+// 2. ABRIR CARPETA ESPECÍFICA (Lazy Loading visual)
+async function abrirCarpeta(cedula, nombreEstudiante) {
+    document.getElementById('vistaCarpetas').style.display = 'none';
+    document.getElementById('vistaArchivos').style.display = 'grid';
+    document.getElementById('controlesGaleria').style.display = 'flex';
+    document.getElementById('tituloGaleria').innerHTML = `<i class="fas fa-user"></i> ${nombreEstudiante}`;
+    
+    const grid = document.getElementById('vistaArchivos');
+    grid.innerHTML = '<p style="text-align:center; width:100%;">Cargando...</p>';
+
+    try {
+        // Usamos el endpoint que ya tenías "todas_evidencias" pero filtrando por cédula
+        // Esto es mucho más rápido que pedir todo
+        const res = await fetch(`${baseUrl}/todas_evidencias?cedula=${cedula}`);
+        evidenciasActualesEnCarpeta = await res.json();
+        
+        grid.innerHTML = '';
+        cancelarSeleccion(); // Resetear selección al entrar
+
+        if (evidenciasActualesEnCarpeta.length === 0) {
+            grid.innerHTML = '<p>Carpeta vacía.</p>';
+            return;
+        }
+
+        // Renderizamos las fotos
+        evidenciasActualesEnCarpeta.forEach(item => {
+            const ext = item.url.split('.').pop().toLowerCase();
+            let media = `<img src="${item.url}" class="compact-media" loading="lazy">`; // loading="lazy" ayuda al navegador
+            
+            if(['mp4','webm','mov'].includes(ext)) {
+                media = `<video src="${item.url}#t=0.1" class="compact-media" preload="metadata"></video><i class="fas fa-play" style="position:absolute;color:white;font-size:2rem;opacity:0.8;"></i>`;
+            } else if(['pdf','docx'].includes(ext)) {
+                media = `<div class="compact-media" style="background:#eee; display:flex; justify-content:center; align-items:center;"><i class="fas fa-file-alt" style="font-size:3rem; color:#555;"></i></div>`;
+            }
+
+            // Nota: Agregamos el div .select-checkbox y el onclick toggleItem
+            grid.innerHTML += `
+            <div class="compact-card" id="card-${item.id}" onclick="clickTarjeta(${item.id}, '${item.url}', '${nombreEstudiante}')">
+                <div class="select-checkbox" id="check-${item.id}"></div>
+                ${media}
+            </div>`;
+        });
+
+    } catch (e) { console.error(e); }
+}
+
+function volverACarpetas() {
+    cargarGaleriaGlobal();
+}
+
+// 3. LÓGICA DE SELECCIÓN MÚLTIPLE
+function activarSeleccion() {
+    modoSeleccion = !modoSeleccion;
+    const btn = document.getElementById('btnSelectMode');
+    const cards = document.querySelectorAll('.compact-card');
+    const barra = document.getElementById('barraSeleccion');
+
+    if (modoSeleccion) {
+        btn.innerHTML = '<i class="fas fa-times"></i> Cancelar';
+        btn.style.background = "#e53935";
+        cards.forEach(c => c.classList.add('selecting')); // Muestra los cuadros vacíos
+        barra.classList.add('active');
+    } else {
+        cancelarSeleccion();
+    }
+}
+
+function cancelarSeleccion() {
+    modoSeleccion = false;
+    itemsSeleccionados = [];
+    document.querySelectorAll('.compact-card').forEach(c => {
+        c.classList.remove('selecting', 'selected');
+    });
+    document.getElementById('barraSeleccion').classList.remove('active');
+    
+    const btn = document.getElementById('btnSelectMode');
+    if(btn) {
+        btn.innerHTML = '<i class="fas fa-check-square"></i> Seleccionar';
+        btn.style.background = "#6A0DAD";
+    }
+    actualizarContador();
+}
+
+function clickTarjeta(id, url, nombre) {
+    if (modoSeleccion) {
+        // Lógica de Selección
+        const card = document.getElementById(`card-${id}`);
+        const index = itemsSeleccionados.indexOf(id);
+
+        if (index === -1) {
+            // Limitar a 25
+            if(itemsSeleccionados.length >= 25) {
+                alert("Máximo 25 archivos por lote para evitar errores.");
+                return;
+            }
+            itemsSeleccionados.push(id);
+            card.classList.add('selected');
+        } else {
+            itemsSeleccionados.splice(index, 1);
+            card.classList.remove('selected');
+        }
+        actualizarContador();
+    } else {
+        // Lógica Normal (Lightbox)
+        openLightbox(url, nombre);
+    }
+}
+
+function actualizarContador() {
+    document.getElementById('contadorSeleccion').innerText = `${itemsSeleccionados.length} seleccionados`;
+}
+
+// 4. ACCIONES MASIVAS CON BARRA DE PROGRESO
+async function borrarSeleccionados() {
+    if(itemsSeleccionados.length === 0) return;
+    if(!confirm(`¿Seguro que deseas eliminar ${itemsSeleccionados.length} archivos?`)) return;
+
+    mostrarProgreso(true, "Eliminando archivos...");
+    const barra = document.getElementById('barraProgresoFill');
+    
+    // Simulamos progreso visual porque la petición es una sola
+    let width = 10;
+    barra.style.width = width + '%';
+    const fakeInterval = setInterval(() => { if(width < 90) { width += 5; barra.style.width = width + '%'; } }, 100);
+
+    const formData = new FormData();
+    formData.append('ids', itemsSeleccionados.join(','));
+
+    try {
+        const res = await fetch(`${baseUrl}/eliminar_evidencias_masivas`, {
+            method: "POST",
+            body: formData
+        });
+        const data = await res.json();
+        
+        clearInterval(fakeInterval);
+        barra.style.width = '100%';
+
+        if (data.status === 'ok') {
+            setTimeout(() => {
+                mostrarProgreso(false);
+                alert("Archivos eliminados correctamente.");
+                // Recargamos la carpeta actual para refrescar
+                const cedulaActual = evidenciasActualesEnCarpeta[0]?.cedula; // Obtenemos cedula de cualquier item
+                // Como es dificil obtener la cedula exacta sin pasarla, simplemente volvemos a la vista actual recargando el div
+                // O mejor, eliminamos los nodos del DOM visualmente
+                itemsSeleccionados.forEach(id => {
+                    const el = document.getElementById(`card-${id}`);
+                    if(el) el.remove();
+                });
+                cancelarSeleccion();
+            }, 500);
+        } else {
+            alert("Error: " + data.mensaje);
+            mostrarProgreso(false);
+        }
+
+    } catch (e) {
+        alert("Error de conexión");
+        mostrarProgreso(false);
+    }
+}
+
+async function descargarSeleccionados() {
+    if(itemsSeleccionados.length === 0) return;
+
+    // Feedback visual
+    const btn = document.querySelector('#barraSeleccion button'); // El botón de descarga
+    const textoOriginal = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Zipeando...';
+    btn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('ids', itemsSeleccionados.join(','));
+
+    try {
+        const response = await fetch(`${baseUrl}/descargar_seleccion_zip`, {
+            method: "POST",
+            body: formData
+        });
+
+        if (!response.ok) throw new Error("Error generando ZIP");
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Descarga_Masiva_${new Date().getTime()}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        
+        cancelarSeleccion(); // Salir del modo selección al terminar
+
+    } catch (error) {
+        alert("Hubo un error en la descarga: " + error.message);
+    } finally {
+        btn.innerHTML = textoOriginal;
+        btn.disabled = false;
+    }
+}
+
+function mostrarProgreso(mostrar, texto="") {
+    const modal = document.getElementById('modalProgreso');
+    if(mostrar) {
+        document.getElementById('textoProgreso').innerText = texto;
+        document.getElementById('barraProgresoFill').style.width = '0%';
+        modal.style.display = 'flex';
+    } else {
+        modal.style.display = 'none';
+    }
+}
+    </script>
+</body>
+</html>
