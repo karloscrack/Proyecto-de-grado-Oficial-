@@ -2,9 +2,10 @@ import os
 import boto3
 import time
 
-# --- TUS CREDENCIALES (Las mismas del main.py) ---
-AWS_ACCESS_KEY = "AWS_ACCESS_KEY"
-AWS_SECRET_KEY = "AWS_SECRET_KEY"
+# --- CREDENCIALES ---
+# Intenta leerlas del sistema (Railway), si no existen, usa las que pongas aquí
+AWS_ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY", "PON_AQUI_TU_ACCESS_KEY_SI_ES_LOCAL")
+AWS_SECRET_KEY = os.environ.get("AWS_SECRET_KEY", "PON_AQUI_TU_SECRET_KEY_SI_ES_LOCAL")
 AWS_REGION = "us-east-1"
 COLLECTION_ID = "estudiantes_db"
 
@@ -16,11 +17,17 @@ rekog = boto3.client('rekognition',
 
 def migrar_todo():
     carpeta_base = "perfiles_db"
+    
+    # Verificación de seguridad
+    if AWS_ACCESS_KEY.startswith("PON_AQUI"):
+        print("❌ ERROR: No has configurado tus credenciales AWS en el script.")
+        return
+
     if not os.path.exists(carpeta_base):
         print(f"❌ No encuentro la carpeta '{carpeta_base}'.")
         return
 
-    print("🚀 INICIANDO MIGRACIÓN A LA NUBE...")
+    print("🚀 INICIANDO MIGRACIÓN A LA NUBE (Modo Alta Precisión)...")
     
     # Recorremos cada carpeta de usuario
     usuarios = [f for f in os.listdir(carpeta_base) if os.path.isdir(os.path.join(carpeta_base, f))]
@@ -48,16 +55,23 @@ def migrar_todo():
                 
                 print(f"   ☁️ Subiendo '{foto}' a AWS...", end="")
                 
-                # Enviamos a Amazon
-                rekog.index_faces(
+                # --- CORRECCIÓN 1: Guardamos la respuesta en 'response' ---
+                response = rekog.index_faces(
                     CollectionId=COLLECTION_ID,
                     Image={'Bytes': bytes_Img},
-                    ExternalImageId=cedula, # Usamos la cédula como ID clave
+                    ExternalImageId=cedula,
                     DetectionAttributes=['ALL'],
-                    QualityFilter='AUTO'
+                    # --- CORRECCIÓN 2: Calidad ALTA para evitar confusión de identidad ---
+                    QualityFilter='HIGH' 
                 )
-                print(" ✅ OK")
-                time.sleep(0.2) # Pequeña pausa para no saturar
+
+                # --- CORRECCIÓN 3: Indentación correcta del IF ---
+                if response['FaceRecords']:
+                    print(" ✅ OK (Cara indexada)")
+                else:
+                    print(" ⚠️ OJO: AWS rechazó la foto (mala calidad o sin rostro).")
+
+                time.sleep(0.2) # Pausa para no saturar
                 
             except Exception as e:
                 print(f" ❌ Error: {e}")
