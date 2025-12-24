@@ -281,7 +281,7 @@
         }
         .side-menu-header h3 { color: var(--primary); font-size: 1.3rem; margin: 0; font-weight: 700; }
         
-        /* NUEVO: ESTILO MEJORADO PARA EL BOTÓN CERRAR MENÚ */
+        /* BOTÓN CERRAR MENÚ (Estilo Mejorado) */
         .close-menu {
             background: transparent; border: none; font-size: 1.8rem;
             color: var(--text-sec); cursor: pointer;
@@ -371,7 +371,7 @@
             position: relative; z-index: 5;
         }
 
-        /* CORRECCIÓN: Scroll horizontal en móvil sin salirse */
+        /* Scroll horizontal en móvil sin salirse */
         .filter-group { 
             display: flex; gap: 10px; 
             overflow-x: auto; /* Permite scroll */
@@ -563,7 +563,7 @@
             animation: popIn 0.4s ease-out;
         }
 
-        /* NUEVO DISEÑO COMPACTO PARA EL HUB DE CONTACTO */
+        /* DISEÑO COMPACTO PARA EL HUB DE CONTACTO */
         .hub-grid { 
             display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 25px; 
         }
@@ -584,6 +584,8 @@
         .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(106,13,173,0.1); }
         .btn-submit { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 1.05rem; transition: 0.3s; }
         .btn-submit:hover { background: var(--primary-dark); transform: translateY(-2px); }
+        
+        /* FOOTER */
         footer {
             background: #1a1a1a; color: white; padding: 30px 20px;
             text-align: center; margin-top: auto; border-top: 4px solid var(--primary);
@@ -602,7 +604,7 @@
         .copyright { font-size: 0.85rem; color: #888; border-top: 1px solid #333; padding-top: 15px; }
 
         /* ==========================================================================
-           🔥 14. OPTIMIZACIÓN EXTREMA PARA CELULARES (MOBILE FIRST)
+           14. OPTIMIZACIÓN EXTREMA PARA CELULARES (MOBILE FIRST)
            ========================================================================== */
         @media (max-width: 768px) {
             /* HEADER MÓVIL (Con botón de tema visible) */
@@ -775,7 +777,7 @@
         <button class="lb-nav-btn lb-next" onclick="nextImage(event)" title="Siguiente"><i class="fas fa-chevron-right"></i></button>
         <div class="lb-content-wrapper" id="lightboxContent"></div>
         <div class="lb-actions-panel">
-            <a id="lbDownloadLink" href="#" download class="btn-lb-action" style="background:white; color:black;"><i class="fas fa-download"></i> Descargar</a>
+            <a id="lbDownloadLink" href="#" target="_blank" download class="btn-lb-action" style="background:white; color:black;"><i class="fas fa-download"></i> Descargar</a>
             <button class="btn-lb-action btn-lb-report" onclick="reportarEvidenciaActual()"><i class="fas fa-flag"></i> Reportar / No soy yo</button>
         </div>
     </div>
@@ -798,8 +800,7 @@
             <h3 style="color:var(--primary);">Subir Evidencia</h3>
             <form onsubmit="enviarSolicitud(event, 'SUBIDA')">
                 <div class="form-group"><label>Archivo</label><input type="file" id="fileUpload" class="form-control" required></div>
-                <div class="form-group"><label>Descripción</label><input type="text" id="descUpload" class="form-control"></div>
-                <button type="submit" class="btn-submit">Enviar</button>
+                <button type="submit" class="btn-submit">Enviar para Revisión</button>
                 <button type="button" class="btn-submit" onclick="cambiarModal('modalUpload', 'modalContactHub')" style="background:transparent; color:#666; border:1px solid #ddd;">Volver</button>
             </form>
         </div>
@@ -809,8 +810,11 @@
         <div class="modal-card">
             <h3 style="color:var(--error);">Reportar Error</h3>
             <form onsubmit="enviarSolicitud(event, 'ERROR')">
-                <div class="form-group"><textarea id="descError" class="form-control" rows="4" required></textarea></div>
-                <button type="submit" class="btn-submit" style="background:var(--error);">Enviar</button>
+                <div class="form-group">
+                    <label>Describe el error:</label>
+                    <textarea id="descError" class="form-control" rows="4" placeholder="Incluye tu email o teléfono aquí para contactarte." required></textarea>
+                </div>
+                <button type="submit" class="btn-submit" style="background:var(--error);">Enviar Reporte</button>
                 <button type="button" class="btn-submit" onclick="cambiarModal('modalReport', 'modalContactHub')" style="background:transparent; color:#666; border:1px solid #ddd;">Volver</button>
             </form>
         </div>
@@ -820,8 +824,11 @@
         <div class="modal-card">
             <h3 style="color:var(--warning);">Problema Cuenta</h3>
             <form onsubmit="enviarSolicitud(event, 'PROBLEMA')">
-                <div class="form-group"><textarea id="descProblem" class="form-control" rows="4" required></textarea></div>
-                <button type="submit" class="btn-submit" style="background:var(--warning); color:black;">Enviar</button>
+                <div class="form-group">
+                    <label>Detalles del problema:</label>
+                    <textarea id="descProblem" class="form-control" rows="4" placeholder="Ej: No puedo ver mis fotos. (Incluye tu contacto)" required></textarea>
+                </div>
+                <button type="submit" class="btn-submit" style="background:var(--warning); color:black;">Enviar Solicitud</button>
                 <button type="button" class="btn-submit" onclick="cambiarModal('modalProblem', 'modalContactHub')" style="background:transparent; color:#666; border:1px solid #ddd;">Volver</button>
             </form>
         </div>
@@ -848,15 +855,20 @@
     </footer>
 
     <script>
+        // URL DE PRODUCCIÓN
         const API_URL = "https://proyecto-de-grado-oficial-production.up.railway.app";
         
         let appState = {
-            galeria: [], filtrada: [], seleccionados: [],
-            modoSeleccion: false, indiceLightbox: 0, notificaciones: []
+            galeria: [], 
+            filtrada: [], 
+            seleccionados: [],
+            modoSeleccion: false, 
+            indiceLightbox: 0, 
+            notificaciones: []
         };
 
+        // Variables para Swipe y Long Press
         let pressTimer, isPressing = false;
-        // Variables para Swipe
         let touchStartX = 0;
         let touchEndX = 0;
 
@@ -868,35 +880,83 @@
                 document.getElementById('closeMenu').onclick = toggleMenu;
                 document.getElementById('overlayMenu').onclick = toggleMenu;
                 window.addEventListener('scroll', handleScroll);
-                cargarNotificacionesSimuladas();
-                setupLightboxNavigation(); // Iniciar eventos Swipe/Teclado
+                
+                // Inicializar navegación del Lightbox
+                setupLightboxNavigation(); 
             } catch (error) { console.error("Error init:", error); }
         });
 
-        // 1. SCROLL & FAB
-        function handleScroll() {
-            const toolbar = document.getElementById('mainToolbar');
-            const floatBtn = document.getElementById('floatingSelectBtn');
-            if(!toolbar || !floatBtn) return;
+        // =========================================================================
+        // 1. GESTIÓN DE NOTIFICACIONES Y DATOS
+        // =========================================================================
+        
+        function verificarAuth() {
+            const cedula = localStorage.getItem('usuario_cedula');
+            if (!cedula) return window.location.href = 'index.html';
+            cargarDatos(cedula);
+        }
+
+        async function cargarDatos(cedula) {
+            const fd = new FormData();
+            fd.append('cedula', cedula);
+            // Si existe contraseña guardada, la enviamos (opcional según backend)
+            if(localStorage.getItem('usuario_contrasena')) fd.append('contrasena', localStorage.getItem('usuario_contrasena'));
             
-            const rect = toolbar.getBoundingClientRect();
-            // Si el modo selección está activo, ocultar FAB, si no, verificar scroll
-            if (appState.modoSeleccion) {
-                floatBtn.classList.add('hidden');
-            } else if (rect.bottom < 0) {
-                floatBtn.classList.remove('hidden');
-                floatBtn.classList.add('visible');
-            } else {
-                floatBtn.classList.remove('visible');
+            try {
+                const res = await fetch(`${API_URL}/buscar_estudiante`, { method: "POST", body: fd });
+                const data = await res.json();
+                
+                if (data.encontrado) {
+                    actualizarUI(data.datos);
+                    generarNotificaciones(data.datos); // Generamos notis basadas en los datos reales
+                } else { 
+                    alert("Sesión expirada o usuario no encontrado"); 
+                    cerrarSesion(); 
+                }
+            } catch (e) { 
+                console.error("Error conexión:", e);
+                alert("Error de conexión con el servidor. Verifica tu internet."); 
             }
         }
 
-        // 2. NOTIFICACIONES
-        function cargarNotificacionesSimuladas() {
-            appState.notificaciones = [
-                { id: 1, titulo: "Solicitud Aprobada", mensaje: "Tu foto fue aprobada.", tipo: "success", fecha: "Hace 2h", leida: false },
-                { id: 2, titulo: "Solicitud Rechazada", mensaje: "Archivo no válido.", tipo: "error", fecha: "Ayer", leida: false }
-            ];
+        function actualizarUI(datos) {
+            document.getElementById('userNameDisplay').textContent = `${datos.nombre.split(' ')[0]} ${datos.apellido.split(' ')[0]}`;
+            document.getElementById('userCedulaDisplay').textContent = `C.I: ${datos.cedula || localStorage.getItem('usuario_cedula')}`;
+            if(datos.url_foto) document.getElementById('profilePhoto').src = datos.url_foto;
+            
+            // Mapeo de evidencias
+            appState.galeria = (datos.galeria || []).map(item => ({
+                id: item.id, 
+                url: item.url || item.url_foto, 
+                tipo: obtenerTipo(item.url || item.url_foto)
+            }));
+            filtrarGaleria('todo');
+        }
+
+        function generarNotificaciones(datos) {
+            // NOTA: Como el backend no tiene un endpoint de "historial de notificaciones" para el alumno,
+            // generamos una notificación de estado basada en la carga exitosa de datos.
+            appState.notificaciones = [];
+            
+            if (appState.galeria.length > 0) {
+                appState.notificaciones.push({
+                    id: 1,
+                    titulo: "Datos Sincronizados",
+                    mensaje: `Tienes ${appState.galeria.length} evidencias aprobadas y visibles.`,
+                    tipo: "success",
+                    fecha: "Ahora",
+                    leida: false
+                });
+            } else {
+                appState.notificaciones.push({
+                    id: 0,
+                    titulo: "Bienvenido",
+                    mensaje: "Tu perfil está activo. Aún no tienes evidencias aprobadas.",
+                    tipo: "info",
+                    fecha: "Ahora",
+                    leida: false
+                });
+            }
             renderNotificaciones();
         }
 
@@ -904,22 +964,30 @@
             const lista = document.getElementById('notisList');
             const badge = document.getElementById('notisBadge');
             const noLeidas = appState.notificaciones.filter(n => !n.leida).length;
+            
             badge.style.display = noLeidas > 0 ? 'flex' : 'none';
             badge.textContent = noLeidas;
             lista.innerHTML = '';
             
             if(appState.notificaciones.length === 0) {
-                lista.innerHTML = `<div class="notis-empty"><i class="far fa-bell-slash"></i><p>Sin notificaciones</p></div>`;
+                lista.innerHTML = `<div class="notis-empty" style="padding:20px;text-align:center;color:#999;"><i class="fas fa-bell-slash" style="font-size:2rem;margin-bottom:10px;"></i><p>Sin notificaciones</p></div>`;
                 return;
             }
 
             appState.notificaciones.forEach(notis => {
                 const item = document.createElement('div');
                 item.className = `noti-item ${notis.leida ? '' : 'unread'}`;
+                // Iconos según tipo
                 let icon = notis.tipo === 'success' ? '<i class="fas fa-check" style="color:var(--secondary)"></i>' : 
                            notis.tipo === 'error' ? '<i class="fas fa-times" style="color:var(--error)"></i>' : 
                            '<i class="fas fa-info" style="color:var(--primary)"></i>';
-                item.innerHTML = `<div class="noti-icon">${icon}</div><div class="noti-content"><h4>${notis.titulo}</h4><p>${notis.mensaje}</p><span class="noti-time">${notis.fecha}</span></div>`;
+                
+                item.innerHTML = `<div class="noti-icon">${icon}</div>
+                                  <div class="noti-content">
+                                    <h4>${notis.titulo}</h4>
+                                    <p>${notis.mensaje}</p>
+                                    <span class="noti-time">${notis.fecha}</span>
+                                  </div>`;
                 lista.appendChild(item);
             });
         }
@@ -930,35 +998,128 @@
             renderNotificaciones();
         }
 
-        // 3. AUTH & DATOS
-        function verificarAuth() {
-            const cedula = localStorage.getItem('usuario_cedula');
-            if (!cedula) return window.location.href = 'index.html';
-            cargarDatos(cedula);
+        // =========================================================================
+        // 2. LÓGICA DE DESCARGAS Y FORMULARIOS (CONECTADO AL BACKEND)
+        // =========================================================================
+
+        async function descargarSeleccionados() {
+            if (appState.seleccionados.length === 0) return alert("Selecciona al menos un archivo.");
+            
+            const btn = document.querySelector('.btn-float');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+            
+            try {
+                const formData = new FormData();
+                formData.append('ids', appState.seleccionados.join(','));
+
+                // Endpoint de main.py: /descargar_seleccion_zip
+                const res = await fetch(`${API_URL}/descargar_seleccion_zip`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (res.ok) {
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `Evidencias_Seleccion_${new Date().getTime()}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    cancelarSeleccion(); // Salir del modo selección tras descargar
+                } else {
+                    const errorData = await res.json();
+                    alert("Error descargando: " + (errorData.detail || "Error desconocido"));
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Error de red al intentar descargar.");
+            } finally {
+                btn.innerHTML = originalText;
+            }
         }
 
-        async function cargarDatos(cedula) {
+        async function enviarSolicitud(e, tipo) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerText;
+            btn.innerText = "Enviando...";
+            btn.disabled = true;
+
+            const cedula = localStorage.getItem('usuario_cedula');
+            const formData = new FormData();
+            formData.append('cedula', cedula);
+
+            let endpoint = "";
+
+            try {
+                if (tipo === 'SUBIDA') {
+                    // Endpoint: /solicitar_subida
+                    const fileInput = document.getElementById('fileUpload');
+                    if(fileInput.files.length > 0) {
+                        formData.append('archivo', fileInput.files[0]);
+                        endpoint = "/solicitar_subida";
+                    } else { throw new Error("Debes seleccionar un archivo"); }
+                } 
+                else if (tipo === 'ERROR' || tipo === 'PROBLEMA') {
+                    // Endpoint: /solicitar_recuperacion (Usado como contacto general)
+                    // Como el backend pide 'email' y 'mensaje', usaremos la cédula como email ficticio
+                    // para identificar al usuario, y pondremos el contacto real en el mensaje.
+                    const desc = tipo === 'ERROR' ? document.getElementById('descError').value : document.getElementById('descProblem').value;
+                    const mensajeCompleto = `${tipo}: ${desc}`;
+                    
+                    formData.append('email', `${cedula}@sistema.com`); // Placeholder requerido por backend
+                    formData.append('mensaje', mensajeCompleto);
+                    endpoint = "/solicitar_recuperacion";
+                }
+
+                const res = await fetch(`${API_URL}${endpoint}`, { method: 'POST', body: formData });
+                const data = await res.json();
+
+                if (data.status === "ok" || data.mensaje) {
+                    alert("Solicitud enviada con éxito. El administrador revisará tu caso.");
+                    cerrarModal(tipo === 'SUBIDA' ? 'modalUpload' : (tipo === 'ERROR' ? 'modalReport' : 'modalProblem'));
+                    cerrarModal('modalContactHub'); // Cerrar el Hub también
+                } else {
+                    alert("Error: " + (data.mensaje || "No se pudo enviar"));
+                }
+
+            } catch (error) {
+                console.error(error);
+                alert("Ocurrió un error al enviar la solicitud.");
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        }
+        
+        // Reportar evidencia individual (desde Lightbox)
+        async function reportarEvidenciaActual() {
+            const item = appState.filtrada[appState.indiceLightbox];
+            if(!confirm("¿Deseas reportar esta evidencia como errónea o que no te pertenece?")) return;
+            
+            const cedula = localStorage.getItem('usuario_cedula');
             const fd = new FormData();
             fd.append('cedula', cedula);
-            if(localStorage.getItem('usuario_contrasena')) fd.append('contrasena', localStorage.getItem('usuario_contrasena'));
+            fd.append('id_evidencia', item.id);
+            fd.append('motivo', "Reporte desde visor: No soy yo / Error");
+
             try {
-                const res = await fetch(`${API_URL}/buscar_estudiante`, { method: "POST", body: fd });
+                // Endpoint: /reportar_evidencia
+                const res = await fetch(`${API_URL}/reportar_evidencia`, { method: 'POST', body: fd });
                 const data = await res.json();
-                if (data.encontrado) actualizarUI(data.datos);
-                else { alert("Sesión expirada"); cerrarSesion(); }
-            } catch (e) { alert("Error de conexión"); }
+                if(data.status === 'ok') alert("Reporte enviado correctamente.");
+                else alert("Error enviando reporte.");
+            } catch(e) { alert("Error de conexión"); }
         }
 
-        function actualizarUI(datos) {
-            document.getElementById('userNameDisplay').textContent = `${datos.nombre.split(' ')[0]} ${datos.apellido.split(' ')[0]}`;
-            document.getElementById('userCedulaDisplay').textContent = `C.I: ${datos.cedula || localStorage.getItem('usuario_cedula')}`;
-            if(datos.url_foto) document.getElementById('profilePhoto').src = datos.url_foto;
-            appState.galeria = (datos.galeria || []).map(item => ({
-                id: item.id, url: item.url || item.url_foto, tipo: obtenerTipo(item.url || item.url_foto)
-            }));
-            filtrarGaleria('todo');
-        }
-
+        // =========================================================================
+        // 3. UTILIDADES GALERÍA Y VISUALIZACIÓN
+        // =========================================================================
+        
         function obtenerTipo(url) {
             if(!url) return 'documento';
             const ext = url.split('?')[0].split('.').pop().toLowerCase();
@@ -967,7 +1128,6 @@
             return 'documento';
         }
 
-        // 4. GALERÍA
         function filtrarGaleria(filtro, btn) {
             if(btn) {
                 document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
@@ -990,6 +1150,7 @@
                 card.style.animationDelay = `${idx * 40}ms`;
                 
                 card.onclick = () => handleClick(item.id, idx);
+                // Eventos Touch para selección (Long Press)
                 card.addEventListener('touchstart', (e) => handleTouchStart(e, item.id), {passive: true});
                 card.addEventListener('touchend', handleTouchEnd);
                 card.addEventListener('touchmove', handleTouchMove);
@@ -1012,10 +1173,30 @@
             document.getElementById('countSelection').textContent = appState.seleccionados.length;
         }
 
-        // 5. INTERACCIÓN
         function handleClick(id, idx) {
             if(appState.modoSeleccion) toggleItemSeleccion(id);
             else abrirLightbox(idx);
+        }
+
+        // =========================================================================
+        // 4. INTERACCIÓN TOUCH Y SCROLL
+        // =========================================================================
+        
+        function handleScroll() {
+            const toolbar = document.getElementById('mainToolbar');
+            const floatBtn = document.getElementById('floatingSelectBtn');
+            if(!toolbar || !floatBtn) return;
+            
+            const rect = toolbar.getBoundingClientRect();
+            // Si el modo selección está activo, ocultar FAB. Si no, mostrarlo al bajar.
+            if (appState.modoSeleccion) {
+                floatBtn.classList.add('hidden');
+            } else if (rect.bottom < 0) {
+                floatBtn.classList.remove('hidden');
+                floatBtn.classList.add('visible');
+            } else {
+                floatBtn.classList.remove('visible');
+            }
         }
 
         function handleTouchStart(e, id) {
@@ -1058,17 +1239,18 @@
             document.querySelectorAll('.evidence-card.selected').forEach(e => e.classList.remove('selected'));
             document.getElementById('countSelection').textContent = '0';
             
-            // Corrección Glitch: Asegurar que el contenedor pierda la clase y el scroll se recalcule
             const container = document.getElementById('galleryContainer');
             if(container) container.classList.remove('selection-mode-active');
             
-            // Forzar actualización del botón flotante
             const fab = document.getElementById('floatingSelectBtn');
-            if(fab) fab.classList.remove('hidden'); // Quitar hidden primero
-            handleScroll(); // Verificar si debe ser visible por scroll
+            if(fab) fab.classList.remove('hidden');
+            handleScroll();
         }
 
-        // 6. LIGHTBOX CON GESTOS Y TECLADO
+        // =========================================================================
+        // 5. LIGHTBOX (VISOR)
+        // =========================================================================
+
         function setupLightboxNavigation() {
             // Teclado
             document.addEventListener('keydown', (e) => {
@@ -1118,24 +1300,27 @@
             const btn = document.getElementById('lbDownloadLink');
             wrap.innerHTML = '';
             
-            // Animación suave al cambiar
+            // Animación suave
             wrap.style.opacity = '0';
             setTimeout(() => {
                 if(item.tipo === 'imagen') {
                     const img = document.createElement('img'); img.src = item.url; img.className = 'lb-media-item'; wrap.appendChild(img);
                 } else if(item.tipo === 'video') {
                     const vid = document.createElement('video'); vid.src = item.url; vid.controls = true; vid.className = 'lb-media-item'; wrap.appendChild(vid);
-                } else wrap.innerHTML = '<div style="color:white;text-align:center;">Documento</div>';
+                } else wrap.innerHTML = '<div style="color:white;text-align:center;">Documento (Vista previa no disponible)</div>';
                 
                 wrap.style.opacity = '1';
             }, 100);
 
-            btn.href = item.url;
+            btn.href = item.url; // Enlace directo para descarga simple
         }
         function nextImage(e) { if(e) e.stopPropagation(); appState.indiceLightbox = (appState.indiceLightbox+1)%appState.filtrada.length; actualizarLightbox(); }
         function prevImage(e) { if(e) e.stopPropagation(); appState.indiceLightbox = (appState.indiceLightbox-1+appState.filtrada.length)%appState.filtrada.length; actualizarLightbox(); }
 
-        // 7. UTILS
+        // =========================================================================
+        // 6. FUNCIONES BASE (TEMA, MODALES)
+        // =========================================================================
+
         function toggleTheme() {
             document.body.classList.toggle('dark-mode');
             localStorage.setItem('global_theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
@@ -1151,12 +1336,21 @@
         function cerrarSesion() { localStorage.clear(); window.location.href = 'index.html'; }
         
         function cerrarModal(id) { document.getElementById(id).classList.remove('active'); }
-        function abrirHubContacto() { cerrarModal('overlayMenu'); document.getElementById('sideMenu').classList.remove('active'); document.getElementById('modalContactHub').classList.add('active'); }
+        function abrirHubContacto() { 
+            cerrarModal('overlayMenu'); 
+            document.getElementById('sideMenu').classList.remove('active'); 
+            document.getElementById('modalContactHub').classList.add('active'); 
+        }
         function cambiarModal(o, d) { cerrarModal(o); document.getElementById(d).classList.add('active'); }
         
         window.onclick = function(e) {
             if(e.target.classList.contains('modal-overlay')) e.target.classList.remove('active');
             if(!e.target.closest('.btn-icon-header') && !e.target.closest('.notis-dropdown')) document.getElementById('notisDropdown').classList.remove('active');
+        }
+        
+        // Función específica para Reportar múltiples desde la barra flotante (opcional, no tiene endpoint específico masivo pero se puede iterar)
+        function reportarSeleccionados() {
+           alert("Por favor, reporta las evidencias individualmente desde el visor para detallar el problema de cada una.");
         }
     </script>
 </body>
