@@ -13,65 +13,91 @@
 
     <style>
         /* ==========================================================================
-           1. CONFIGURACIÓN DEL NÚCLEO (DESIGN TOKENS)
+           1. SISTEMA DE DISEÑO (DESIGN TOKENS & VARIABLES)
            ========================================================================== */
         :root {
-            /* Identidad de Marca Institucional */
-            --primary: #6A0DAD;       /* Morado Principal */
-            --primary-dark: #4a0072;  /* Morado Oscuro para interacciones */
-            --secondary: #2E8B57;     /* Verde Éxito/Confirmación */
+            /* PALETA DE COLORES INSTITUCIONAL
+               Definición de colores base para mantener la identidad de marca.
+            */
+            --primary: #6A0DAD;       /* Morado Principal (Brand Color) */
+            --primary-dark: #4a0072;  /* Variante oscura para estados Hover/Active */
+            --primary-light: #9d46ff; /* Variante clara para acentos */
+            
+            --secondary: #2E8B57;     /* Verde Éxito (Confirmaciones, Descargas) */
             --secondary-hover: #1e5e3a;
-            --error: #d32f2f;         /* Rojo Error/Reporte */
-            --warning: #f9a825;       /* Amarillo Alerta */
+            
+            --error: #d32f2f;         /* Rojo Semántico (Errores, Reportes, Peligro) */
+            --warning: #f9a825;       /* Amarillo Alerta (Advertencias) */
             --info: #0288d1;          /* Azul Información */
             
-            /* Paleta de Interfaz (Modo Claro) */
-            --bg-body: #f4f6f9;
-            --bg-card: #ffffff;
-            --bg-header: #ffffff;
-            --text-main: #333333;
-            --text-sec: #555555;
-            --text-muted: #888888;
-            --border-color: #e0e0e0;
-            --input-bg: #f9f9f9;
+            /* COLORES DE INTERFAZ (MODO CLARO - DEFAULT)
+               Estas variables controlan el fondo y texto de la aplicación.
+            */
+            --bg-body: #f4f6f9;       /* Fondo general de la página */
+            --bg-card: #ffffff;       /* Fondo de tarjetas y contenedores */
+            --bg-header: #ffffff;     /* Fondo de la barra de navegación */
+            --bg-sidebar: #ffffff;    /* Fondo del menú lateral */
             
-            /* Efectos Visuales, Sombras y Vidrio */
+            --text-main: #333333;     /* Texto principal (Títulos, Párrafos) */
+            --text-sec: #555555;      /* Texto secundario (Descripciones) */
+            --text-muted: #888888;    /* Texto terciario (Fechas, Metadatos) */
+            
+            --border-color: #e0e0e0;  /* Color de bordes y separadores */
+            --input-bg: #f9f9f9;      /* Fondo de campos de formulario */
+            
+            /* EFECTOS VISUALES & SOMBRAS
+               Variables para elevación y profundidad (Material Design inspired)
+            */
             --shadow-soft: 0 4px 12px rgba(0,0,0,0.08);
             --shadow-hover: 0 15px 30px rgba(106, 13, 173, 0.15);
             --shadow-float: 0 10px 25px rgba(0,0,0,0.2);
+            --shadow-card: 0 2px 8px rgba(0,0,0,0.05);
+            
             --glass-bg: rgba(255, 255, 255, 0.95);
             --glass-backdrop: blur(12px);
             
-            /* Dimensiones y Transiciones */
+            /* DIMENSIONES & TRANSICIONES
+               Constantes para mantener consistencia en el layout.
+            */
             --header-height: 80px;
+            --header-height-mobile: 65px;
             --border-radius: 16px;
             --transition-speed: 0.3s;
+            --transition-bounce: cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
         /* ==========================================================================
            2. MODO OSCURO (DARK MODE OVERRIDES)
            ========================================================================== */
         body.dark-mode {
+            /* Redefinición de variables para el tema oscuro */
             --bg-body: #121212;
             --bg-card: #1e1e1e;
             --bg-header: #1e1e1e;
+            --bg-sidebar: #1e1e1e;
+            
             --text-main: #e0e0e0;
             --text-sec: #b0b0b0;
             --text-muted: #666666;
+            
             --border-color: #333333;
             --input-bg: #2d2d2d;
+            
             --shadow-soft: 0 4px 12px rgba(0,0,0,0.5);
             --shadow-hover: 0 15px 30px rgba(0,0,0,0.6);
+            
             --glass-bg: rgba(30, 30, 30, 0.95);
         }
 
-        /* RESET & BASE STYLES */
+        /* ==========================================================================
+           3. RESET & ESTILOS BASE
+           ========================================================================== */
         * { 
             margin: 0; 
             padding: 0; 
             box-sizing: border-box; 
             outline: none; 
-            -webkit-tap-highlight-color: transparent; 
+            -webkit-tap-highlight-color: transparent; /* Elimina flash azul en móviles */
         }
         
         body {
@@ -83,168 +109,250 @@
             min-height: 100vh;
             display: flex; 
             flex-direction: column;
-            overflow-x: hidden;
+            overflow-x: hidden; /* Previene scroll horizontal accidental */
         }
 
+        a { text-decoration: none; color: inherit; }
+        ul { list-style: none; }
+        button { font-family: inherit; }
+
+        /* Scrollbar Personalizado (Webkit) */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary-dark); }
+
         /* ==========================================================================
-           3. ANIMACIONES KEYFRAMES
+           4. ANIMACIONES (KEYFRAMES)
            ========================================================================== */
         
-        /* Entrada suave hacia arriba */
+        /* Fade In Up: Entrada suave hacia arriba para tarjetas */
         @keyframes fadeInUp {
             from { opacity: 0; transform: translate3d(0, 30px, 0); }
             to { opacity: 1; transform: translate3d(0, 0, 0); }
         }
 
-        /* Efecto Pop para Modales y Badges */
+        /* Pop In: Efecto de rebote para modales y badges */
         @keyframes popIn {
-            0% { opacity: 0; transform: scale(0.9); }
+            0% { opacity: 0; transform: scale(0.8); }
+            70% { opacity: 1; transform: scale(1.05); }
             100% { opacity: 1; transform: scale(1); }
         }
 
-        /* Rotación suave para el tema */
+        /* Rotate: Animación para cambio de tema */
         @keyframes rotateTheme { 
             0% { transform: rotate(0deg) scale(0.5); opacity:0; } 
             100% { transform: rotate(360deg) scale(1); opacity:1; } 
         }
-        .rotate-anim { animation: rotateTheme 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .rotate-anim { animation: rotateTheme 0.6s var(--transition-bounce); }
 
-        /* Spinner de Carga */
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* Entrada lateral para el botón flotante */
+        /* Slide In Right: Para menús laterales */
         @keyframes slideInRight {
-            from { transform: translateX(100px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
         }
-        
-        /* Clase de utilidad para animar elementos */
+
+        /* Spinner: Rotación infinita para cargas */
+        @keyframes spin { 
+            0% { transform: rotate(0deg); } 
+            100% { transform: rotate(360deg); } 
+        }
+
+        /* Clase utilitaria para activar animación via JS */
         .animate-enter {
             animation: fadeInUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-            opacity: 0;
+            opacity: 0; /* Invisible hasta que inicia */
         }
 
         /* ==========================================================================
-           4. HEADER & NAVEGACIÓN
+           5. HEADER & BARRA DE NAVEGACIÓN
            ========================================================================== */
         .main-header {
-            position: fixed; top: 0; left: 0; width: 100%;
+            position: fixed; 
+            top: 0; left: 0; 
+            width: 100%;
             height: var(--header-height);
             background: var(--bg-header);
             border-bottom: 3px solid var(--primary);
             box-shadow: var(--shadow-soft);
             z-index: 1000;
-            display: flex; align-items: center; justify-content: space-between;
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between;
             padding: 0 24px;
             transition: all 0.3s ease;
         }
 
         .logo-container img {
-            height: 55px; width: auto;
-            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            height: 55px; 
+            width: auto;
+            transition: transform 0.3s var(--transition-bounce);
         }
         .logo-container img:hover { transform: scale(1.08); }
 
         .header-actions {
-            display: flex; align-items: center; gap: 15px; position: relative;
+            display: flex; 
+            align-items: center; 
+            gap: 15px; 
+            position: relative;
         }
 
-        /* Botones Circulares del Header (Tema, Notis) */
+        /* Estilos Base de Botones del Header */
         .btn-icon-header {
-            background: transparent; border: 2px solid var(--primary);
-            color: var(--primary); width: 42px; height: 42px;
-            border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            font-size: 1.2rem; cursor: pointer; transition: 0.3s;
-            position: relative; /* Para el badge */
+            background: transparent; 
+            border: 2px solid var(--primary);
+            color: var(--primary); 
+            width: 42px; height: 42px;
+            border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; 
+            cursor: pointer; 
+            transition: 0.3s;
+            position: relative;
         }
-        .btn-icon-header:hover { background: var(--input-bg); transform: rotate(15deg); }
+        .btn-icon-header:hover { 
+            background: var(--input-bg); 
+            transform: rotate(15deg); 
+        }
 
-        /* Badge de Notificación (Puntito Rojo) */
+        /* Badge de Notificación */
         .noti-badge {
-            position: absolute; top: -5px; right: -5px;
-            background: var(--error); color: white;
-            font-size: 0.7rem; font-weight: bold;
-            width: 20px; height: 20px; border-radius: 50%;
+            position: absolute; 
+            top: -5px; right: -5px;
+            background: var(--error); 
+            color: white;
+            font-size: 0.7rem; 
+            font-weight: bold;
+            width: 20px; height: 20px; 
+            border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             border: 2px solid var(--bg-header);
-            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            animation: popIn 0.3s var(--transition-bounce);
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
 
-        /* Dropdown de Notificaciones */
+        /* Botón Salir (Visible en Desktop) */
+        .btn-logout-header {
+            background: var(--error); 
+            color: white; 
+            border: none;
+            padding: 0 25px; 
+            height: 42px; 
+            border-radius: 50px;
+            font-weight: 700; 
+            font-size: 0.95rem; 
+            cursor: pointer;
+            display: flex; align-items: center; gap: 10px; 
+            transition: 0.3s;
+            box-shadow: 0 4px 10px rgba(211, 47, 47, 0.2);
+        }
+        .btn-logout-header:hover { 
+            background: #b71c1c; 
+            transform: translateY(-2px); 
+            box-shadow: 0 6px 15px rgba(211, 47, 47, 0.3); 
+        }
+
+        /* Menú Hamburguesa */
+        .menu-toggle {
+            background: none; 
+            border: none; 
+            font-size: 1.8rem;
+            color: var(--primary); 
+            cursor: pointer;
+            width: 45px; height: 45px; 
+            display: flex; align-items: center; justify-content: center;
+            transition: transform 0.2s;
+        }
+        .menu-toggle:active { transform: scale(0.9); }
+
+        /* ==========================================================================
+           6. SISTEMA DE NOTIFICACIONES (DROPDOWN)
+           ========================================================================== */
         .notis-dropdown {
-            position: absolute; top: 60px; right: 60px; /* Ajustado */
-            width: 320px; max-height: 400px;
+            position: absolute; 
+            top: 60px; right: 0;
+            width: 340px; 
+            max-height: 450px;
             background: var(--bg-card);
             border: 1px solid var(--border-color);
             border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
             z-index: 1100;
-            display: none; flex-direction: column;
+            display: none; 
+            flex-direction: column;
             overflow: hidden;
             animation: fadeInUp 0.3s ease-out;
         }
         .notis-dropdown.active { display: flex; }
 
         .notis-header {
-            padding: 15px; border-bottom: 1px solid var(--border-color);
-            background: var(--input-bg); font-weight: bold;
+            padding: 15px; 
+            border-bottom: 1px solid var(--border-color);
+            background: var(--input-bg); 
+            font-weight: bold;
             display: flex; justify-content: space-between; align-items: center;
+            color: var(--text-main);
         }
-        .notis-header span { color: var(--primary); font-size: 0.9rem; }
+        .notis-header span { 
+            color: var(--primary); 
+            font-size: 0.85rem; 
+            cursor: pointer; 
+        }
+        .notis-header span:hover { text-decoration: underline; }
         
-        .notis-body { overflow-y: auto; flex: 1; }
+        .notis-body { 
+            overflow-y: auto; 
+            flex: 1; 
+        }
         
         .noti-item {
-            padding: 15px; border-bottom: 1px solid var(--border-color);
-            transition: 0.2s; cursor: pointer; display: flex; gap: 12px;
+            padding: 15px; 
+            border-bottom: 1px solid var(--border-color);
+            transition: 0.2s; 
+            cursor: pointer; 
+            display: flex; gap: 12px;
             align-items: start;
+            background: var(--bg-card);
         }
         .noti-item:hover { background: var(--input-bg); }
-        .noti-item.unread { background: rgba(106, 13, 173, 0.05); border-left: 3px solid var(--primary); }
-        .noti-icon { 
-            width: 30px; height: 30px; border-radius: 50%; background: #eee; 
-            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        .noti-item.unread { 
+            background: rgba(106, 13, 173, 0.04); 
+            border-left: 3px solid var(--primary); 
         }
-        .noti-content h4 { margin: 0 0 5px; font-size: 0.9rem; color: var(--text-main); }
-        .noti-content p { margin: 0 0 5px; font-size: 0.85rem; color: var(--text-sec); }
-        .noti-time { font-size: 0.75rem; color: var(--text-muted); }
+        
+        .noti-icon { 
+            width: 32px; height: 32px; 
+            border-radius: 50%; 
+            background: #eee; 
+            display: flex; align-items: center; justify-content: center; 
+            flex-shrink: 0;
+            font-size: 0.9rem;
+        }
+        
+        .noti-content h4 { margin: 0 0 4px; font-size: 0.95rem; color: var(--text-main); font-weight: 600; }
+        .noti-content p { margin: 0 0 6px; font-size: 0.85rem; color: var(--text-sec); line-height: 1.4; }
+        .noti-time { font-size: 0.75rem; color: var(--text-muted); display: block; }
 
         .notis-empty {
-            padding: 30px; text-align: center; color: var(--text-muted);
+            padding: 40px 20px; 
+            text-align: center; 
+            color: var(--text-muted);
         }
-        .notis-empty i { font-size: 2rem; margin-bottom: 10px; opacity: 0.5; }
-
-        /* Botón Salir */
-        .btn-logout-header {
-            background: var(--error); color: white; border: none;
-            padding: 0 25px; height: 42px; border-radius: 50px;
-            font-weight: 700; font-size: 0.95rem; cursor: pointer;
-            display: flex; align-items: center; gap: 10px; transition: 0.3s;
-            box-shadow: 0 4px 10px rgba(211, 47, 47, 0.2);
-        }
-        .btn-logout-header:hover { background: #b71c1c; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(211, 47, 47, 0.3); }
-
-        /* Hamburguesa */
-        .menu-toggle {
-            background: none; border: none; font-size: 1.8rem;
-            color: var(--primary); cursor: pointer;
-            width: 45px; height: 45px; display: flex; align-items: center; justify-content: center;
-            transition: transform 0.2s;
-        }
-        .menu-toggle:active { transform: scale(0.9); }
+        .notis-empty i { font-size: 2.5rem; margin-bottom: 15px; opacity: 0.3; }
 
         /* ==========================================================================
-           5. MENÚ LATERAL (SIDEBAR)
+           7. MENÚ LATERAL (SIDEBAR)
            ========================================================================== */
         .side-menu {
-            position: fixed; top: 0; right: -320px;
+            position: fixed; 
+            top: 0; right: -320px;
             width: 300px; height: 100vh;
-            background: var(--bg-card);
+            background: var(--bg-sidebar);
             box-shadow: -5px 0 30px rgba(0,0,0,0.3);
             z-index: 2000;
             transition: right 0.4s cubic-bezier(0.77, 0, 0.175, 1);
-            padding: 25px; display: flex; flex-direction: column;
+            padding: 25px; 
+            display: flex; flex-direction: column;
         }
         .side-menu.active { right: 0; }
 
@@ -255,16 +363,29 @@
         }
         .side-menu-header h3 { color: var(--primary); font-size: 1.3rem; margin: 0; font-weight: 700; }
         
-        .menu-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+        .menu-list { list-style: none; display: flex; flex-direction: column; gap: 10px; flex: 1; }
         .menu-btn {
-            width: 100%; text-align: left; background: transparent; border: none;
-            padding: 15px 20px; font-size: 1.05rem; color: var(--text-main);
+            width: 100%; text-align: left; 
+            background: transparent; border: none;
+            padding: 15px 20px; 
+            font-size: 1.05rem; color: var(--text-main);
             border-radius: 12px; cursor: pointer;
-            display: flex; align-items: center; gap: 15px; transition: 0.3s;
+            display: flex; align-items: center; gap: 15px; 
+            transition: 0.3s;
             font-weight: 500;
         }
-        .menu-btn:hover { background: var(--input-bg); color: var(--primary); transform: translateX(5px); }
-        .menu-btn i { width: 25px; text-align: center; color: var(--primary); font-size: 1.2rem; }
+        .menu-btn:hover { 
+            background: var(--input-bg); 
+            color: var(--primary); 
+            transform: translateX(5px); 
+        }
+        .menu-btn i { 
+            width: 25px; text-align: center; 
+            color: var(--primary); font-size: 1.2rem; 
+        }
+
+        /* Items exclusivos para móvil (inicialmente ocultos en Desktop) */
+        .mobile-only-menu-item { display: none; }
 
         .overlay-bg {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -274,7 +395,7 @@
         .overlay-bg.active { display: block; opacity: 1; }
 
         /* ==========================================================================
-           6. PERFIL HERO & ESTADO
+           8. CONTENIDO PRINCIPAL & PERFIL
            ========================================================================== */
         .container {
             width: 95%; max-width: 1250px; margin: 0 auto;
@@ -282,10 +403,13 @@
         }
 
         .profile-card {
-            background: var(--bg-card); border-radius: var(--border-radius);
-            padding: 40px; box-shadow: var(--shadow-soft);
+            background: var(--bg-card); 
+            border-radius: var(--border-radius);
+            padding: 40px; 
+            box-shadow: var(--shadow-soft);
             display: flex; align-items: center; gap: 40px;
-            border: 1px solid var(--border-color); margin-bottom: 40px;
+            border: 1px solid var(--border-color); 
+            margin-bottom: 40px;
             position: relative; overflow: hidden;
             animation: fadeInUp 0.8s ease-out;
         }
@@ -297,10 +421,13 @@
         }
 
         .profile-img {
-            width: 140px; height: 140px; border-radius: 50%;
-            object-fit: cover; border: 5px solid var(--bg-body);
+            width: 140px; height: 140px; 
+            border-radius: 50%;
+            object-fit: cover; 
+            border: 5px solid var(--bg-body);
             outline: 3px solid var(--primary);
-            background: white; box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            background: white; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
             z-index: 1;
         }
 
@@ -310,8 +437,10 @@
 
         .badge-active {
             background: rgba(46, 139, 87, 0.15); color: var(--secondary);
-            padding: 8px 16px; border-radius: 30px; font-size: 0.9rem; font-weight: bold;
-            display: inline-flex; align-items: center; gap: 8px; border: 1px solid rgba(46, 139, 87, 0.2);
+            padding: 8px 16px; border-radius: 30px; 
+            font-size: 0.9rem; font-weight: bold;
+            display: inline-flex; align-items: center; gap: 8px; 
+            border: 1px solid rgba(46, 139, 87, 0.2);
         }
 
         .btn-contact {
@@ -321,80 +450,110 @@
             display: flex; align-items: center; gap: 12px; font-size: 1rem;
             box-shadow: 0 4px 15px rgba(106, 13, 173, 0.3);
         }
-        .btn-contact:hover { background: var(--primary-dark); transform: translateY(-3px); box-shadow: 0 8px 20px rgba(106, 13, 173, 0.4); }
+        .btn-contact:hover { 
+            background: var(--primary-dark); 
+            transform: translateY(-3px); 
+            box-shadow: 0 8px 20px rgba(106, 13, 173, 0.4); 
+        }
 
         /* ==========================================================================
-           7. TOOLBAR & BOTÓN FLOTANTE LATERAL (FAB)
+           9. TOOLBAR DE FILTROS & SELECCIÓN
            ========================================================================== */
         .toolbar {
-            background: var(--bg-card); padding: 15px 25px;
-            border-radius: 50px; box-shadow: var(--shadow-soft);
-            border: 1px solid var(--border-color); margin-bottom: 30px;
-            display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 20px;
+            background: var(--bg-card); 
+            padding: 15px 25px;
+            border-radius: 50px; 
+            box-shadow: var(--shadow-soft);
+            border: 1px solid var(--border-color); 
+            margin-bottom: 30px;
+            display: flex; flex-wrap: wrap; 
+            justify-content: space-between; align-items: center; gap: 20px;
             animation: fadeInUp 1s ease-out 0.2s backwards;
             position: relative; z-index: 5;
         }
 
-        .filter-group { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
+        .filter-group { 
+            display: flex; gap: 10px; 
+            overflow-x: auto; padding-bottom: 5px; 
+            scrollbar-width: none; 
+        }
         .filter-group::-webkit-scrollbar { display: none; }
 
         .filter-pill {
-            background: var(--input-bg); border: 1px solid var(--border-color);
-            color: var(--text-sec); padding: 10px 22px; border-radius: 30px;
-            cursor: pointer; font-size: 0.95rem; white-space: nowrap; transition: 0.3s;
-            font-weight: 500;
+            background: var(--input-bg); 
+            border: 1px solid var(--border-color);
+            color: var(--text-sec); 
+            padding: 10px 22px; 
+            border-radius: 30px;
+            cursor: pointer; font-size: 0.95rem; white-space: nowrap; 
+            transition: 0.3s; font-weight: 500;
         }
         .filter-pill:hover, .filter-pill.active {
-            background: var(--primary); color: white; border-color: var(--primary);
-            transform: translateY(-2px); box-shadow: 0 4px 12px rgba(106, 13, 173, 0.2);
+            background: var(--primary); 
+            color: white; border-color: var(--primary);
+            transform: translateY(-2px); 
+            box-shadow: 0 4px 12px rgba(106, 13, 173, 0.2);
         }
 
         .btn-select-desktop {
-            background: transparent; border: 2px solid var(--primary);
-            color: var(--primary); padding: 8px 24px; border-radius: 30px;
-            font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 10px;
+            background: transparent; 
+            border: 2px solid var(--primary);
+            color: var(--primary); 
+            padding: 8px 24px; 
+            border-radius: 30px;
+            font-weight: 700; 
+            cursor: pointer; 
+            display: flex; align-items: center; gap: 10px;
             transition: 0.3s;
         }
         .btn-select-desktop:hover, .btn-select-desktop.active { 
             background: var(--primary); color: white; 
         }
 
-        /* --- NUEVO: BOTÓN SELECCIÓN FLOTANTE LATERAL (FAB) --- */
+        /* ==========================================================================
+           10. BOTÓN FLOTANTE LATERAL (FAB)
+           ========================================================================== */
         .fab-selection {
             position: fixed;
-            bottom: 40px; right: 40px; /* Esquina inferior derecha */
-            width: 60px; height: 60px;
+            bottom: 40px; right: 40px;
+            width: 65px; height: 65px;
             background: var(--primary); color: white;
             border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.5rem;
+            font-size: 1.6rem;
             box-shadow: 0 10px 25px rgba(106, 13, 173, 0.4);
             cursor: pointer;
             z-index: 3000;
-            transform: translateY(100px); opacity: 0; /* Oculto inicialmente */
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform: translateY(150px); opacity: 0;
+            transition: all 0.4s var(--transition-bounce);
             border: 2px solid white;
         }
-        
-        /* Se activa via JS cuando el scroll pasa la toolbar */
         .fab-selection.visible { transform: translateY(0); opacity: 1; }
         .fab-selection:hover { transform: translateY(-5px) scale(1.1); background: var(--primary-dark); }
-        .fab-selection.hidden { transform: scale(0); opacity: 0; } /* Se oculta si el modo selección está activo */
+        .fab-selection.hidden { transform: scale(0); opacity: 0; }
 
         /* ==========================================================================
-           8. GRID DE EVIDENCIAS
+           11. GRID DE EVIDENCIAS
            ========================================================================== */
         .gallery-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 20px; min-height: 300px; padding-bottom: 100px; position: relative;
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px; 
+            min-height: 300px; 
+            padding-bottom: 120px; 
+            position: relative;
         }
 
         .evidence-card {
-            background: var(--bg-card); border-radius: 12px;
-            overflow: hidden; aspect-ratio: 1; position: relative;
-            cursor: pointer; box-shadow: var(--shadow-soft);
+            background: var(--bg-card); 
+            border-radius: 12px;
+            overflow: hidden; 
+            aspect-ratio: 1; 
+            position: relative;
+            cursor: pointer; 
+            box-shadow: var(--shadow-soft);
             border: 2px solid transparent;
-            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s;
+            transition: transform 0.3s var(--transition-bounce), box-shadow 0.3s;
             user-select: none;
         }
         .evidence-card:hover { transform: translateY(-8px); box-shadow: var(--shadow-hover); z-index: 2; }
@@ -413,7 +572,8 @@
         .selection-check {
             position: absolute; top: 12px; right: 12px;
             width: 28px; height: 28px;
-            background: rgba(255,255,255,0.95); border: 2px solid #ccc;
+            background: rgba(255,255,255,0.95); 
+            border: 2px solid #ccc;
             border-radius: 50%; color: var(--primary);
             display: none; align-items: center; justify-content: center;
             z-index: 10; font-size: 1rem;
@@ -422,7 +582,8 @@
         }
         
         .evidence-card.selected { 
-            border-color: var(--primary); transform: scale(0.95); 
+            border-color: var(--primary); 
+            transform: scale(0.95); 
             background: rgba(106, 13, 173, 0.05); 
         }
         .evidence-card.selected .selection-check { 
@@ -431,8 +592,8 @@
         .selection-mode-active .selection-check { display: flex; }
 
         .empty-state {
-            grid-column: 1 / -1; display: flex; flex-direction: column; 
-            align-items: center; justify-content: center;
+            grid-column: 1 / -1; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
             text-align: center; padding: 60px 20px;
             color: var(--text-sec); display: none;
             animation: fadeIn 0.5s; min-height: 300px;
@@ -441,12 +602,12 @@
         .empty-state h3 { font-size: 1.5rem; margin-bottom: 10px; }
 
         /* ==========================================================================
-           9. LIGHTBOX PRO (VISOR)
+           12. LIGHTBOX PRO (VISOR)
            ========================================================================== */
         .lightbox-modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--glass-bg); /* Usando var de tema */
-            background: rgba(0,0,0,0.92); /* Fallback oscuro preferido */
+            background: var(--glass-bg); /* Opcional: usar rgba para fondo oscuro */
+            background: rgba(0,0,0,0.92);
             backdrop-filter: var(--glass-backdrop);
             z-index: 5000; display: none;
             justify-content: center; align-items: center; flex-direction: column;
@@ -463,7 +624,7 @@
         .lb-media-item {
             max-width: 90%; max-height: 100%; border-radius: 8px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.6); object-fit: contain;
-            pointer-events: auto; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: auto; animation: popIn 0.4s var(--transition-bounce);
         }
 
         .lb-close-fixed {
@@ -494,7 +655,8 @@
         
         .btn-lb-action {
             padding: 12px 30px; border-radius: 30px; font-weight: bold;
-            cursor: pointer; text-decoration: none; display: flex; align-items: center; gap: 10px;
+            cursor: pointer; text-decoration: none; 
+            display: flex; align-items: center; gap: 10px;
             border: none; font-size: 1rem; transition: 0.3s;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
@@ -508,16 +670,19 @@
         .btn-lb-report:hover { background: #b71c1c; box-shadow: 0 6px 20px rgba(211, 47, 47, 0.6); }
 
         /* ==========================================================================
-           10. BARRA DE ACCIÓN INFERIOR (SELECCIÓN)
+           13. BARRA DE ACCIÓN INFERIOR (SELECCIÓN)
            ========================================================================== */
         .floating-bar {
-            position: fixed; bottom: 30px; left: 50%; transform: translate(-50%, 150%);
+            position: fixed; 
+            bottom: 30px; left: 50%; 
+            transform: translate(-50%, 150%);
             background: #222; color: white;
-            padding: 15px 30px; border-radius: 50px;
+            padding: 15px 30px; 
+            border-radius: 50px;
             display: flex; align-items: center; gap: 25px;
             box-shadow: 0 15px 50px rgba(0,0,0,0.6); z-index: 4000;
             width: 90%; max-width: 650px;
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: transform 0.4s var(--transition-bounce);
         }
         .floating-bar.active { transform: translate(-50%, 0); }
 
@@ -538,7 +703,7 @@
         .btn-float-cancel:hover { border-color: white; color: white; }
 
         /* ==========================================================================
-           11. MODALES & FOOTER
+           14. MODALES, FORMS & FOOTER
            ========================================================================== */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -591,45 +756,112 @@
         .copyright { font-size: 0.85rem; color: #888; border-top: 1px solid #333; padding-top: 15px; }
 
         /* ==========================================================================
-           12. ADAPTACIONES MÓVILES
+           🔥 15. OPTIMIZACIÓN EXTREMA PARA CELULARES (MOBILE FIRST REDESIGN)
            ========================================================================== */
         @media (max-width: 768px) {
-            .header-actions { gap: 10px; }
-            .btn-logout-header span { display: none; }
+            /* A. REDISEÑO DEL HEADER MÓVIL */
+            .main-header {
+                height: var(--header-height-mobile);
+                padding: 0 15px;
+            }
             
-            .profile-card { flex-direction: column; text-align: center; padding: 30px 20px; }
-            .profile-card::before { display: none; }
+            .header-actions { gap: 10px; }
+            
+            /* Ocultar elementos de escritorio en el Header */
+            .theme-toggle, .btn-logout-header {
+                display: none !important; /* Se mueven al Sidebar */
+            }
+            
+            /* Ajustar logo */
+            .logo-container img { height: 40px; }
+
+            /* B. NOTIFICACIONES EN MÓVIL (TIPO PANEL SUPERIOR) */
+            .notis-dropdown {
+                position: fixed; 
+                top: var(--header-height-mobile); 
+                left: 0; 
+                right: 0;
+                width: 100%; /* Ancho completo */
+                max-height: 60vh;
+                border-radius: 0 0 15px 15px;
+                border: none;
+                border-bottom: 1px solid var(--border-color);
+                box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            }
+
+            /* C. SIDEBAR (AHORA CON MÁS OPCIONES) */
+            .mobile-only-menu-item {
+                display: block; /* Mostrar elementos ocultos */
+                margin-top: 5px;
+                border-top: 1px solid var(--border-color);
+                padding-top: 10px;
+            }
+            
+            /* D. GRID Y CONTENIDO */
+            .container { padding: 20px 15px; }
+            .gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } /* 2 Columnas */
+            
+            .profile-card { 
+                flex-direction: column; 
+                text-align: center; 
+                padding: 25px 15px;
+                gap: 20px;
+            }
+            .profile-card::before { display: none; } /* Quitar decoración abstracta en móvil */
             .btn-contact { width: 100%; justify-content: center; }
 
-            .toolbar { justify-content: center; gap: 15px; padding: 15px; }
+            /* E. TOOLBAR Y FAB */
+            .toolbar { 
+                justify-content: center; 
+                gap: 15px; 
+                padding: 15px; 
+                border-radius: 12px;
+            }
             .filter-group { width: 100%; justify-content: center; }
+            .btn-select-desktop { display: none; } /* Ocultar btn desktop */
             
-            .btn-select-desktop { display: none; }
-            .fab-selection { bottom: 20px; right: 20px; width: 50px; height: 50px; font-size: 1.2rem; }
+            .fab-selection {
+                bottom: 25px; right: 25px; 
+                width: 55px; height: 55px; 
+                font-size: 1.4rem;
+            }
 
-            .gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-
-            .lb-nav-btn { display: none; } 
-            .lb-close-fixed { top: 20px; right: 20px; padding: 8px 15px; font-size: 0.9rem; }
+            /* F. LIGHTBOX TÁCTIL */
+            .lb-nav-btn { display: none; } /* Flechas fuera */
+            .lb-close-fixed { 
+                top: 15px; right: 15px; 
+                padding: 8px 15px; 
+                font-size: 0.9rem; 
+                background: rgba(0,0,0,0.6); /* Más contraste */
+            }
             .lb-media-item { max-width: 100%; border-radius: 0; }
             
-            .lb-actions-panel { flex-direction: column; width: 90%; gap: 15px; }
+            .lb-actions-panel { 
+                flex-direction: column; 
+                width: 90%; 
+                gap: 12px; 
+            }
             .btn-lb-action, .btn-lb-report { width: 100%; justify-content: center; }
 
+            /* G. BARRA FLOTANTE DE ACCIÓN (PEGAJOSA AL FONDO) */
             .floating-bar { 
-                flex-direction: column; width: 95%; 
-                padding: 20px; gap: 15px; bottom: 20px;
+                flex-direction: column; 
+                width: 100%; 
+                border-radius: 20px 20px 0 0;
+                padding: 20px; 
+                gap: 15px; 
+                bottom: 0; /* Pegado al fondo */
+                left: 0;
+                transform: translateY(100%); /* Oculto hacia abajo */
+                max-width: 100%;
             }
-            .floating-bar div { text-align: center; width: 100%; }
+            .floating-bar.active { transform: translateY(0); }
+            
+            .floating-bar div { text-align: center; width: 100%; margin-bottom: 5px; }
             .btn-float { width: 100%; justify-content: center; }
             
+            /* H. HUB MODAL EN MÓVIL */
             .hub-grid { grid-template-columns: 1fr; }
-            
-            /* Ajuste Dropdown Notificaciones Móvil */
-            .notis-dropdown {
-                position: fixed; top: 70px; right: 20px; left: 20px;
-                width: auto; max-height: 50vh;
-            }
         }
     </style>
 </head>
@@ -677,13 +909,22 @@
     <div class="overlay-bg" id="overlayMenu"></div>
     <div class="side-menu" id="sideMenu">
         <div class="side-menu-header">
-            <h3><i class="fas fa-user-graduate"></i> Menú Estudiante</h3>
+            <h3><i class="fas fa-user-graduate"></i> Menú</h3>
             <button class="close-menu" id="closeMenu">&times;</button>
         </div>
         <ul class="menu-list">
             <li><button class="menu-btn" onclick="location.reload()"><i class="fas fa-id-card"></i> Mi Perfil</button></li>
             <li><button class="menu-btn" onclick="window.location.href='index.html'"><i class="fas fa-home"></i> Inicio</button></li>
             <li><button class="menu-btn" onclick="abrirHubContacto()"><i class="fas fa-headset"></i> Soporte / Contacto</button></li>
+            
+            <div class="mobile-only-menu-item">
+                <li style="margin-bottom:10px;">
+                    <button class="menu-btn" onclick="toggleTheme()">
+                        <i class="fas fa-adjust"></i> Cambiar Tema
+                    </button>
+                </li>
+            </div>
+
             <li style="margin-top:auto; border-top:1px solid var(--border-color); padding-top:20px;">
                 <button class="menu-btn" onclick="cerrarSesion()" style="color:var(--error); font-weight:700;">
                     <i class="fas fa-power-off"></i> Cerrar Sesión
@@ -875,6 +1116,7 @@
             notificaciones: []   // Lista de notificaciones
         };
 
+        // Variables para Long Press
         let pressTimer;
         let isPressing = false;
 
@@ -883,7 +1125,7 @@
             initTheme();
             verificarAuth();
             
-            // Listeners Header/Menu
+            // Listeners Generales
             document.getElementById('menuToggle').onclick = toggleMenu;
             document.getElementById('closeMenu').onclick = toggleMenu;
             document.getElementById('overlayMenu').onclick = toggleMenu;
@@ -898,7 +1140,7 @@
                 }
             });
 
-            // Listener de Scroll para Botón Flotante
+            // Listener de Scroll (FAB)
             window.addEventListener('scroll', handleScroll);
 
             // Cargar notificaciones simuladas
@@ -906,14 +1148,14 @@
         });
 
         // =========================================================================
-        // 1. MANEJO DE SCROLL (BOTÓN FLOTANTE INTELIGENTE)
+        // 1. MANEJO DE SCROLL & FAB
         // =========================================================================
         function handleScroll() {
             const toolbar = document.getElementById('mainToolbar');
             const floatBtn = document.getElementById('floatingSelectBtn');
             const rect = toolbar.getBoundingClientRect();
 
-            // Si la toolbar ya no es visible (parte inferior < 0) Y no estamos en modo selección
+            // Si la toolbar ya no es visible Y no estamos en modo selección
             if (rect.bottom < 0 && !appState.modoSeleccion) {
                 floatBtn.classList.add('visible');
             } else {
@@ -925,7 +1167,6 @@
         // 2. SISTEMA DE NOTIFICACIONES
         // =========================================================================
         function cargarNotificacionesSimuladas() {
-            // Simulamos datos que vendrían del backend
             appState.notificaciones = [
                 { id: 1, titulo: "Solicitud Aprobada", mensaje: "El administrador aprobó tu foto de 'Feria de Ciencias'.", tipo: "success", fecha: "Hace 2 horas", leida: false },
                 { id: 2, titulo: "Solicitud Rechazada", mensaje: "Tu archivo 'video_broma.mp4' no cumple con las normas.", tipo: "error", fecha: "Ayer", leida: false },
@@ -939,7 +1180,6 @@
             const badge = document.getElementById('notisBadge');
             const noLeidas = appState.notificaciones.filter(n => !n.leida).length;
 
-            // Actualizar Badge
             if(noLeidas > 0) {
                 badge.style.display = 'flex';
                 badge.textContent = noLeidas;
@@ -958,7 +1198,6 @@
                 const item = document.createElement('div');
                 item.className = `noti-item ${notis.leida ? '' : 'unread'}`;
                 
-                // Icono según tipo
                 let iconHtml = '';
                 if(notis.tipo === 'success') iconHtml = '<i class="fas fa-check" style="color:var(--secondary)"></i>';
                 else if(notis.tipo === 'error') iconHtml = '<i class="fas fa-times" style="color:var(--error)"></i>';
@@ -981,7 +1220,6 @@
             dd.classList.toggle('active');
         }
 
-        // Cerrar notificaciones al hacer click fuera
         window.addEventListener('click', (e) => {
             const btn = e.target.closest('.btn-icon-header');
             const dd = document.getElementById('notisDropdown');
@@ -1017,19 +1255,15 @@
         }
 
         function actualizarUI(datos) {
-            // Nombres seguros
             const nombre = datos.nombre ? datos.nombre.split(' ')[0] : 'Estudiante';
             const apellido = datos.apellido ? datos.apellido.split(' ')[0] : '';
             document.getElementById('userNameDisplay').textContent = `${nombre} ${apellido}`;
 
-            // Cédula segura
             const cedulaReal = datos.cedula || localStorage.getItem('usuario_cedula') || '...';
             document.getElementById('userCedulaDisplay').textContent = `C.I: ${cedulaReal}`;
 
-            // Foto
             if(datos.url_foto) document.getElementById('profilePhoto').src = datos.url_foto;
 
-            // Galería
             appState.galeria = (datos.galeria || []).map(item => ({
                 id: item.id,
                 url: item.url || item.url_foto,
@@ -1048,7 +1282,7 @@
         }
 
         // =========================================================================
-        // 4. GALERÍA Y SELECCIÓN (SIN RECARGA)
+        // 4. GALERÍA & SELECCIÓN
         // =========================================================================
         function filtrarGaleria(filtro, btn) {
             if(btn) {
@@ -1074,11 +1308,11 @@
                 const card = document.createElement('div');
                 const isSelected = appState.seleccionados.includes(item.id);
                 
-                card.id = `ev-card-${item.id}`; // ID ÚNICO PARA MANIPULACIÓN DIRECTA
+                card.id = `ev-card-${item.id}`;
                 card.className = `evidence-card ${isSelected ? 'selected' : ''} animate-enter`;
                 card.style.animationDelay = `${idx * 40}ms`;
                 
-                // Eventos
+                // EVENTOS: CLICK + TOUCH (Long Press)
                 card.addEventListener('click', () => handleClick(item.id, idx));
                 card.addEventListener('touchstart', (e) => handleTouchStart(e, item.id), {passive: true});
                 card.addEventListener('touchend', handleTouchEnd);
@@ -1097,7 +1331,6 @@
             else container.classList.remove('selection-mode-active');
         }
 
-        // Lógica de Selección Directa (Sin renderGrid masivo)
         function toggleItemSeleccion(id) {
             const idx = appState.seleccionados.indexOf(id);
             const cardEl = document.getElementById(`ev-card-${id}`);
@@ -1114,7 +1347,7 @@
         }
 
         // =========================================================================
-        // 5. INTERACCIÓN Y GESTOS
+        // 5. INTERACCIÓN (TOUCH & CLICK)
         // =========================================================================
         function handleClick(id, idx) {
             if(appState.modoSeleccion) toggleItemSeleccion(id);
@@ -1135,12 +1368,11 @@
         function handleTouchMove() { clearTimeout(pressTimer); isPressing = false; }
 
         function entrarModoSeleccionDesdeMovil(idInicial) {
-            toggleModoSeleccion(true); // Activa modo
-            toggleItemSeleccion(idInicial); // Selecciona el primero
+            toggleModoSeleccion(true);
+            toggleItemSeleccion(idInicial);
         }
 
         function toggleModoSeleccion(forceActive = null) {
-            // Toggle lógico
             if(forceActive !== null) appState.modoSeleccion = forceActive;
             else appState.modoSeleccion = !appState.modoSeleccion;
 
@@ -1150,30 +1382,24 @@
             const fab = document.getElementById('floatingSelectBtn');
             
             if(appState.modoSeleccion) {
-                // ACTIVAR
                 bar.classList.add('active');
                 if(btn) { btn.classList.add('active'); btn.innerHTML = '<i class="fas fa-times"></i> Cancelar'; }
                 container.classList.add('selection-mode-active');
-                fab.classList.add('hidden'); // Ocultar el FAB
+                fab.classList.add('hidden');
             } else {
-                // DESACTIVAR
                 cancelarSeleccion();
-                fab.classList.remove('hidden'); // Restaurar el FAB si corresponde
-                handleScroll(); // Chequear si debe mostrarse
+                fab.classList.remove('hidden');
+                handleScroll();
             }
         }
 
         function cancelarSeleccion() {
             appState.modoSeleccion = false;
             appState.seleccionados = [];
-            
             document.getElementById('floatingBar').classList.remove('active');
             document.getElementById('galleryContainer').classList.remove('selection-mode-active');
-            
             const btn = document.getElementById('btnSelectMode');
             if(btn) { btn.classList.remove('active'); btn.innerHTML = '<i class="fas fa-check-square"></i> Seleccionar'; }
-            
-            // Limpieza visual rápida
             document.querySelectorAll('.evidence-card.selected').forEach(c => c.classList.remove('selected'));
             document.getElementById('countSelection').textContent = '0';
         }
@@ -1234,10 +1460,8 @@
             const btn = document.querySelector('#floatingBar .btn-float');
             const orig = btn.innerHTML;
             btn.innerHTML = '<div class="spinner"></div> ...';
-            
             const fd = new FormData();
             fd.append('ids', appState.seleccionados.join(','));
-            
             try {
                 const res = await fetch(`${API_URL}/descargar_seleccion_zip`, {method:'POST', body:fd});
                 if(res.ok) {
@@ -1278,22 +1502,19 @@
             document.body.classList.toggle('dark-mode');
             const isDark = document.body.classList.contains('dark-mode');
             localStorage.setItem('global_theme', isDark ? 'dark' : 'light');
-            const btn = document.getElementById('themeBtn');
-            const icon = btn.querySelector('i');
-            icon.classList.add('rotate-anim');
-            setTimeout(() => icon.classList.remove('rotate-anim'), 600);
             initTheme();
         }
 
         function initTheme() {
             const saved = localStorage.getItem('global_theme');
-            const icon = document.querySelector('#themeBtn i');
+            const btns = document.querySelectorAll('#themeBtn i, .mobile-only-menu-item i');
+            
             if(saved === 'dark') {
                 document.body.classList.add('dark-mode');
-                icon.className = 'fas fa-sun';
+                btns.forEach(i => i.className = 'fas fa-sun');
             } else {
                 document.body.classList.remove('dark-mode');
-                icon.className = 'fas fa-moon';
+                btns.forEach(i => i.className = 'fas fa-moon');
             }
         }
 
