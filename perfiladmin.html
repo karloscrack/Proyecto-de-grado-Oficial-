@@ -808,6 +808,22 @@
         </div>
     </div>
 
+    <!-- MODAL PARA VER EVIDENCIAS DE UN ESTUDIANTE (NUEVO) -->
+    <div class="modal-overlay" id="modalEvidenciasEstudiante">
+        <div class="modal-card" style="max-width: 800px;">
+            <button onclick="closeModal('modalEvidenciasEstudiante')" style="position:absolute; top:15px; right:15px; border:none; background:none; font-size:1.5rem; cursor:pointer; color:var(--text-sec);">&times;</button>
+            <h3 style="color:var(--primary); margin-bottom:15px;" id="modalEvidenciasTitulo"></h3>
+            <div id="modalEvidenciasContenido" style="max-height:500px; overflow-y:auto;">
+                <!-- Aquí se cargarán las evidencias del estudiante -->
+            </div>
+            <div style="margin-top:20px; text-align:center;">
+                <button class="btn-primary" onclick="descargarTodasEvidencias()" style="background:var(--secondary);">
+                    <i class="fas fa-download"></i> Descargar Todas las Evidencias
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_URL = "https://proyecto-de-grado-oficial-production.up.railway.app";
         let globalUsers = [];
@@ -815,6 +831,7 @@
         let globalEvidences = [];
         let globalLogs = [];
         let selectedUserForPassword = null;
+        let estudianteActualEvidencias = null; // Para almacenar datos del estudiante cuyas evidencias estamos viendo
 
         // ==========================================
         // 1. INICIALIZACIÓN Y NAVEGACIÓN
@@ -1166,7 +1183,7 @@
         }
 
         // ==========================================
-        // 5. EVIDENCIAS
+        // 5. EVIDENCIAS - CORRECCIÓN IMPORTANTE
         // ==========================================
         function renderEvidenceGrid() {
             const grid = document.getElementById('evidenceGrid');
@@ -1194,16 +1211,124 @@
                 card.innerHTML = `
                     <img src="${est.foto || 'https://via.placeholder.com/80'}" class="folder-img" onerror="this.src='https://via.placeholder.com/80'">
                     <div class="folder-name">${est.nombre} ${est.apellido}</div>
-                    <small style="color:var(--text-sec);">${est.total_evidencias} archivos</small>
+                    <small style="color:var(--text-sec);">${est.total_evidencias || 0} archivos</small>
                     <small style="color:var(--primary); font-size:0.7rem;">CI: ${est.cedula}</small>
                 `;
                 grid.appendChild(card);
             });
         }
 
+        // CORRECCIÓN: Función mejorada para ver evidencias de un estudiante
         async function verEvidenciasEstudiante(cedula) {
-            // Implementar vista de evidencias específicas
-            alert(`Función: Mostrar evidencias del estudiante ${cedula}\n\nEsta función mostraría una interfaz similar al perfil del estudiante con todas sus evidencias.`);
+            try {
+                // Obtener información del estudiante
+                const estudiante = globalEvidences.find(e => e.cedula === cedula) || 
+                                  globalUsers.find(u => u.cedula === cedula);
+                
+                if (!estudiante) {
+                    alert("No se encontró el estudiante.");
+                    return;
+                }
+                
+                // Mostrar el modal inmediatamente con mensaje de carga
+                document.getElementById('modalEvidenciasTitulo').textContent = 
+                    `Evidencias de ${estudiante.nombre} ${estudiante.apellido} (CI: ${cedula})`;
+                document.getElementById('modalEvidenciasContenido').innerHTML = 
+                    '<p style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i> Cargando evidencias...</p>';
+                document.getElementById('modalEvidenciasEstudiante').classList.add('active');
+                
+                // Guardar referencia al estudiante actual
+                estudianteActualEvidencias = {
+                    cedula: cedula,
+                    nombre: estudiante.nombre,
+                    apellido: estudiante.apellido
+                };
+                
+                // Obtener evidencias del estudiante
+                const response = await fetch(`${API_URL}/evidencias_por_cedula`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ cedula: cedula })
+                });
+                
+                const data = await response.json();
+                
+                // Actualizar el contenido del modal
+                const contenido = document.getElementById('modalEvidenciasContenido');
+                
+                if (data.status === 'exito' && data.evidencias && data.evidencias.length > 0) {
+                    contenido.innerHTML = `
+                        <div style="margin-bottom:15px; padding:10px; background:var(--bg-input); border-radius:8px;">
+                            <p><strong>Total de evidencias:</strong> ${data.evidencias.length}</p>
+                        </div>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:15px;">
+                            ${data.evidencias.map((ev, index) => `
+                                <div style="background:var(--bg-card); border-radius:10px; padding:15px; border:1px solid var(--border-color);">
+                                    <div style="font-weight:bold; color:var(--text-main); margin-bottom:8px;">
+                                        ${ev.titulo || `Evidencia ${index + 1}`}
+                                    </div>
+                                    <div style="font-size:0.85rem; color:var(--text-sec); margin-bottom:10px;">
+                                        ${ev.descripcion || 'Sin descripción'}
+                                    </div>
+                                    <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:10px;">
+                                        <i class="far fa-calendar"></i> ${ev.fecha_subida || 'Fecha no disponible'}
+                                    </div>
+                                    <div style="display:flex; gap:10px; margin-top:15px;">
+                                        <a href="${ev.url_archivo}" target="_blank" class="btn-primary" style="padding:5px 10px; font-size:0.8rem; flex:1; text-align:center;">
+                                            <i class="fas fa-eye"></i> Ver
+                                        </a>
+                                        <a href="${ev.url_archivo}" download class="btn-primary" style="background:var(--secondary); padding:5px 10px; font-size:0.8rem; flex:1; text-align:center;">
+                                            <i class="fas fa-download"></i> Descargar
+                                        </a>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else {
+                    contenido.innerHTML = `
+                        <div style="text-align:center; padding:40px; color:var(--text-sec);">
+                            <i class="fas fa-folder-open" style="font-size:3rem; margin-bottom:15px;"></i>
+                            <p>No hay evidencias registradas para este estudiante.</p>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('Error al obtener evidencias:', error);
+                document.getElementById('modalEvidenciasContenido').innerHTML = `
+                    <div style="text-align:center; padding:40px; color:var(--error);">
+                        <i class="fas fa-exclamation-triangle" style="font-size:3rem; margin-bottom:15px;"></i>
+                        <p>Error al cargar las evidencias.</p>
+                        <p style="font-size:0.9rem;">${error.message || 'Error de conexión'}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Función para descargar todas las evidencias de un estudiante
+        async function descargarTodasEvidencias() {
+            if (!estudianteActualEvidencias) {
+                alert("No hay un estudiante seleccionado.");
+                return;
+            }
+            
+            try {
+                // En una implementación real, esto descargaría un ZIP con todas las evidencias
+                // Por ahora, mostramos un mensaje informativo
+                showToast(`Preparando descarga de evidencias para ${estudianteActualEvidencias.nombre}...`, "info");
+                
+                // Simular descarga
+                setTimeout(() => {
+                    showToast(`Descarga iniciada para ${estudianteActualEvidencias.nombre}. En una implementación completa, se descargaría un archivo ZIP.`, "success");
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Error al descargar evidencias:', error);
+                showToast("Error al preparar la descarga", "error");
+            }
         }
 
         // ==========================================
