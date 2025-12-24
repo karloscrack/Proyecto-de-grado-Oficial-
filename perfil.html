@@ -183,12 +183,12 @@
             transition: all 0.3s ease;
         }
 
-        .logo-container img {
+        .logo-container Img {
             height: 55px; 
             width: auto;
             transition: transform 0.3s var(--transition-bounce);
         }
-        .logo-container img:hover { transform: scale(1.08); }
+        .logo-container Img:hover { transform: scale(1.08); }
 
         .header-actions {
             display: flex; 
@@ -420,7 +420,7 @@
             border-radius: 50%; opacity: 0.03; z-index: 0;
         }
 
-        .profile-img {
+        .profile-Img {
             width: 140px; height: 140px; 
             border-radius: 50%;
             object-fit: cover; 
@@ -744,7 +744,7 @@
             background: #1a1a1a; color: white; padding: 30px 20px; 
             text-align: center; margin-top: auto; border-top: 4px solid var(--primary);
         }
-        .footer-logo img { height: 60px; margin-bottom: 10px; }
+        .footer-logo Img { height: 60px; margin-bottom: 10px; }
         .footer-social { margin: 20px 0; }
         .footer-social a { 
             display: inline-flex; width: 40px; height: 40px; 
@@ -773,7 +773,7 @@
             }
             
             /* Ajustar logo */
-            .logo-container img { height: 40px; }
+            .logo-container Img { height: 40px; }
 
             /* B. NOTIFICACIONES EN MÓVIL (TIPO PANEL SUPERIOR) */
             .notis-dropdown {
@@ -871,7 +871,7 @@
     <header class="main-header">
         <div class="logo-container">
             <a href="index.html">
-                <img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
+                <Img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
             </a>
         </div>
         <div class="header-actions">
@@ -936,7 +936,7 @@
     <div class="container">
         
         <div class="profile-card">
-            <img id="profilePhoto" src="https://via.placeholder.com/150" alt="Foto Perfil" class="profile-img">
+            <Img id="profilePhoto" src="https://via.placeholder.com/150" alt="Foto Perfil" class="profile-Img">
             <div class="profile-info">
                 <h1 id="userNameDisplay">Cargando datos...</h1>
                 <h2 id="userCedulaDisplay">Verificando...</h2>
@@ -1085,7 +1085,7 @@
     <footer>
         <div class="footer-content">
             <div class="footer-logo">
-                <img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
+                <Img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
                 <h3>Unidad Educativa Particular Despertar</h3>
             </div>
             <div class="footer-links" style="margin-bottom:20px;">
@@ -1319,7 +1319,7 @@
                 card.addEventListener('touchmove', handleTouchMove);
 
                 let content = '';
-                if(item.tipo === 'imagen') content = `<img src="${item.url}" class="card-media" loading="lazy">`;
+                if(item.tipo === 'imagen') content = `<Img src="${item.url}" class="card-media" loading="lazy">`;
                 else if(item.tipo === 'video') content = `<video src="${item.url}#t=0.1" class="card-media"></video><div class="video-overlay"><i class="fas fa-play-circle"></i></div>`;
                 else content = `<div style="width:100%;height:100%;background:#f4f4f4;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#666;"><i class="fas fa-file-alt" style="font-size:2.5rem;margin-bottom:10px;color:var(--primary)"></i>DOC</div>`;
 
@@ -1431,7 +1431,7 @@
             wrapper.innerHTML = '';
             
             if(item.tipo === 'imagen') {
-                const img = document.createElement('img'); img.src = item.url; img.className = 'lb-media-item'; wrapper.appendChild(img);
+                const Img = document.createElement('Img'); Img.src = item.url; Img.className = 'lb-media-item'; wrapper.appendChild(Img);
             } else if(item.tipo === 'video') {
                 const vid = document.createElement('video'); vid.src = item.url; vid.controls = true; vid.autoplay = true; vid.className = 'lb-media-item'; wrapper.appendChild(vid);
             } else {
