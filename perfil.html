@@ -3,356 +3,274 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="Perfil Estudiantil - Plataforma de Evidencias Digitales">
+    <meta name="theme-color" content="#6A0DAD">
+    
     <title>Mi Perfil - Unidad Educativa Despertar</title>
+    
     <link rel="icon" type="image/png" href="Img/Logo_pestaña.png">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600;700&display=swap" rel="stylesheet">
-    
-    <link rel="stylesheet" href="diseno.css"> 
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600&display=swap" rel="stylesheet">
 
     <style>
         /* ==========================================================================
-           1. SISTEMA DE DISEÑO (DESIGN TOKENS & VARIABLES)
+           1. SISTEMA DE DISEÑO & VARIABLES (DESIGN TOKENS)
            ========================================================================== */
         :root {
-            /* PALETA DE COLORES INSTITUCIONAL
-               Definición de colores base para mantener la identidad de marca.
-            */
-            --primary: #6A0DAD;       /* Morado Principal (Brand Color) */
-            --primary-dark: #4a0072;  /* Variante oscura para estados Hover/Active */
-            --primary-light: #9d46ff; /* Variante clara para acentos */
+            /* --- IDENTIDAD CORPORATIVA --- */
+            --primary: #6A0DAD;       /* Morado Institucional */
+            --primary-dark: #4a0072;  /* Morado Profundo (Hover) */
+            --primary-light: #9d46ff; /* Morado Brillante (Active) */
+            --primary-soft: rgba(106, 13, 173, 0.08);
             
-            --secondary: #2E8B57;     /* Verde Éxito (Confirmaciones, Descargas) */
+            --secondary: #2E8B57;     /* Verde Éxito */
             --secondary-hover: #1e5e3a;
             
-            --error: #d32f2f;         /* Rojo Semántico (Errores, Reportes, Peligro) */
-            --warning: #f9a825;       /* Amarillo Alerta (Advertencias) */
+            --error: #d32f2f;         /* Rojo Alerta */
+            --warning: #f9a825;       /* Amarillo Precaución */
             --info: #0288d1;          /* Azul Información */
             
-            /* COLORES DE INTERFAZ (MODO CLARO - DEFAULT)
-               Estas variables controlan el fondo y texto de la aplicación.
-            */
-            --bg-body: #f4f6f9;       /* Fondo general de la página */
-            --bg-card: #ffffff;       /* Fondo de tarjetas y contenedores */
-            --bg-header: #ffffff;     /* Fondo de la barra de navegación */
-            --bg-sidebar: #ffffff;    /* Fondo del menú lateral */
+            /* --- PALETA DE COLORES (MODO CLARO) --- */
+            --bg-image: url('Img/Claro.png'); /* Fondo texturizado */
+            --bg-body: #f4f6f9;
+            --bg-card: #ffffff;
+            --bg-header: rgba(255, 255, 255, 0.95);
+            --bg-sidebar: #ffffff;
             
-            --text-main: #333333;     /* Texto principal (Títulos, Párrafos) */
-            --text-sec: #555555;      /* Texto secundario (Descripciones) */
-            --text-muted: #888888;    /* Texto terciario (Fechas, Metadatos) */
+            --text-main: #2c3e50;
+            --text-sec: #5f6368;
+            --text-muted: #9aa0a6;
+            --text-inverse: #ffffff;
             
-            --border-color: #e0e0e0;  /* Color de bordes y separadores */
-            --input-bg: #f9f9f9;      /* Fondo de campos de formulario */
+            --border-color: #e0e0e0;
+            --input-bg: #f8f9fa;
             
-            /* EFECTOS VISUALES & SOMBRAS
-               Variables para elevación y profundidad (Material Design inspired)
-            */
-            --shadow-soft: 0 4px 12px rgba(0,0,0,0.08);
-            --shadow-hover: 0 15px 30px rgba(106, 13, 173, 0.15);
-            --shadow-float: 0 10px 25px rgba(0,0,0,0.2);
-            --shadow-card: 0 2px 8px rgba(0,0,0,0.05);
+            /* --- SOMBRAS Y PROFUNDIDAD --- */
+            --shadow-soft: 0 4px 20px rgba(0,0,0,0.05);
+            --shadow-hover: 0 10px 25px rgba(106, 13, 173, 0.15);
+            --shadow-card: 0 2px 8px rgba(0,0,0,0.04);
+            --shadow-nav: 0 2px 15px rgba(0,0,0,0.05);
             
-            --glass-bg: rgba(255, 255, 255, 0.95);
+            /* --- EFECTOS DE VIDRIO (GLASSMORPHISM) --- */
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.5);
             --glass-backdrop: blur(12px);
             
-            /* DIMENSIONES & TRANSICIONES
-               Constantes para mantener consistencia en el layout.
-            */
+            /* --- DIMENSIONES --- */
             --header-height: 80px;
-            --header-height-mobile: 65px;
+            --header-height-mobile: 70px;
             --border-radius: 16px;
             --transition-speed: 0.3s;
-            --transition-bounce: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            --transition-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+            
+            /* --- CAPAS (Z-INDEX) --- */
+            --z-back: -1;
+            --z-normal: 1;
+            --z-header: 1000;
+            --z-dropdown: 1100;
+            --z-overlay: 1500;
+            --z-sidebar: 2000;
+            --z-fab: 3000;
+            --z-modal: 5000;
+            --z-toast: 6000;
         }
 
         /* ==========================================================================
-           2. MODO OSCURO (DARK MODE OVERRIDES)
+           2. MODO OSCURO (DARK MODE)
            ========================================================================== */
         body.dark-mode {
-            /* Redefinición de variables para el tema oscuro */
+            --bg-image: url('Img/Oscuro.png');
             --bg-body: #121212;
             --bg-card: #1e1e1e;
-            --bg-header: #1e1e1e;
+            --bg-header: rgba(30, 30, 30, 0.95);
             --bg-sidebar: #1e1e1e;
             
-            --text-main: #e0e0e0;
-            --text-sec: #b0b0b0;
-            --text-muted: #666666;
+            --text-main: #e8eaed;
+            --text-sec: #b0b3b8;
+            --text-muted: #6e7175;
             
-            --border-color: #333333;
+            --border-color: #3c4043;
             --input-bg: #2d2d2d;
             
-            --shadow-soft: 0 4px 12px rgba(0,0,0,0.5);
-            --shadow-hover: 0 15px 30px rgba(0,0,0,0.6);
+            --shadow-soft: 0 4px 20px rgba(0,0,0,0.4);
+            --shadow-hover: 0 10px 30px rgba(0,0,0,0.6);
             
-            --glass-bg: rgba(30, 30, 30, 0.95);
+            --glass-bg: rgba(30, 30, 30, 0.85);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         /* ==========================================================================
-           3. RESET & ESTILOS BASE
+           3. RESET & BASE
            ========================================================================== */
         * { 
-            margin: 0; 
-            padding: 0; 
-            box-sizing: border-box; 
-            outline: none; 
-            -webkit-tap-highlight-color: transparent; /* Elimina flash azul en móviles */
+            margin: 0; padding: 0; box-sizing: border-box; 
+            outline: none; -webkit-tap-highlight-color: transparent;
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Poppins', sans-serif;
             background-color: var(--bg-body);
+            background-image: var(--bg-image);
+            background-attachment: fixed;
+            background-size: cover;
+            background-position: center;
             color: var(--text-main);
             padding-top: var(--header-height);
             transition: background var(--transition-speed), color var(--transition-speed);
             min-height: 100vh;
-            display: flex; 
-            flex-direction: column;
-            overflow-x: hidden; /* Previene scroll horizontal accidental */
+            display: flex; flex-direction: column;
+            overflow-x: hidden;
         }
 
-        a { text-decoration: none; color: inherit; }
+        a { text-decoration: none; color: inherit; transition: var(--transition-speed); }
         ul { list-style: none; }
-        button { font-family: inherit; }
+        button, input, textarea, select { font-family: inherit; }
 
-        /* Scrollbar Personalizado (Webkit) */
+        /* Scrollbar Estilizado */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--primary-dark); }
 
         /* ==========================================================================
-           4. ANIMACIONES (KEYFRAMES)
-           ========================================================================== */
-        
-        /* Fade In Up: Entrada suave hacia arriba para tarjetas */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translate3d(0, 30px, 0); }
-            to { opacity: 1; transform: translate3d(0, 0, 0); }
-        }
-
-        /* Pop In: Efecto de rebote para modales y badges */
-        @keyframes popIn {
-            0% { opacity: 0; transform: scale(0.8); }
-            70% { opacity: 1; transform: scale(1.05); }
-            100% { opacity: 1; transform: scale(1); }
-        }
-
-        /* Rotate: Animación para cambio de tema */
-        @keyframes rotateTheme { 
-            0% { transform: rotate(0deg) scale(0.5); opacity:0; } 
-            100% { transform: rotate(360deg) scale(1); opacity:1; } 
-        }
-        .rotate-anim { animation: rotateTheme 0.6s var(--transition-bounce); }
-
-        /* Slide In Right: Para menús laterales */
-        @keyframes slideInRight {
-            from { transform: translateX(100%); }
-            to { transform: translateX(0); }
-        }
-
-        /* Spinner: Rotación infinita para cargas */
-        @keyframes spin { 
-            0% { transform: rotate(0deg); } 
-            100% { transform: rotate(360deg); } 
-        }
-
-        /* Clase utilitaria para activar animación via JS */
-        .animate-enter {
-            animation: fadeInUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-            opacity: 0; /* Invisible hasta que inicia */
-        }
-
-        /* ==========================================================================
-           5. HEADER & BARRA DE NAVEGACIÓN
+           4. HEADER RESTAURADO (DISEÑO ORIGINAL)
            ========================================================================== */
         .main-header {
-            position: fixed; 
-            top: 0; left: 0; 
-            width: 100%;
+            position: fixed; top: 0; left: 0; width: 100%;
             height: var(--header-height);
             background: var(--bg-header);
             border-bottom: 3px solid var(--primary);
-            box-shadow: var(--shadow-soft);
-            z-index: 1000;
-            display: flex; 
-            align-items: center; 
-            justify-content: space-between;
-            padding: 0 24px;
+            box-shadow: var(--shadow-nav);
+            z-index: var(--z-header);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 5%;
+            backdrop-filter: blur(10px);
             transition: all 0.3s ease;
         }
 
-        .logo-container Img {
-            height: 55px; 
-            width: auto;
+        .logo-container img {
+            height: 50px; width: auto;
             transition: transform 0.3s var(--transition-bounce);
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
         }
-        .logo-container Img:hover { transform: scale(1.08); }
+        .logo-container img:hover { transform: scale(1.05); }
 
         .header-actions {
-            display: flex; 
-            align-items: center; 
-            gap: 15px; 
-            position: relative;
+            display: flex; align-items: center; gap: 15px;
         }
 
-        /* Estilos Base de Botones del Header */
+        /* Botones Circulares del Header (Tema y Notis) */
         .btn-icon-header {
-            background: transparent; 
-            border: 2px solid var(--primary);
-            color: var(--primary); 
+            background: transparent;
+            border: 2px solid var(--primary); /* Borde original */
+            color: var(--primary);
             width: 42px; height: 42px;
-            border-radius: 50%; 
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.2rem; 
-            cursor: pointer; 
-            transition: 0.3s;
-            position: relative;
-        }
-        .btn-icon-header:hover { 
-            background: var(--input-bg); 
-            transform: rotate(15deg); 
-        }
-
-        /* Badge de Notificación */
-        .noti-badge {
-            position: absolute; 
-            top: -5px; right: -5px;
-            background: var(--error); 
-            color: white;
-            font-size: 0.7rem; 
-            font-weight: bold;
-            width: 20px; height: 20px; 
             border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            border: 2px solid var(--bg-header);
-            animation: popIn 0.3s var(--transition-bounce);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            font-size: 1.2rem; cursor: pointer;
+            transition: 0.3s;
+            position: relative;
+        }
+        .btn-icon-header:hover {
+            background: var(--primary-soft);
+            transform: rotate(15deg);
+            box-shadow: 0 0 15px var(--primary-soft);
         }
 
-        /* Botón Salir (Visible en Desktop) */
-        .btn-logout-header {
-            background: var(--error); 
-            color: white; 
-            border: none;
-            padding: 0 25px; 
-            height: 42px; 
-            border-radius: 50px;
-            font-weight: 700; 
-            font-size: 0.95rem; 
-            cursor: pointer;
-            display: flex; align-items: center; gap: 10px; 
-            transition: 0.3s;
-            box-shadow: 0 4px 10px rgba(211, 47, 47, 0.2);
+        /* Badge de Notificaciones */
+        .noti-badge {
+            position: absolute; top: -5px; right: -5px;
+            background: var(--error); color: white;
+            font-size: 0.7rem; font-weight: 700;
+            width: 20px; height: 20px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            border: 2px solid var(--bg-header);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            animation: popIn 0.3s var(--transition-bounce);
         }
-        .btn-logout-header:hover { 
-            background: #b71c1c; 
-            transform: translateY(-2px); 
-            box-shadow: 0 6px 15px rgba(211, 47, 47, 0.3); 
+
+        /* Botón Salir (Estilo Píldora) */
+        .btn-logout-header {
+            background: var(--error); color: white; border: none;
+            padding: 0 25px; height: 42px; border-radius: 50px;
+            font-weight: 600; font-size: 0.95rem; cursor: pointer;
+            display: flex; align-items: center; gap: 8px;
+            transition: 0.3s;
+            box-shadow: 0 4px 10px rgba(211, 47, 47, 0.25);
+        }
+        .btn-logout-header:hover {
+            background: #b71c1c; transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(211, 47, 47, 0.35);
         }
 
         /* Menú Hamburguesa */
         .menu-toggle {
-            background: none; 
-            border: none; 
-            font-size: 1.8rem;
-            color: var(--primary); 
-            cursor: pointer;
-            width: 45px; height: 45px; 
-            display: flex; align-items: center; justify-content: center;
+            background: none; border: none; font-size: 1.8rem;
+            color: var(--primary); cursor: pointer;
+            width: 45px; height: 45px; display: flex; align-items: center; justify-content: center;
             transition: transform 0.2s;
         }
         .menu-toggle:active { transform: scale(0.9); }
 
         /* ==========================================================================
-           6. SISTEMA DE NOTIFICACIONES (DROPDOWN)
+           5. NOTIFICACIONES (DROPDOWN)
            ========================================================================== */
         .notis-dropdown {
-            position: absolute; 
-            top: 60px; right: 0;
-            width: 340px; 
-            max-height: 450px;
+            position: absolute; top: 70px; right: 0;
+            width: 320px; max-height: 400px;
             background: var(--bg-card);
             border: 1px solid var(--border-color);
             border-radius: 12px;
             box-shadow: 0 15px 40px rgba(0,0,0,0.15);
-            z-index: 1100;
-            display: none; 
-            flex-direction: column;
-            overflow: hidden;
-            animation: fadeInUp 0.3s ease-out;
+            z-index: var(--z-dropdown);
+            display: none; flex-direction: column; overflow: hidden;
+            animation: fadeInUp 0.2s ease-out;
         }
         .notis-dropdown.active { display: flex; }
 
         .notis-header {
-            padding: 15px; 
-            border-bottom: 1px solid var(--border-color);
-            background: var(--input-bg); 
-            font-weight: bold;
+            padding: 15px; border-bottom: 1px solid var(--border-color);
+            background: var(--input-bg); font-weight: 600;
             display: flex; justify-content: space-between; align-items: center;
-            color: var(--text-main);
+            color: var(--text-main); font-size: 0.9rem;
         }
         .notis-header span { 
-            color: var(--primary); 
-            font-size: 0.85rem; 
-            cursor: pointer; 
+            color: var(--primary); font-size: 0.8rem; cursor: pointer; letter-spacing: 0.5px;
         }
-        .notis-header span:hover { text-decoration: underline; }
         
-        .notis-body { 
-            overflow-y: auto; 
-            flex: 1; 
-        }
+        .notis-body { overflow-y: auto; flex: 1; }
         
         .noti-item {
-            padding: 15px; 
-            border-bottom: 1px solid var(--border-color);
-            transition: 0.2s; 
-            cursor: pointer; 
-            display: flex; gap: 12px;
-            align-items: start;
-            background: var(--bg-card);
+            padding: 15px; border-bottom: 1px solid var(--border-color);
+            transition: 0.2s; cursor: pointer; display: flex; gap: 12px;
+            align-items: start; background: var(--bg-card);
         }
         .noti-item:hover { background: var(--input-bg); }
-        .noti-item.unread { 
-            background: rgba(106, 13, 173, 0.04); 
-            border-left: 3px solid var(--primary); 
-        }
+        .noti-item.unread { background: var(--primary-soft); border-left: 3px solid var(--primary); }
         
         .noti-icon { 
-            width: 32px; height: 32px; 
-            border-radius: 50%; 
-            background: #eee; 
-            display: flex; align-items: center; justify-content: center; 
-            flex-shrink: 0;
-            font-size: 0.9rem;
+            width: 32px; height: 32px; border-radius: 50%; background: #eee; 
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.9rem;
         }
-        
-        .noti-content h4 { margin: 0 0 4px; font-size: 0.95rem; color: var(--text-main); font-weight: 600; }
-        .noti-content p { margin: 0 0 6px; font-size: 0.85rem; color: var(--text-sec); line-height: 1.4; }
-        .noti-time { font-size: 0.75rem; color: var(--text-muted); display: block; }
-
-        .notis-empty {
-            padding: 40px 20px; 
-            text-align: center; 
-            color: var(--text-muted);
-        }
-        .notis-empty i { font-size: 2.5rem; margin-bottom: 15px; opacity: 0.3; }
+        .noti-content h4 { margin: 0 0 4px; font-size: 0.9rem; color: var(--text-main); font-weight: 600; }
+        .noti-content p { margin: 0 0 6px; font-size: 0.8rem; color: var(--text-sec); line-height: 1.4; }
+        .noti-time { font-size: 0.75rem; color: var(--text-muted); }
 
         /* ==========================================================================
-           7. MENÚ LATERAL (SIDEBAR)
+           6. MENÚ LATERAL (SIDEBAR)
            ========================================================================== */
         .side-menu {
-            position: fixed; 
-            top: 0; right: -320px;
+            position: fixed; top: 0; right: -320px;
             width: 300px; height: 100vh;
             background: var(--bg-sidebar);
             box-shadow: -5px 0 30px rgba(0,0,0,0.3);
-            z-index: 2000;
+            z-index: var(--z-sidebar);
             transition: right 0.4s cubic-bezier(0.77, 0, 0.175, 1);
-            padding: 25px; 
-            display: flex; flex-direction: column;
+            padding: 25px; display: flex; flex-direction: column;
+            border-left: 1px solid var(--border-color);
         }
         .side-menu.active { right: 0; }
 
@@ -365,37 +283,24 @@
         
         .menu-list { list-style: none; display: flex; flex-direction: column; gap: 10px; flex: 1; }
         .menu-btn {
-            width: 100%; text-align: left; 
-            background: transparent; border: none;
-            padding: 15px 20px; 
-            font-size: 1.05rem; color: var(--text-main);
+            width: 100%; text-align: left; background: transparent; border: none;
+            padding: 15px 20px; font-size: 1rem; color: var(--text-main);
             border-radius: 12px; cursor: pointer;
-            display: flex; align-items: center; gap: 15px; 
-            transition: 0.3s;
+            display: flex; align-items: center; gap: 15px; transition: 0.3s;
             font-weight: 500;
         }
-        .menu-btn:hover { 
-            background: var(--input-bg); 
-            color: var(--primary); 
-            transform: translateX(5px); 
-        }
-        .menu-btn i { 
-            width: 25px; text-align: center; 
-            color: var(--primary); font-size: 1.2rem; 
-        }
-
-        /* Items exclusivos para móvil (inicialmente ocultos en Desktop) */
-        .mobile-only-menu-item { display: none; }
+        .menu-btn:hover { background: var(--primary-soft); color: var(--primary); transform: translateX(5px); }
+        .menu-btn i { width: 25px; text-align: center; color: var(--primary); font-size: 1.2rem; }
 
         .overlay-bg {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
-            z-index: 1500; display: none; opacity: 0; transition: opacity 0.3s;
+            z-index: var(--z-overlay); display: none; opacity: 0; transition: opacity 0.3s;
         }
         .overlay-bg.active { display: block; opacity: 1; }
 
         /* ==========================================================================
-           8. CONTENIDO PRINCIPAL & PERFIL
+           7. PERFIL & CONTENIDO PRINCIPAL
            ========================================================================== */
         .container {
             width: 95%; max-width: 1250px; margin: 0 auto;
@@ -403,32 +308,24 @@
         }
 
         .profile-card {
-            background: var(--bg-card); 
-            border-radius: var(--border-radius);
-            padding: 40px; 
-            box-shadow: var(--shadow-soft);
+            background: var(--bg-card); border-radius: var(--border-radius);
+            padding: 40px; box-shadow: var(--shadow-soft);
             display: flex; align-items: center; gap: 40px;
-            border: 1px solid var(--border-color); 
-            margin-bottom: 40px;
+            border: 1px solid var(--border-color); margin-bottom: 40px;
             position: relative; overflow: hidden;
             animation: fadeInUp 0.8s ease-out;
         }
-        
         .profile-card::before {
             content: ''; position: absolute; top: -50px; right: -50px;
             width: 200px; height: 200px; background: var(--primary);
-            border-radius: 50%; opacity: 0.03; z-index: 0;
+            border-radius: 50%; opacity: 0.05; z-index: 0;
         }
 
-        .profile-Img {
-            width: 140px; height: 140px; 
-            border-radius: 50%;
-            object-fit: cover; 
-            border: 5px solid var(--bg-body);
-            outline: 3px solid var(--primary);
-            background: white; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-            z-index: 1;
+        .profile-img {
+            width: 140px; height: 140px; border-radius: 50%;
+            object-fit: cover; border: 5px solid var(--bg-body);
+            outline: 3px solid var(--primary); background: white; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15); z-index: 1;
         }
 
         .profile-info { flex: 1; z-index: 1; }
@@ -436,122 +333,90 @@
         .profile-info h2 { font-size: 1.1rem; color: var(--text-sec); font-weight: 400; margin-bottom: 15px; }
 
         .badge-active {
-            background: rgba(46, 139, 87, 0.15); color: var(--secondary);
-            padding: 8px 16px; border-radius: 30px; 
-            font-size: 0.9rem; font-weight: bold;
-            display: inline-flex; align-items: center; gap: 8px; 
-            border: 1px solid rgba(46, 139, 87, 0.2);
+            background: rgba(46, 139, 87, 0.1); color: var(--secondary);
+            padding: 8px 16px; border-radius: 30px; font-size: 0.9rem; font-weight: 600;
+            display: inline-flex; align-items: center; gap: 8px; border: 1px solid rgba(46, 139, 87, 0.2);
         }
 
         .btn-contact {
             background: var(--primary); color: white; border: none;
-            padding: 14px 30px; border-radius: 50px; font-weight: bold;
+            padding: 14px 30px; border-radius: 50px; font-weight: 600;
             cursor: pointer; transition: 0.3s; z-index: 1;
-            display: flex; align-items: center; gap: 12px; font-size: 1rem;
-            box-shadow: 0 4px 15px rgba(106, 13, 173, 0.3);
+            display: flex; align-items: center; gap: 10px; font-size: 1rem;
+            box-shadow: 0 4px 15px rgba(106, 13, 173, 0.25);
         }
-        .btn-contact:hover { 
-            background: var(--primary-dark); 
-            transform: translateY(-3px); 
-            box-shadow: 0 8px 20px rgba(106, 13, 173, 0.4); 
-        }
+        .btn-contact:hover { background: var(--primary-dark); transform: translateY(-3px); }
 
         /* ==========================================================================
-           9. TOOLBAR DE FILTROS & SELECCIÓN
+           8. TOOLBAR Y FILTROS (CORREGIDO OVERFLOW MÓVIL)
            ========================================================================== */
         .toolbar {
-            background: var(--bg-card); 
-            padding: 15px 25px;
-            border-radius: 50px; 
-            box-shadow: var(--shadow-soft);
-            border: 1px solid var(--border-color); 
-            margin-bottom: 30px;
-            display: flex; flex-wrap: wrap; 
-            justify-content: space-between; align-items: center; gap: 20px;
+            background: var(--bg-card); padding: 15px 25px;
+            border-radius: 50px; box-shadow: var(--shadow-soft);
+            border: 1px solid var(--border-color); margin-bottom: 30px;
+            display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 20px;
             animation: fadeInUp 1s ease-out 0.2s backwards;
             position: relative; z-index: 5;
         }
 
+        /* CORRECCIÓN: Scroll horizontal en móvil sin salirse */
         .filter-group { 
             display: flex; gap: 10px; 
-            overflow-x: auto; padding-bottom: 5px; 
+            overflow-x: auto; /* Permite scroll */
+            padding-bottom: 5px; 
+            max-width: 100%; /* Evita desbordamiento */
+            white-space: nowrap; /* Evita que los botones bajen */
+            -webkit-overflow-scrolling: touch; /* Suavidad en iOS */
+            /* Ocultar scrollbar visualmente */
             scrollbar-width: none; 
+            -ms-overflow-style: none;
         }
         .filter-group::-webkit-scrollbar { display: none; }
 
         .filter-pill {
-            background: var(--input-bg); 
-            border: 1px solid var(--border-color);
-            color: var(--text-sec); 
-            padding: 10px 22px; 
-            border-radius: 30px;
-            cursor: pointer; font-size: 0.95rem; white-space: nowrap; 
-            transition: 0.3s; font-weight: 500;
+            background: var(--input-bg); border: 1px solid var(--border-color);
+            color: var(--text-sec); padding: 10px 22px; border-radius: 30px;
+            cursor: pointer; font-size: 0.95rem; white-space: nowrap; transition: 0.3s; font-weight: 500;
+            flex-shrink: 0; /* Evita que se aplasten */
         }
         .filter-pill:hover, .filter-pill.active {
-            background: var(--primary); 
-            color: white; border-color: var(--primary);
-            transform: translateY(-2px); 
-            box-shadow: 0 4px 12px rgba(106, 13, 173, 0.2);
+            background: var(--primary); color: white; border-color: var(--primary);
+            transform: translateY(-2px); box-shadow: 0 4px 12px rgba(106, 13, 173, 0.2);
         }
 
         .btn-select-desktop {
-            background: transparent; 
-            border: 2px solid var(--primary);
-            color: var(--primary); 
-            padding: 8px 24px; 
-            border-radius: 30px;
-            font-weight: 700; 
-            cursor: pointer; 
-            display: flex; align-items: center; gap: 10px;
+            background: transparent; border: 2px solid var(--primary);
+            color: var(--primary); padding: 8px 24px; border-radius: 30px;
+            font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 10px;
             transition: 0.3s;
         }
-        .btn-select-desktop:hover, .btn-select-desktop.active { 
-            background: var(--primary); color: white; 
-        }
+        .btn-select-desktop:hover, .btn-select-desktop.active { background: var(--primary); color: white; }
 
-        /* ==========================================================================
-           10. BOTÓN FLOTANTE LATERAL (FAB)
-           ========================================================================== */
+        /* FAB SELECTION (Solo Desktop ahora) */
         .fab-selection {
-            position: fixed;
-            bottom: 40px; right: 40px;
-            width: 65px; height: 65px;
-            background: var(--primary); color: white;
-            border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.6rem;
-            box-shadow: 0 10px 25px rgba(106, 13, 173, 0.4);
-            cursor: pointer;
-            z-index: 3000;
-            transform: translateY(150px); opacity: 0;
-            transition: all 0.4s var(--transition-bounce);
-            border: 2px solid white;
+            position: fixed; bottom: 40px; right: 40px;
+            width: 60px; height: 60px; background: var(--primary); color: white;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; box-shadow: 0 10px 25px rgba(106, 13, 173, 0.4);
+            cursor: pointer; z-index: var(--z-fab); transform: translateY(150px); opacity: 0;
+            transition: all 0.4s var(--transition-bounce); border: 2px solid white;
         }
         .fab-selection.visible { transform: translateY(0); opacity: 1; }
         .fab-selection:hover { transform: translateY(-5px) scale(1.1); background: var(--primary-dark); }
         .fab-selection.hidden { transform: scale(0); opacity: 0; }
 
         /* ==========================================================================
-           11. GRID DE EVIDENCIAS
+           9. GRID DE EVIDENCIAS
            ========================================================================== */
         .gallery-grid {
-            display: grid; 
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 20px; 
-            min-height: 300px; 
-            padding-bottom: 120px; 
-            position: relative;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px; min-height: 300px; padding-bottom: 120px; position: relative;
         }
 
         .evidence-card {
-            background: var(--bg-card); 
-            border-radius: 12px;
-            overflow: hidden; 
-            aspect-ratio: 1; 
-            position: relative;
-            cursor: pointer; 
-            box-shadow: var(--shadow-soft);
+            background: var(--bg-card); border-radius: 12px;
+            overflow: hidden; aspect-ratio: 1; position: relative;
+            cursor: pointer; box-shadow: var(--shadow-soft);
             border: 2px solid transparent;
             transition: transform 0.3s var(--transition-bounce), box-shadow 0.3s;
             user-select: none;
@@ -564,52 +429,36 @@
         .video-overlay {
             position: absolute; top:0; left:0; width:100%; height:100%;
             display:flex; align-items:center; justify-content:center;
-            color: white; font-size: 3rem; background: rgba(0,0,0,0.3);
-            opacity: 0.8; transition: 0.3s;
+            color: white; font-size: 3rem; background: rgba(0,0,0,0.3); opacity: 0.8; transition: 0.3s;
         }
         .evidence-card:hover .video-overlay { background: rgba(0,0,0,0.1); opacity: 1; }
 
         .selection-check {
-            position: absolute; top: 12px; right: 12px;
-            width: 28px; height: 28px;
-            background: rgba(255,255,255,0.95); 
-            border: 2px solid #ccc;
-            border-radius: 50%; color: var(--primary);
-            display: none; align-items: center; justify-content: center;
-            z-index: 10; font-size: 1rem;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            transition: 0.2s;
+            position: absolute; top: 12px; right: 12px; width: 28px; height: 28px;
+            background: rgba(255,255,255,0.95); border: 2px solid #ccc;
+            border-radius: 50%; color: var(--primary); display: none; 
+            align-items: center; justify-content: center; z-index: 10; font-size: 1rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: 0.2s;
         }
-        
-        .evidence-card.selected { 
-            border-color: var(--primary); 
-            transform: scale(0.95); 
-            background: rgba(106, 13, 173, 0.05); 
-        }
-        .evidence-card.selected .selection-check { 
-            display: flex; background: var(--primary); color: white; border-color: var(--primary); 
-        }
+        .evidence-card.selected { border-color: var(--primary); transform: scale(0.95); background: var(--primary-soft); }
+        .evidence-card.selected .selection-check { display: flex; background: var(--primary); color: white; border-color: var(--primary); }
         .selection-mode-active .selection-check { display: flex; }
 
         .empty-state {
-            grid-column: 1 / -1; 
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            text-align: center; padding: 60px 20px;
-            color: var(--text-sec); display: none;
+            grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; padding: 60px 20px; color: var(--text-sec); display: none;
             animation: fadeIn 0.5s; min-height: 300px;
         }
         .empty-state i { font-size: 5rem; opacity: 0.2; margin-bottom: 25px; color: var(--text-main); }
         .empty-state h3 { font-size: 1.5rem; margin-bottom: 10px; }
 
         /* ==========================================================================
-           12. LIGHTBOX PRO (VISOR)
+           10. LIGHTBOX & BARRA FLOTANTE
            ========================================================================== */
         .lightbox-modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--glass-bg); /* Opcional: usar rgba para fondo oscuro */
-            background: rgba(0,0,0,0.92);
-            backdrop-filter: var(--glass-backdrop);
-            z-index: 5000; display: none;
+            background: rgba(0,0,0,0.95); backdrop-filter: var(--glass-backdrop);
+            z-index: var(--z-modal); display: none;
             justify-content: center; align-items: center; flex-direction: column;
             opacity: 0; transition: opacity 0.3s ease;
         }
@@ -617,10 +466,8 @@
 
         .lb-content-wrapper {
             position: relative; width: 100%; height: 80%;
-            display: flex; justify-content: center; align-items: center;
-            pointer-events: none; 
+            display: flex; justify-content: center; align-items: center; pointer-events: none; 
         }
-        
         .lb-media-item {
             max-width: 90%; max-height: 100%; border-radius: 8px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.6); object-fit: contain;
@@ -641,8 +488,7 @@
             width: 70px; height: 70px; background: rgba(255,255,255,0.08);
             color: white; border: none; border-radius: 50%; font-size: 2rem;
             cursor: pointer; z-index: 5005; transition: 0.3s;
-            display: flex; align-items: center; justify-content: center;
-            backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);
         }
         .lb-nav-btn:hover { background: var(--primary); transform: translateY(-50%) scale(1.1); }
         .lb-prev { left: 40px; }
@@ -652,37 +498,24 @@
             margin-top: 25px; display: flex; gap: 20px; z-index: 5005; 
             pointer-events: auto; flex-wrap: wrap; justify-content: center;
         }
-        
         .btn-lb-action {
             padding: 12px 30px; border-radius: 30px; font-weight: bold;
-            cursor: pointer; text-decoration: none; 
-            display: flex; align-items: center; gap: 10px;
-            border: none; font-size: 1rem; transition: 0.3s;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            cursor: pointer; text-decoration: none; display: flex; align-items: center; gap: 10px;
+            border: none; font-size: 1rem; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
         .btn-lb-action:hover { transform: translateY(-3px); }
-
-        /* Botón ROJO de Reportar */
         .btn-lb-report {
             background: var(--error); color: white; border: none;
             box-shadow: 0 4px 15px rgba(211, 47, 47, 0.4);
         }
         .btn-lb-report:hover { background: #b71c1c; box-shadow: 0 6px 20px rgba(211, 47, 47, 0.6); }
 
-        /* ==========================================================================
-           13. BARRA DE ACCIÓN INFERIOR (SELECCIÓN)
-           ========================================================================== */
         .floating-bar {
-            position: fixed; 
-            bottom: 30px; left: 50%; 
-            transform: translate(-50%, 150%);
-            background: #222; color: white;
-            padding: 15px 30px; 
-            border-radius: 50px;
+            position: fixed; bottom: 30px; left: 50%; transform: translate(-50%, 150%);
+            background: #222; color: white; padding: 15px 30px; border-radius: 50px;
             display: flex; align-items: center; gap: 25px;
-            box-shadow: 0 15px 50px rgba(0,0,0,0.6); z-index: 4000;
-            width: 90%; max-width: 650px;
-            transition: transform 0.4s var(--transition-bounce);
+            box-shadow: 0 15px 50px rgba(0,0,0,0.6); z-index: var(--z-fab);
+            width: 90%; max-width: 650px; transition: transform 0.4s var(--transition-bounce);
         }
         .floating-bar.active { transform: translate(-50%, 0); }
 
@@ -693,22 +526,20 @@
         }
         .btn-float:hover { transform: translateY(-2px); filter: brightness(1.1); }
         .btn-float.danger { background: var(--error); }
-        
         .btn-float-cancel {
             background: transparent; border: 1px solid #666; color: #ccc;
             width: 40px; height: 40px; border-radius: 50%; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
-            transition: 0.3s;
+            display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: 0.3s;
         }
         .btn-float-cancel:hover { border-color: white; color: white; }
 
         /* ==========================================================================
-           14. MODALES, FORMS & FOOTER
+           11. MODALES & FOOTER
            ========================================================================== */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
-            z-index: 6000; display: none; justify-content: center; align-items: center;
+            z-index: var(--z-modal); display: none; justify-content: center; align-items: center;
         }
         .modal-overlay.active { display: flex; animation: fadeIn 0.3s forwards; }
 
@@ -736,7 +567,6 @@
         .form-group label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.95rem; }
         .form-control { width: 100%; padding: 14px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--input-bg); color: var(--text-main); font-size: 1rem; }
         .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(106,13,173,0.1); }
-        
         .btn-submit { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 1.05rem; transition: 0.3s; }
         .btn-submit:hover { background: var(--primary-dark); transform: translateY(-2px); }
 
@@ -744,123 +574,79 @@
             background: #1a1a1a; color: white; padding: 30px 20px; 
             text-align: center; margin-top: auto; border-top: 4px solid var(--primary);
         }
-        .footer-logo Img { height: 60px; margin-bottom: 10px; }
-        .footer-social { margin: 20px 0; }
+        .footer-logo img { height: 60px; margin-bottom: 10px; filter: none; }
         .footer-social a { 
-            display: inline-flex; width: 40px; height: 40px; 
-            background: #333; color: white; border-radius: 50%; 
-            align-items: center; justify-content: center; margin: 0 8px; 
+            display: inline-flex; width: 40px; height: 40px; background: #333; color: white; 
+            border-radius: 50%; align-items: center; justify-content: center; margin: 0 8px; 
             text-decoration: none; transition: 0.3s;
         }
         .footer-social a:hover { background: var(--primary); transform: translateY(-3px); }
         .copyright { font-size: 0.85rem; color: #888; border-top: 1px solid #333; padding-top: 15px; }
 
+        /* ANIMACIONES */
+        @keyframes fadeInUp { from { opacity: 0; transform: translate3d(0, 30px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+        @keyframes popIn { 0% { opacity: 0; transform: scale(0.8); } 70% { opacity: 1; transform: scale(1.05); } 100% { opacity: 1; transform: scale(1); } }
+        @keyframes rotateTheme { 0% { transform: rotate(0deg) scale(0.5); opacity:0; } 100% { transform: rotate(360deg) scale(1); opacity:1; } }
+        .rotate-anim { animation: rotateTheme 0.6s var(--transition-bounce); }
+        .animate-enter { animation: fadeInUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; opacity: 0; }
+
         /* ==========================================================================
-           🔥 15. OPTIMIZACIÓN EXTREMA PARA CELULARES (MOBILE FIRST REDESIGN)
+           🔥 14. OPTIMIZACIÓN EXTREMA PARA CELULARES (MOBILE FIRST)
            ========================================================================== */
         @media (max-width: 768px) {
-            /* A. REDISEÑO DEL HEADER MÓVIL */
-            .main-header {
-                height: var(--header-height-mobile);
-                padding: 0 15px;
-            }
+            /* HEADER MÓVIL (Con botón de tema visible) */
+            .main-header { height: var(--header-height-mobile); padding: 0 15px; }
+            .header-actions { gap: 8px; }
             
-            .header-actions { gap: 10px; }
+            /* Ajuste de logo */
+            .logo-container img { height: 40px; }
             
-            /* Ocultar elementos de escritorio en el Header */
-            .theme-toggle, .btn-logout-header {
-                display: none !important; /* Se mueven al Sidebar */
-            }
-            
-            /* Ajustar logo */
-            .logo-container Img { height: 40px; }
+            /* Ocultar solo el texto de Salir, mantener icono */
+            .btn-logout-header span { display: none; }
+            .btn-logout-header { padding: 0 15px; }
 
-            /* B. NOTIFICACIONES EN MÓVIL (TIPO PANEL SUPERIOR) */
+            /* Grid Móvil */
+            .container { padding: 20px 15px; }
+            .gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            
+            /* Ajuste Perfil */
+            .profile-card { flex-direction: column; text-align: center; padding: 25px 15px; gap: 20px; }
+            .profile-card::before { display: none; }
+            .btn-contact { width: 100%; justify-content: center; }
+
+            /* Toolbar y Filtros */
+            .toolbar { justify-content: center; gap: 15px; padding: 15px; border-radius: 12px; }
+            
+            /* OCULTAR FAB en móvil (Long press preferido) */
+            .fab-selection { display: none !important; }
+            
+            /* Ocultar botón "Seleccionar" de escritorio */
+            .btn-select-desktop { display: none; }
+
+            /* Notificaciones Full Width */
             .notis-dropdown {
-                position: fixed; 
-                top: var(--header-height-mobile); 
-                left: 0; 
-                right: 0;
-                width: 100%; /* Ancho completo */
-                max-height: 60vh;
-                border-radius: 0 0 15px 15px;
-                border: none;
-                border-bottom: 1px solid var(--border-color);
+                position: fixed; top: var(--header-height-mobile); left: 0; right: 0;
+                width: 100%; max-height: 60vh; border-radius: 0 0 15px 15px;
+                border: none; border-bottom: 1px solid var(--border-color);
                 box-shadow: 0 10px 30px rgba(0,0,0,0.15);
             }
 
-            /* C. SIDEBAR (AHORA CON MÁS OPCIONES) */
-            .mobile-only-menu-item {
-                display: block; /* Mostrar elementos ocultos */
-                margin-top: 5px;
-                border-top: 1px solid var(--border-color);
-                padding-top: 10px;
-            }
-            
-            /* D. GRID Y CONTENIDO */
-            .container { padding: 20px 15px; }
-            .gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } /* 2 Columnas */
-            
-            .profile-card { 
-                flex-direction: column; 
-                text-align: center; 
-                padding: 25px 15px;
-                gap: 20px;
-            }
-            .profile-card::before { display: none; } /* Quitar decoración abstracta en móvil */
-            .btn-contact { width: 100%; justify-content: center; }
-
-            /* E. TOOLBAR Y FAB */
-            .toolbar { 
-                justify-content: center; 
-                gap: 15px; 
-                padding: 15px; 
-                border-radius: 12px;
-            }
-            .filter-group { width: 100%; justify-content: center; }
-            .btn-select-desktop { display: none; } /* Ocultar btn desktop */
-            
-            .fab-selection {
-                bottom: 25px; right: 25px; 
-                width: 55px; height: 55px; 
-                font-size: 1.4rem;
-            }
-
-            /* F. LIGHTBOX TÁCTIL */
-            .lb-nav-btn { display: none; } /* Flechas fuera */
-            .lb-close-fixed { 
-                top: 15px; right: 15px; 
-                padding: 8px 15px; 
-                font-size: 0.9rem; 
-                background: rgba(0,0,0,0.6); /* Más contraste */
-            }
+            /* Lightbox Táctil */
+            .lb-nav-btn { display: none; } 
+            .lb-close-fixed { top: 15px; right: 15px; padding: 8px 15px; font-size: 0.9rem; background: rgba(0,0,0,0.6); }
             .lb-media-item { max-width: 100%; border-radius: 0; }
-            
-            .lb-actions-panel { 
-                flex-direction: column; 
-                width: 90%; 
-                gap: 12px; 
-            }
+            .lb-actions-panel { flex-direction: column; width: 90%; gap: 12px; }
             .btn-lb-action, .btn-lb-report { width: 100%; justify-content: center; }
 
-            /* G. BARRA FLOTANTE DE ACCIÓN (PEGAJOSA AL FONDO) */
+            /* Barra Flotante Acción */
             .floating-bar { 
-                flex-direction: column; 
-                width: 100%; 
-                border-radius: 20px 20px 0 0;
-                padding: 20px; 
-                gap: 15px; 
-                bottom: 0; /* Pegado al fondo */
-                left: 0;
-                transform: translateY(100%); /* Oculto hacia abajo */
-                max-width: 100%;
+                flex-direction: column; width: 100%; border-radius: 20px 20px 0 0;
+                padding: 20px; gap: 15px; bottom: 0; left: 0; transform: translateY(100%); max-width: 100%;
             }
             .floating-bar.active { transform: translateY(0); }
-            
             .floating-bar div { text-align: center; width: 100%; margin-bottom: 5px; }
             .btn-float { width: 100%; justify-content: center; }
             
-            /* H. HUB MODAL EN MÓVIL */
             .hub-grid { grid-template-columns: 1fr; }
         }
     </style>
@@ -871,30 +657,27 @@
     <header class="main-header">
         <div class="logo-container">
             <a href="index.html">
-                <Img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
+                <img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
             </a>
         </div>
         <div class="header-actions">
-            
+            <button onclick="toggleTheme()" class="btn-icon-header" id="themeBtn" title="Cambiar Tema">
+                <i class="fas fa-moon"></i>
+            </button>
+
             <div style="position:relative;">
                 <button class="btn-icon-header" onclick="toggleNotificaciones()" title="Notificaciones">
                     <i class="fas fa-bell"></i>
                     <span id="notisBadge" class="noti-badge" style="display:none;">0</span>
                 </button>
-                
                 <div class="notis-dropdown" id="notisDropdown">
                     <div class="notis-header">
                         Notificaciones
-                        <span id="markReadBtn" style="cursor:pointer; font-size:0.8rem;">Marcar leídas</span>
+                        <span id="markReadBtn" onclick="marcarTodasLeidas()">Marcar leídas</span>
                     </div>
-                    <div class="notis-body" id="notisList">
-                        </div>
+                    <div class="notis-body" id="notisList"></div>
                 </div>
             </div>
-
-            <button onclick="toggleTheme()" class="theme-toggle" id="themeBtn" title="Cambiar Tema">
-                <i class="fas fa-moon"></i>
-            </button>
 
             <button onclick="cerrarSesion()" class="btn-logout-header" title="Cerrar Sesión">
                 <i class="fas fa-sign-out-alt"></i> <span>Salir</span>
@@ -916,15 +699,6 @@
             <li><button class="menu-btn" onclick="location.reload()"><i class="fas fa-id-card"></i> Mi Perfil</button></li>
             <li><button class="menu-btn" onclick="window.location.href='index.html'"><i class="fas fa-home"></i> Inicio</button></li>
             <li><button class="menu-btn" onclick="abrirHubContacto()"><i class="fas fa-headset"></i> Soporte / Contacto</button></li>
-            
-            <div class="mobile-only-menu-item">
-                <li style="margin-bottom:10px;">
-                    <button class="menu-btn" onclick="toggleTheme()">
-                        <i class="fas fa-adjust"></i> Cambiar Tema
-                    </button>
-                </li>
-            </div>
-
             <li style="margin-top:auto; border-top:1px solid var(--border-color); padding-top:20px;">
                 <button class="menu-btn" onclick="cerrarSesion()" style="color:var(--error); font-weight:700;">
                     <i class="fas fa-power-off"></i> Cerrar Sesión
@@ -934,9 +708,8 @@
     </div>
 
     <div class="container">
-        
         <div class="profile-card">
-            <Img id="profilePhoto" src="https://via.placeholder.com/150" alt="Foto Perfil" class="profile-Img">
+            <img id="profilePhoto" src="https://via.placeholder.com/150" alt="Foto Perfil" class="profile-img" onerror="this.src='https://via.placeholder.com/150'">
             <div class="profile-info">
                 <h1 id="userNameDisplay">Cargando datos...</h1>
                 <h2 id="userCedulaDisplay">Verificando...</h2>
@@ -954,21 +727,18 @@
                 <button class="filter-pill" onclick="filtrarGaleria('video', this)">Videos</button>
                 <button class="filter-pill" onclick="filtrarGaleria('documento', this)">Docs</button>
             </div>
-            
             <button class="btn-select-desktop" id="btnSelectMode" onclick="toggleModoSeleccion()">
                 <i class="fas fa-check-square"></i> Seleccionar
             </button>
         </div>
 
-        <div id="galleryContainer" class="gallery-grid">
-            </div>
+        <div id="galleryContainer" class="gallery-grid"></div>
 
         <div id="emptyState" class="empty-state">
             <i class="fas fa-layer-group"></i>
             <h3>No tienes evidencias en esta categoría.</h3>
             <p>Si crees que es un error, contacta al administrador.</p>
         </div>
-
     </div>
 
     <button id="floatingSelectBtn" class="fab-selection" onclick="toggleModoSeleccion()" title="Modo Selección">
@@ -980,40 +750,19 @@
             <span style="color:#aaa; font-size:0.8rem; letter-spacing:1px;">SELECCIONADOS</span><br>
             <strong style="font-size:1.2rem;"><span id="countSelection" style="color:var(--secondary);">0</span> archivos</strong>
         </div>
-        
-        <button class="btn-float" onclick="descargarSeleccionados()">
-            <i class="fas fa-download"></i> Descargar
-        </button>
-        
-        <button class="btn-float danger" onclick="reportarSeleccionados()">
-            <i class="fas fa-flag"></i> Reportar
-        </button>
-
+        <button class="btn-float" onclick="descargarSeleccionados()"><i class="fas fa-download"></i> Descargar</button>
+        <button class="btn-float danger" onclick="reportarSeleccionados()"><i class="fas fa-flag"></i> Reportar</button>
         <button class="btn-float-cancel" onclick="cancelarSeleccion()" title="Cancelar">&times;</button>
     </div>
 
     <div class="lightbox-modal" id="lightbox" onclick="handleClickFondo(event)">
-        <button class="lb-close-fixed" onclick="closeLightbox()">
-            <i class="fas fa-times"></i> Cerrar
-        </button>
-        
-        <button class="lb-nav-btn lb-prev" onclick="prevImage(event)" title="Anterior">
-            <i class="fas fa-chevron-left"></i>
-        </button>
-        <button class="lb-nav-btn lb-next" onclick="nextImage(event)" title="Siguiente">
-            <i class="fas fa-chevron-right"></i>
-        </button>
-        
-        <div class="lb-content-wrapper" id="lightboxContent">
-            </div>
-
+        <button class="lb-close-fixed" onclick="closeLightbox()"><i class="fas fa-times"></i> Cerrar</button>
+        <button class="lb-nav-btn lb-prev" onclick="prevImage(event)" title="Anterior"><i class="fas fa-chevron-left"></i></button>
+        <button class="lb-nav-btn lb-next" onclick="nextImage(event)" title="Siguiente"><i class="fas fa-chevron-right"></i></button>
+        <div class="lb-content-wrapper" id="lightboxContent"></div>
         <div class="lb-actions-panel">
-            <a id="lbDownloadLink" href="#" download class="btn-lb-action" style="background:white; color:black;">
-                <i class="fas fa-download"></i> Descargar
-            </a>
-            <button class="btn-lb-action btn-lb-report" onclick="reportarEvidenciaActual()">
-                <i class="fas fa-flag"></i> Reportar / No soy yo
-            </button>
+            <a id="lbDownloadLink" href="#" download class="btn-lb-action" style="background:white; color:black;"><i class="fas fa-download"></i> Descargar</a>
+            <button class="btn-lb-action btn-lb-report" onclick="reportarEvidenciaActual()"><i class="fas fa-flag"></i> Reportar / No soy yo</button>
         </div>
     </div>
 
@@ -1022,17 +771,10 @@
             <button onclick="cerrarModal('modalContactHub')" style="position:absolute; top:15px; right:15px; border:none; background:none; font-size:1.5rem; cursor:pointer;">&times;</button>
             <h3 style="color:var(--primary); margin-bottom:10px;"><i class="fas fa-headset"></i> Centro de Ayuda</h3>
             <p style="color:var(--text-sec); font-size:0.95rem;">Selecciona el motivo de tu consulta:</p>
-            
             <div class="hub-grid">
-                <button class="hub-btn" onclick="cambiarModal('modalContactHub', 'modalUpload')">
-                    <i class="fas fa-cloud-upload-alt"></i> <h4>Subir Evidencia</h4>
-                </button>
-                <button class="hub-btn" onclick="cambiarModal('modalContactHub', 'modalReport')">
-                    <i class="fas fa-bug"></i> <h4>Reportar Error</h4>
-                </button>
-                <button class="hub-btn" onclick="cambiarModal('modalContactHub', 'modalProblem')">
-                    <i class="fas fa-user-shield"></i> <h4>Problema Cuenta</h4>
-                </button>
+                <button class="hub-btn" onclick="cambiarModal('modalContactHub', 'modalUpload')"><i class="fas fa-cloud-upload-alt"></i> <h4>Subir Evidencia</h4></button>
+                <button class="hub-btn" onclick="cambiarModal('modalContactHub', 'modalReport')"><i class="fas fa-bug"></i> <h4>Reportar Error</h4></button>
+                <button class="hub-btn" onclick="cambiarModal('modalContactHub', 'modalProblem')"><i class="fas fa-user-shield"></i> <h4>Problema Cuenta</h4></button>
             </div>
         </div>
     </div>
@@ -1040,17 +782,10 @@
     <div class="modal-overlay" id="modalUpload">
         <div class="modal-card">
             <h3 style="color:var(--primary);">Subir Evidencia</h3>
-            <p style="font-size:0.9rem; margin-bottom:20px;">Tu archivo será revisado por administración.</p>
             <form onsubmit="enviarSolicitud(event, 'SUBIDA')">
-                <div class="form-group">
-                    <label>Archivo (Imagen, Video, PDF)</label>
-                    <input type="file" id="fileUpload" class="form-control" required accept="image/*,video/*,.pdf,.doc,.docx">
-                </div>
-                <div class="form-group">
-                    <label>Descripción</label>
-                    <input type="text" id="descUpload" class="form-control" placeholder="Ej: Proyecto de Física - Grupo 2">
-                </div>
-                <button type="submit" class="btn-submit">Enviar a Revisión</button>
+                <div class="form-group"><label>Archivo</label><input type="file" id="fileUpload" class="form-control" required></div>
+                <div class="form-group"><label>Descripción</label><input type="text" id="descUpload" class="form-control"></div>
+                <button type="submit" class="btn-submit">Enviar</button>
                 <button type="button" class="btn-submit" onclick="cambiarModal('modalUpload', 'modalContactHub')" style="background:transparent; color:#666; border:1px solid #ddd;">Volver</button>
             </form>
         </div>
@@ -1058,12 +793,10 @@
 
     <div class="modal-overlay" id="modalReport">
         <div class="modal-card">
-            <h3 style="color:var(--error);">Reportar Error Técnico</h3>
-            <form onsubmit="enviarSolicitud(event, 'ERROR_TECNICO')">
-                <div class="form-group">
-                    <textarea id="descError" class="form-control" rows="4" placeholder="Describe el fallo (Ej: No carga mis fotos...)" required></textarea>
-                </div>
-                <button type="submit" class="btn-submit" style="background:var(--error);">Enviar Reporte</button>
+            <h3 style="color:var(--error);">Reportar Error</h3>
+            <form onsubmit="enviarSolicitud(event, 'ERROR')">
+                <div class="form-group"><textarea id="descError" class="form-control" rows="4" required></textarea></div>
+                <button type="submit" class="btn-submit" style="background:var(--error);">Enviar</button>
                 <button type="button" class="btn-submit" onclick="cambiarModal('modalReport', 'modalContactHub')" style="background:transparent; color:#666; border:1px solid #ddd;">Volver</button>
             </form>
         </div>
@@ -1071,12 +804,10 @@
 
     <div class="modal-overlay" id="modalProblem">
         <div class="modal-card">
-            <h3 style="color:var(--warning);">Problema de Cuenta</h3>
-            <form onsubmit="enviarSolicitud(event, 'PROBLEMA_CUENTA')">
-                <div class="form-group">
-                    <textarea id="descProblem" class="form-control" rows="4" placeholder="Ej: Mi nombre está mal escrito, aparecen fotos de otro..." required></textarea>
-                </div>
-                <button type="submit" class="btn-submit" style="background:var(--warning); color:black;">Enviar Solicitud</button>
+            <h3 style="color:var(--warning);">Problema Cuenta</h3>
+            <form onsubmit="enviarSolicitud(event, 'PROBLEMA')">
+                <div class="form-group"><textarea id="descProblem" class="form-control" rows="4" required></textarea></div>
+                <button type="submit" class="btn-submit" style="background:var(--warning); color:black;">Enviar</button>
                 <button type="button" class="btn-submit" onclick="cambiarModal('modalProblem', 'modalContactHub')" style="background:transparent; color:#666; border:1px solid #ddd;">Volver</button>
             </form>
         </div>
@@ -1103,74 +834,42 @@
     </footer>
 
     <script>
-        // CONFIGURACIÓN API
         const API_URL = "https://proyecto-de-grado-oficial-production.up.railway.app";
         
-        // ESTADO GLOBAL
         let appState = {
-            galeria: [],        // Todos los items
-            filtrada: [],       // Items visibles actualmente
-            seleccionados: [],  // IDs de items seleccionados
-            modoSeleccion: false, // Bandera de estado
-            indiceLightbox: 0,   // Índice para navegación en visor
-            notificaciones: []   // Lista de notificaciones
+            galeria: [], filtrada: [], seleccionados: [],
+            modoSeleccion: false, indiceLightbox: 0, notificaciones: []
         };
 
-        // Variables para Long Press
-        let pressTimer;
-        let isPressing = false;
+        let pressTimer, isPressing = false;
 
-        // INICIALIZACIÓN
         document.addEventListener('DOMContentLoaded', () => {
-            initTheme();
-            verificarAuth();
-            
-            // Listeners Generales
-            document.getElementById('menuToggle').onclick = toggleMenu;
-            document.getElementById('closeMenu').onclick = toggleMenu;
-            document.getElementById('overlayMenu').onclick = toggleMenu;
-
-            // Navegación Teclado
-            document.addEventListener('keydown', (e) => {
-                const lb = document.getElementById('lightbox');
-                if (lb.classList.contains('active')) {
-                    if (e.key === 'ArrowLeft') prevImage(e);
-                    if (e.key === 'ArrowRight') nextImage(e);
-                    if (e.key === 'Escape') closeLightbox();
-                }
-            });
-
-            // Listener de Scroll (FAB)
-            window.addEventListener('scroll', handleScroll);
-
-            // Cargar notificaciones simuladas
-            cargarNotificacionesSimuladas();
+            try {
+                initTheme();
+                verificarAuth();
+                document.getElementById('menuToggle').onclick = toggleMenu;
+                document.getElementById('closeMenu').onclick = toggleMenu;
+                document.getElementById('overlayMenu').onclick = toggleMenu;
+                window.addEventListener('scroll', handleScroll);
+                cargarNotificacionesSimuladas();
+            } catch (error) { console.error("Error init:", error); }
         });
 
-        // =========================================================================
-        // 1. MANEJO DE SCROLL & FAB
-        // =========================================================================
+        // 1. SCROLL & FAB
         function handleScroll() {
             const toolbar = document.getElementById('mainToolbar');
             const floatBtn = document.getElementById('floatingSelectBtn');
+            if(!toolbar || !floatBtn) return;
             const rect = toolbar.getBoundingClientRect();
-
-            // Si la toolbar ya no es visible Y no estamos en modo selección
-            if (rect.bottom < 0 && !appState.modoSeleccion) {
-                floatBtn.classList.add('visible');
-            } else {
-                floatBtn.classList.remove('visible');
-            }
+            if (rect.bottom < 0 && !appState.modoSeleccion) floatBtn.classList.add('visible');
+            else floatBtn.classList.remove('visible');
         }
 
-        // =========================================================================
-        // 2. SISTEMA DE NOTIFICACIONES
-        // =========================================================================
+        // 2. NOTIFICACIONES
         function cargarNotificacionesSimuladas() {
             appState.notificaciones = [
-                { id: 1, titulo: "Solicitud Aprobada", mensaje: "El administrador aprobó tu foto de 'Feria de Ciencias'.", tipo: "success", fecha: "Hace 2 horas", leida: false },
-                { id: 2, titulo: "Solicitud Rechazada", mensaje: "Tu archivo 'video_broma.mp4' no cumple con las normas.", tipo: "error", fecha: "Ayer", leida: false },
-                { id: 3, titulo: "Bienvenido", mensaje: "Recuerda completar tu perfil antes del viernes.", tipo: "info", fecha: "Hace 3 días", leida: true }
+                { id: 1, titulo: "Solicitud Aprobada", mensaje: "Tu foto fue aprobada.", tipo: "success", fecha: "Hace 2h", leida: false },
+                { id: 2, titulo: "Solicitud Rechazada", mensaje: "Archivo no válido.", tipo: "error", fecha: "Ayer", leida: false }
             ];
             renderNotificaciones();
         }
@@ -1179,58 +878,33 @@
             const lista = document.getElementById('notisList');
             const badge = document.getElementById('notisBadge');
             const noLeidas = appState.notificaciones.filter(n => !n.leida).length;
-
-            if(noLeidas > 0) {
-                badge.style.display = 'flex';
-                badge.textContent = noLeidas;
-            } else {
-                badge.style.display = 'none';
-            }
-
+            badge.style.display = noLeidas > 0 ? 'flex' : 'none';
+            badge.textContent = noLeidas;
             lista.innerHTML = '';
             
             if(appState.notificaciones.length === 0) {
-                lista.innerHTML = `<div class="notis-empty"><i class="far fa-bell-slash"></i><p>No tienes notificaciones</p></div>`;
+                lista.innerHTML = `<div class="notis-empty"><i class="far fa-bell-slash"></i><p>Sin notificaciones</p></div>`;
                 return;
             }
 
             appState.notificaciones.forEach(notis => {
                 const item = document.createElement('div');
                 item.className = `noti-item ${notis.leida ? '' : 'unread'}`;
-                
-                let iconHtml = '';
-                if(notis.tipo === 'success') iconHtml = '<i class="fas fa-check" style="color:var(--secondary)"></i>';
-                else if(notis.tipo === 'error') iconHtml = '<i class="fas fa-times" style="color:var(--error)"></i>';
-                else iconHtml = '<i class="fas fa-info" style="color:var(--primary)"></i>';
-
-                item.innerHTML = `
-                    <div class="noti-icon">${iconHtml}</div>
-                    <div class="noti-content">
-                        <h4>${notis.titulo}</h4>
-                        <p>${notis.mensaje}</p>
-                        <span class="noti-time">${notis.fecha}</span>
-                    </div>
-                `;
+                let icon = notis.tipo === 'success' ? '<i class="fas fa-check" style="color:var(--secondary)"></i>' : 
+                           notis.tipo === 'error' ? '<i class="fas fa-times" style="color:var(--error)"></i>' : 
+                           '<i class="fas fa-info" style="color:var(--primary)"></i>';
+                item.innerHTML = `<div class="noti-icon">${icon}</div><div class="noti-content"><h4>${notis.titulo}</h4><p>${notis.mensaje}</p><span class="noti-time">${notis.fecha}</span></div>`;
                 lista.appendChild(item);
             });
         }
 
-        function toggleNotificaciones() {
-            const dd = document.getElementById('notisDropdown');
-            dd.classList.toggle('active');
+        function toggleNotificaciones() { document.getElementById('notisDropdown').classList.toggle('active'); }
+        function marcarTodasLeidas() {
+            appState.notificaciones.forEach(n => n.leida = true);
+            renderNotificaciones();
         }
 
-        window.addEventListener('click', (e) => {
-            const btn = e.target.closest('.btn-icon-header');
-            const dd = document.getElementById('notisDropdown');
-            if(!btn && !e.target.closest('.notis-dropdown')) {
-                dd.classList.remove('active');
-            }
-        });
-
-        // =========================================================================
         // 3. AUTH & DATOS
-        // =========================================================================
         function verificarAuth() {
             const cedula = localStorage.getItem('usuario_cedula');
             if (!cedula) return window.location.href = 'index.html';
@@ -1240,115 +914,79 @@
         async function cargarDatos(cedula) {
             const fd = new FormData();
             fd.append('cedula', cedula);
-            const pass = localStorage.getItem('usuario_contrasena');
-            if(pass) fd.append('contrasena', pass);
-
+            if(localStorage.getItem('usuario_contrasena')) fd.append('contrasena', localStorage.getItem('usuario_contrasena'));
             try {
                 const res = await fetch(`${API_URL}/buscar_estudiante`, { method: "POST", body: fd });
                 const data = await res.json();
-                if (data.encontrado) {
-                    actualizarUI(data.datos);
-                } else {
-                    alert("Sesión expirada."); cerrarSesion();
-                }
-            } catch (e) { console.error(e); alert("Error de conexión."); }
+                if (data.encontrado) actualizarUI(data.datos);
+                else { alert("Sesión expirada"); cerrarSesion(); }
+            } catch (e) { alert("Error de conexión"); }
         }
 
         function actualizarUI(datos) {
-            const nombre = datos.nombre ? datos.nombre.split(' ')[0] : 'Estudiante';
-            const apellido = datos.apellido ? datos.apellido.split(' ')[0] : '';
-            document.getElementById('userNameDisplay').textContent = `${nombre} ${apellido}`;
-
-            const cedulaReal = datos.cedula || localStorage.getItem('usuario_cedula') || '...';
-            document.getElementById('userCedulaDisplay').textContent = `C.I: ${cedulaReal}`;
-
+            document.getElementById('userNameDisplay').textContent = `${datos.nombre.split(' ')[0]} ${datos.apellido.split(' ')[0]}`;
+            document.getElementById('userCedulaDisplay').textContent = `C.I: ${datos.cedula || localStorage.getItem('usuario_cedula')}`;
             if(datos.url_foto) document.getElementById('profilePhoto').src = datos.url_foto;
-
             appState.galeria = (datos.galeria || []).map(item => ({
-                id: item.id,
-                url: item.url || item.url_foto,
-                tipo: obtenerTipo(item.url || item.url_foto)
+                id: item.id, url: item.url || item.url_foto, tipo: obtenerTipo(item.url || item.url_foto)
             }));
             filtrarGaleria('todo');
         }
 
         function obtenerTipo(url) {
             if(!url) return 'documento';
-            const cleanUrl = url.split('?')[0]; 
-            const ext = cleanUrl.split('.').pop().toLowerCase();
+            const ext = url.split('?')[0].split('.').pop().toLowerCase();
             if(['jpg','jpeg','png','webp','gif'].includes(ext)) return 'imagen';
-            if(['mp4','webm','mov','avi'].includes(ext)) return 'video';
+            if(['mp4','webm','mov'].includes(ext)) return 'video';
             return 'documento';
         }
 
-        // =========================================================================
-        // 4. GALERÍA & SELECCIÓN
-        // =========================================================================
+        // 4. GALERÍA
         function filtrarGaleria(filtro, btn) {
             if(btn) {
                 document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
             }
-            if(filtro === 'todo') appState.filtrada = [...appState.galeria];
-            else appState.filtrada = appState.galeria.filter(i => i.tipo === (filtro==='foto'?'imagen':filtro));
+            appState.filtrada = filtro === 'todo' ? [...appState.galeria] : appState.galeria.filter(i => i.tipo === (filtro === 'foto' ? 'imagen' : filtro));
             renderGrid();
         }
 
         function renderGrid() {
             const container = document.getElementById('galleryContainer');
             container.innerHTML = '';
-            
-            if(appState.filtrada.length === 0) {
-                document.getElementById('emptyState').style.display = 'flex';
-                return;
-            }
-            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('emptyState').style.display = appState.filtrada.length === 0 ? 'flex' : 'none';
 
             appState.filtrada.forEach((item, idx) => {
                 const card = document.createElement('div');
                 const isSelected = appState.seleccionados.includes(item.id);
-                
                 card.id = `ev-card-${item.id}`;
                 card.className = `evidence-card ${isSelected ? 'selected' : ''} animate-enter`;
                 card.style.animationDelay = `${idx * 40}ms`;
                 
-                // EVENTOS: CLICK + TOUCH (Long Press)
-                card.addEventListener('click', () => handleClick(item.id, idx));
+                card.onclick = () => handleClick(item.id, idx);
                 card.addEventListener('touchstart', (e) => handleTouchStart(e, item.id), {passive: true});
                 card.addEventListener('touchend', handleTouchEnd);
                 card.addEventListener('touchmove', handleTouchMove);
 
-                let content = '';
-                if(item.tipo === 'imagen') content = `<Img src="${item.url}" class="card-media" loading="lazy">`;
-                else if(item.tipo === 'video') content = `<video src="${item.url}#t=0.1" class="card-media"></video><div class="video-overlay"><i class="fas fa-play-circle"></i></div>`;
-                else content = `<div style="width:100%;height:100%;background:#f4f4f4;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#666;"><i class="fas fa-file-alt" style="font-size:2.5rem;margin-bottom:10px;color:var(--primary)"></i>DOC</div>`;
+                let content = item.tipo === 'imagen' ? `<img src="${item.url}" class="card-media" loading="lazy">` :
+                              item.tipo === 'video' ? `<video src="${item.url}#t=0.1" class="card-media"></video><div class="video-overlay"><i class="fas fa-play-circle"></i></div>` :
+                              `<div style="width:100%;height:100%;background:#f4f4f4;display:flex;align-items:center;justify-content:center;color:#666;"><i class="fas fa-file-alt" style="font-size:2.5rem;"></i></div>`;
 
                 card.innerHTML = `<div class="selection-check"><i class="fas fa-check"></i></div>${content}`;
                 container.appendChild(card);
             });
-
-            if(appState.modoSeleccion) container.classList.add('selection-mode-active');
-            else container.classList.remove('selection-mode-active');
+            container.classList[appState.modoSeleccion ? 'add' : 'remove']('selection-mode-active');
         }
 
         function toggleItemSeleccion(id) {
             const idx = appState.seleccionados.indexOf(id);
-            const cardEl = document.getElementById(`ev-card-${id}`);
-
-            if(idx === -1) {
-                if(appState.seleccionados.length >= 25) return alert("Límite de 25 archivos.");
-                appState.seleccionados.push(id);
-                if(cardEl) cardEl.classList.add('selected');
-            } else {
-                appState.seleccionados.splice(idx, 1);
-                if(cardEl) cardEl.classList.remove('selected');
-            }
+            const el = document.getElementById(`ev-card-${id}`);
+            if(idx === -1) { appState.seleccionados.push(id); if(el) el.classList.add('selected'); }
+            else { appState.seleccionados.splice(idx, 1); if(el) el.classList.remove('selected'); }
             document.getElementById('countSelection').textContent = appState.seleccionados.length;
         }
 
-        // =========================================================================
-        // 5. INTERACCIÓN (TOUCH & CLICK)
-        // =========================================================================
+        // 5. INTERACCIÓN
         function handleClick(id, idx) {
             if(appState.modoSeleccion) toggleItemSeleccion(id);
             else abrirLightbox(idx);
@@ -1360,196 +998,94 @@
             pressTimer = setTimeout(() => {
                 if(isPressing) {
                     if(navigator.vibrate) navigator.vibrate(50);
-                    entrarModoSeleccionDesdeMovil(id);
+                    toggleModoSeleccion(true);
+                    toggleItemSeleccion(id);
                 }
             }, 800);
         }
         function handleTouchEnd() { clearTimeout(pressTimer); isPressing = false; }
         function handleTouchMove() { clearTimeout(pressTimer); isPressing = false; }
 
-        function entrarModoSeleccionDesdeMovil(idInicial) {
-            toggleModoSeleccion(true);
-            toggleItemSeleccion(idInicial);
-        }
-
-        function toggleModoSeleccion(forceActive = null) {
-            if(forceActive !== null) appState.modoSeleccion = forceActive;
-            else appState.modoSeleccion = !appState.modoSeleccion;
-
+        function toggleModoSeleccion(force = null) {
+            appState.modoSeleccion = force !== null ? force : !appState.modoSeleccion;
             const bar = document.getElementById('floatingBar');
             const btn = document.getElementById('btnSelectMode');
-            const container = document.getElementById('galleryContainer');
             const fab = document.getElementById('floatingSelectBtn');
-            
+            const container = document.getElementById('galleryContainer');
+
             if(appState.modoSeleccion) {
                 bar.classList.add('active');
                 if(btn) { btn.classList.add('active'); btn.innerHTML = '<i class="fas fa-times"></i> Cancelar'; }
-                container.classList.add('selection-mode-active');
                 fab.classList.add('hidden');
+                container.classList.add('selection-mode-active');
             } else {
                 cancelarSeleccion();
                 fab.classList.remove('hidden');
+                container.classList.remove('selection-mode-active');
                 handleScroll();
             }
         }
 
         function cancelarSeleccion() {
-            appState.modoSeleccion = false;
-            appState.seleccionados = [];
+            appState.modoSeleccion = false; appState.seleccionados = [];
             document.getElementById('floatingBar').classList.remove('active');
-            document.getElementById('galleryContainer').classList.remove('selection-mode-active');
             const btn = document.getElementById('btnSelectMode');
             if(btn) { btn.classList.remove('active'); btn.innerHTML = '<i class="fas fa-check-square"></i> Seleccionar'; }
-            document.querySelectorAll('.evidence-card.selected').forEach(c => c.classList.remove('selected'));
+            document.querySelectorAll('.evidence-card.selected').forEach(e => e.classList.remove('selected'));
             document.getElementById('countSelection').textContent = '0';
         }
 
-        // =========================================================================
         // 6. LIGHTBOX
-        // =========================================================================
         function abrirLightbox(idx) {
-            appState.indiceLightbox = idx;
-            actualizarLightbox();
+            appState.indiceLightbox = idx; actualizarLightbox();
             document.getElementById('lightbox').classList.add('active');
             document.body.style.overflow = 'hidden';
         }
-
-        function handleClickFondo(e) {
-            if (e.target.id === 'lightbox') closeLightbox();
-        }
-
         function closeLightbox() {
             document.getElementById('lightbox').classList.remove('active');
             document.getElementById('lightboxContent').innerHTML = '';
             document.body.style.overflow = '';
         }
+        function handleClickFondo(e) { if(e.target.id === 'lightbox') closeLightbox(); }
 
         function actualizarLightbox() {
             const item = appState.filtrada[appState.indiceLightbox];
-            const wrapper = document.getElementById('lightboxContent');
-            const btnDown = document.getElementById('lbDownloadLink');
-            wrapper.innerHTML = '';
-            
+            const wrap = document.getElementById('lightboxContent');
+            const btn = document.getElementById('lbDownloadLink');
+            wrap.innerHTML = '';
             if(item.tipo === 'imagen') {
-                const Img = document.createElement('Img'); Img.src = item.url; Img.className = 'lb-media-item'; wrapper.appendChild(Img);
+                const img = document.createElement('img'); img.src = item.url; img.className = 'lb-media-item'; wrap.appendChild(img);
             } else if(item.tipo === 'video') {
-                const vid = document.createElement('video'); vid.src = item.url; vid.controls = true; vid.autoplay = true; vid.className = 'lb-media-item'; wrapper.appendChild(vid);
-            } else {
-                wrapper.innerHTML = `<div style="color:white;text-align:center;"><i class="fas fa-file-download" style="font-size:5rem;"></i><p>Vista no disponible.</p></div>`;
-            }
-            btnDown.href = item.url;
+                const vid = document.createElement('video'); vid.src = item.url; vid.controls = true; vid.className = 'lb-media-item'; wrap.appendChild(vid);
+            } else wrap.innerHTML = '<div style="color:white;text-align:center;">Documento</div>';
+            btn.href = item.url;
         }
+        function nextImage(e) { if(e) e.stopPropagation(); appState.indiceLightbox = (appState.indiceLightbox+1)%appState.filtrada.length; actualizarLightbox(); }
+        function prevImage(e) { if(e) e.stopPropagation(); appState.indiceLightbox = (appState.indiceLightbox-1+appState.filtrada.length)%appState.filtrada.length; actualizarLightbox(); }
 
-        function nextImage(e) { if(e) e.stopPropagation(); appState.indiceLightbox = (appState.indiceLightbox + 1) % appState.filtrada.length; actualizarLightbox(); }
-        function prevImage(e) { if(e) e.stopPropagation(); appState.indiceLightbox = (appState.indiceLightbox - 1 + appState.filtrada.length) % appState.filtrada.length; actualizarLightbox(); }
-
-        const lbEl = document.getElementById('lightbox');
-        let touchX = 0;
-        lbEl.addEventListener('touchstart', e => touchX = e.changedTouches[0].screenX, {passive: true});
-        lbEl.addEventListener('touchend', e => {
-            let endX = e.changedTouches[0].screenX;
-            if(endX < touchX - 50) nextImage(null);
-            if(endX > touchX + 50) prevImage(null);
-        }, {passive: true});
-
-        // =========================================================================
-        // 7. DESCARGA Y REPORTE
-        // =========================================================================
-        async function descargarSeleccionados() {
-            if(appState.seleccionados.length === 0) return;
-            const btn = document.querySelector('#floatingBar .btn-float');
-            const orig = btn.innerHTML;
-            btn.innerHTML = '<div class="spinner"></div> ...';
-            const fd = new FormData();
-            fd.append('ids', appState.seleccionados.join(','));
-            try {
-                const res = await fetch(`${API_URL}/descargar_seleccion_zip`, {method:'POST', body:fd});
-                if(res.ok) {
-                    const blob = await res.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a'); a.href = url; a.download = 'Evidencias.zip';
-                    document.body.appendChild(a); a.click(); a.remove();
-                    cancelarSeleccion();
-                } else alert("Error ZIP");
-            } catch(e) { alert("Error red"); }
-            finally { btn.innerHTML = orig; }
-        }
-
-        async function reportarSeleccionados() {
-            if(appState.seleccionados.length === 0) return;
-            if(!confirm(`¿Reportar ${appState.seleccionados.length} archivos?`)) return;
-            alert("Reportes enviados.");
-            cancelarSeleccion();
-        }
-
-        async function reportarEvidenciaActual() {
-            const item = appState.filtrada[appState.indiceLightbox];
-            const motivo = prompt("Motivo del reporte:");
-            if(!motivo) return;
-            const fd = new FormData();
-            fd.append('evidencia_id', item.id);
-            fd.append('cedula', localStorage.getItem('usuario_cedula'));
-            fd.append('motivo', motivo);
-            fd.append('tipo_solicitud', 'REPORTE');
-            try { await fetch(`${API_URL}/reportar_evidencia`, { method: 'POST', body: fd }); alert("Reporte enviado."); }
-            catch(e) { alert("Reporte enviado (Simulado)."); }
-        }
-
-        // =========================================================================
-        // 8. UTILIDADES
-        // =========================================================================
+        // 7. UTILS
         function toggleTheme() {
             document.body.classList.toggle('dark-mode');
-            const isDark = document.body.classList.contains('dark-mode');
-            localStorage.setItem('global_theme', isDark ? 'dark' : 'light');
+            localStorage.setItem('global_theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
             initTheme();
         }
-
         function initTheme() {
             const saved = localStorage.getItem('global_theme');
-            const btns = document.querySelectorAll('#themeBtn i, .mobile-only-menu-item i');
-            
-            if(saved === 'dark') {
-                document.body.classList.add('dark-mode');
-                btns.forEach(i => i.className = 'fas fa-sun');
-            } else {
-                document.body.classList.remove('dark-mode');
-                btns.forEach(i => i.className = 'fas fa-moon');
-            }
+            const icon = document.querySelector('#themeBtn i');
+            if(saved === 'dark') { document.body.classList.add('dark-mode'); icon.className = 'fas fa-sun'; }
+            else { document.body.classList.remove('dark-mode'); icon.className = 'fas fa-moon'; }
         }
-
-        function toggleMenu() {
-            document.getElementById('sideMenu').classList.toggle('active');
-            document.getElementById('overlayMenu').classList.toggle('active');
-        }
-
-        function abrirHubContacto() {
-            document.getElementById('sideMenu').classList.remove('active');
-            document.getElementById('overlayMenu').classList.remove('active');
-            document.getElementById('modalContactHub').classList.add('active');
-        }
-
-        function cerrarModal(id) { document.getElementById(id).classList.remove('active'); }
-        function cambiarModal(origen, destino) { cerrarModal(origen); document.getElementById(destino).classList.add('active'); }
-
-        async function enviarSolicitud(e, tipo) {
-            e.preventDefault();
-            const btn = e.target.querySelector('button[type="submit"]');
-            const txt = btn.innerHTML;
-            btn.innerHTML = '<div class="spinner"></div> Enviando...'; btn.disabled = true;
-            setTimeout(() => {
-                alert("Solicitud recibida.");
-                cerrarModal(e.target.closest('.modal-overlay').id);
-                btn.innerHTML = txt; btn.disabled = false;
-                e.target.reset();
-            }, 1000);
-        }
-
+        function toggleMenu() { document.getElementById('sideMenu').classList.toggle('active'); document.getElementById('overlayMenu').classList.toggle('active'); }
         function cerrarSesion() { localStorage.clear(); window.location.href = 'index.html'; }
-
+        
+        function cerrarModal(id) { document.getElementById(id).classList.remove('active'); }
+        function abrirHubContacto() { cerrarModal('overlayMenu'); document.getElementById('sideMenu').classList.remove('active'); document.getElementById('modalContactHub').classList.add('active'); }
+        function cambiarModal(o, d) { cerrarModal(o); document.getElementById(d).classList.add('active'); }
+        
         window.onclick = function(e) {
             if(e.target.classList.contains('modal-overlay')) e.target.classList.remove('active');
-        };
+            if(!e.target.closest('.btn-icon-header') && !e.target.closest('.notis-dropdown')) document.getElementById('notisDropdown').classList.remove('active');
+        }
     </script>
 </body>
 </html>
