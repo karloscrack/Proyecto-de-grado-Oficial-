@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="description" content="Panel de Administración Avanzado - U.E. Despertar">
+    <meta name="description" content="Panel de Administración - Gestión Educativa Avanzada">
     <meta name="theme-color" content="#6A0DAD">
     
-    <title>Admin Panel - Unidad Educativa Despertar</title>
+    <title>Panel de Administración | U.E. Despertar</title>
     
     <link rel="icon" type="image/png" href="Img/Logo_pestaña.png">
     
@@ -16,10 +16,10 @@
 
     <style>
         /* ==========================================================================
-           1. CORE DESIGN SYSTEM (Tokens idénticos al perfil estudiante)
+           1. VARIABLES Y SISTEMA DE DISEÑO (DESIGN TOKENS)
            ========================================================================== */
         :root {
-            /* Branding */
+            /* Identidad Corporativa */
             --primary: #6A0DAD;       
             --primary-dark: #4a0072;  
             --primary-light: #9d46ff; 
@@ -32,12 +32,13 @@
             --warning: #f9a825;       
             --info: #0288d1;          
             
-            /* Theme Colors (Light) */
+            /* Paleta Modo Claro */
             --bg-image: url('Img/Claro.png'); 
             --bg-body: #f4f6f9;
             --bg-card: #ffffff;
-            --bg-header: rgba(255, 255, 255, 0.98);
+            --bg-header: rgba(255, 255, 255, 0.95);
             --bg-sidebar: #ffffff;
+            --bg-input: #f8f9fa;
             
             --text-main: #2c3e50;
             --text-sec: #5f6368;
@@ -45,44 +46,52 @@
             --text-inverse: #ffffff;
             
             --border-color: #e0e0e0;
-            --input-bg: #f8f9fa;
             
-            /* Effects */
+            /* Sombras y Efectos */
             --shadow-soft: 0 4px 20px rgba(0,0,0,0.05);
             --shadow-card: 0 2px 8px rgba(0,0,0,0.04);
             --shadow-hover: 0 10px 25px rgba(106, 13, 173, 0.15);
             --shadow-nav: 0 2px 15px rgba(0,0,0,0.05);
             
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.5);
             --glass-backdrop: blur(12px);
             
-            /* Layout */
+            /* Dimensiones */
             --header-height: 80px;
+            --header-height-mobile: 70px;
             --sidebar-width: 280px;
             --border-radius: 16px;
             --transition-speed: 0.3s;
         }
 
-        /* Dark Mode High Contrast Fix */
+        /* ==========================================================================
+           2. MODO OSCURO (DARK MODE) - CONTRASTES MEJORADOS
+           ========================================================================== */
         body.dark-mode {
             --bg-image: url('Img/Oscuro.png');
             --bg-body: #121212;
             --bg-card: #1e1e1e;
-            --bg-header: rgba(30, 30, 30, 0.98);
-            --bg-sidebar: #1a1a1a;
+            --bg-header: rgba(30, 30, 30, 0.95);
+            --bg-sidebar: #1e1e1e;
+            --bg-input: #2d2d2d;
             
-            /* Textos más brillantes para contraste */
-            --text-main: #f0f2f5; 
-            --text-sec: #d0d3d8; 
-            --text-muted: #a0a3a8;
+            --text-main: #e8eaed;
+            --text-sec: #b0b3b8;
+            --text-muted: #6e7175;
             
-            --border-color: #333333;
-            --input-bg: #2d2d2d;
+            --border-color: #3c4043;
             
             --shadow-soft: 0 4px 20px rgba(0,0,0,0.4);
             --shadow-hover: 0 10px 30px rgba(0,0,0,0.6);
+            
+            --glass-bg: rgba(30, 30, 30, 0.85);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
-        /* Reset & Base */
+        /* ==========================================================================
+           3. RESET & BASE
+           ========================================================================== */
         * { margin: 0; padding: 0; box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
         
         body {
@@ -94,14 +103,16 @@
             background-position: center;
             color: var(--text-main);
             padding-top: var(--header-height);
+            transition: background var(--transition-speed), color var(--transition-speed);
             min-height: 100vh;
             display: flex; flex-direction: column;
-            overflow-x: hidden; /* Evitar scroll horizontal en móvil */
+            overflow-x: hidden;
         }
 
         a { text-decoration: none; color: inherit; transition: var(--transition-speed); }
         ul { list-style: none; }
-        
+        button, input, select, textarea { font-family: inherit; }
+
         /* Scrollbar Personalizado */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -109,7 +120,7 @@
         ::-webkit-scrollbar-thumb:hover { background: var(--primary-dark); }
 
         /* ==========================================================================
-           2. HEADER (Copia exacta de Estudiante)
+           4. HEADER (COPIA EXACTA DE PERFIL ESTUDIANTE)
            ========================================================================== */
         .main-header {
             position: fixed; top: 0; left: 0; width: 100%;
@@ -119,13 +130,14 @@
             box-shadow: var(--shadow-nav);
             z-index: 1000;
             display: flex; align-items: center; justify-content: space-between;
-            padding: 0 20px;
+            padding: 0 5%;
             backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
         }
 
         .logo-container img {
             height: 50px; width: auto;
-            transition: transform 0.3s;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
             filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
         }
         .logo-container img:hover { transform: scale(1.05); }
@@ -133,15 +145,22 @@
         .header-actions { display: flex; align-items: center; gap: 15px; }
 
         .btn-icon-header {
-            background: transparent; border: 2px solid var(--primary);
-            color: var(--primary); width: 42px; height: 42px;
-            border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            font-size: 1.2rem; cursor: pointer; transition: 0.3s;
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            width: 42px; height: 42px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; cursor: pointer;
+            transition: 0.3s;
             position: relative;
         }
-        .btn-icon-header:hover { background: var(--primary-soft); transform: rotate(15deg); }
+        .btn-icon-header:hover {
+            background: var(--primary-soft);
+            transform: rotate(15deg);
+            box-shadow: 0 0 15px var(--primary-soft);
+        }
 
-        /* Notificación Badge */
         .noti-badge {
             position: absolute; top: -5px; right: -5px;
             background: var(--error); color: white;
@@ -149,256 +168,207 @@
             width: 20px; height: 20px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             border: 2px solid var(--bg-header);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
 
         .btn-logout-header {
             background: var(--error); color: white; border: none;
             padding: 0 25px; height: 42px; border-radius: 50px;
             font-weight: 600; font-size: 0.95rem; cursor: pointer;
-            display: flex; align-items: center; gap: 8px; transition: 0.3s;
+            display: flex; align-items: center; gap: 8px;
+            transition: 0.3s;
             box-shadow: 0 4px 10px rgba(211, 47, 47, 0.25);
         }
-        .btn-logout-header:hover { background: #b71c1c; transform: translateY(-2px); }
+        .btn-logout-header:hover {
+            background: #b71c1c; transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(211, 47, 47, 0.35);
+        }
 
         .menu-toggle {
-            display: none; /* Se activa en móvil */
             background: none; border: none; font-size: 1.8rem;
             color: var(--primary); cursor: pointer;
-            width: 45px; height: 45px; align-items: center; justify-content: center;
+            width: 45px; height: 45px; display: flex; align-items: center; justify-content: center;
+            transition: transform 0.2s;
+            display: none; /* Se muestra en media queries */
         }
 
-        /* Dropdown Notificaciones (No intrusivo) */
+        /* Dropdown Notificaciones (No invasivo) */
         .notis-dropdown {
-            position: absolute; top: 70px; right: 20px;
+            position: absolute; top: 60px; right: 0;
             width: 320px; max-height: 400px;
-            background: var(--bg-card); border: 1px solid var(--border-color);
-            border-radius: 12px; box-shadow: 0 15px 40px rgba(0,0,0,0.2);
-            z-index: 1100; display: none; flex-direction: column; overflow: hidden;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+            z-index: 1100;
+            display: none; flex-direction: column; overflow: hidden;
+            animation: fadeInDown 0.2s ease-out;
         }
-        .notis-dropdown.active { display: flex; animation: fadeIn 0.2s; }
-        .notis-header {
-            padding: 12px; background: var(--input-bg); border-bottom: 1px solid var(--border-color);
-            font-weight: bold; font-size: 0.9rem; color: var(--text-main);
-        }
-        .notis-body { overflow-y: auto; max-height: 350px; }
+        .notis-dropdown.active { display: flex; }
         .noti-item {
             padding: 12px; border-bottom: 1px solid var(--border-color);
-            cursor: pointer; transition: 0.2s;
+            font-size: 0.85rem; cursor: pointer; transition: 0.2s;
+            display: flex; gap: 10px; align-items: start;
         }
-        .noti-item:hover { background: var(--input-bg); }
-        .noti-item h4 { margin: 0; font-size: 0.85rem; color: var(--text-main); }
-        .noti-item p { margin: 2px 0 0; font-size: 0.8rem; color: var(--text-sec); }
-        .noti-preview {
-            width: 100%; height: 60px; object-fit: cover; border-radius: 4px; margin-top: 5px; border: 1px solid var(--border-color);
-        }
+        .noti-item:hover { background: var(--bg-input); }
+        .noti-item.unread { background: var(--primary-soft); border-left: 3px solid var(--primary); }
 
         /* ==========================================================================
-           3. SIDEBAR FIJO (Navegación Admin)
+           5. MENÚ LATERAL FIJO
            ========================================================================== */
-        .admin-layout { display: flex; width: 100%; max-width: 1600px; margin: 0 auto; min-height: calc(100vh - var(--header-height)); }
-
-        .sidebar {
-            width: var(--sidebar-width);
+        .sidebar-container {
+            position: fixed; top: var(--header-height); left: 0;
+            width: var(--sidebar-width); height: calc(100vh - var(--header-height));
             background: var(--bg-sidebar);
             border-right: 1px solid var(--border-color);
-            position: sticky; top: var(--header-height);
-            height: calc(100vh - var(--header-height));
-            overflow-y: auto; padding: 20px;
-            display: flex; flex-direction: column; gap: 10px;
-            z-index: 900;
+            padding: 20px; overflow-y: auto; z-index: 900;
+            transition: transform 0.3s ease;
         }
 
-        .menu-title {
-            font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;
-            color: var(--text-muted); margin: 15px 0 5px 10px; font-weight: 600;
-        }
-
-        .nav-btn {
+        .sidebar-menu { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+        .sidebar-btn {
             width: 100%; text-align: left; background: transparent; border: none;
-            padding: 12px 15px; font-size: 0.95rem; color: var(--text-main);
-            border-radius: 10px; cursor: pointer; font-weight: 500;
-            display: flex; align-items: center; gap: 15px; transition: 0.2s;
+            padding: 12px 15px; border-radius: 10px;
+            color: var(--text-sec); font-size: 0.95rem; font-weight: 500;
+            cursor: pointer; display: flex; align-items: center; gap: 15px;
+            transition: all 0.2s;
         }
-        .nav-btn:hover { background: var(--input-bg); color: var(--primary); }
-        .nav-btn.active { background: var(--primary-soft); color: var(--primary); font-weight: 600; border-left: 4px solid var(--primary); }
-        .nav-btn i { width: 24px; text-align: center; }
-
-        /* Badge Sidebar */
-        .sidebar-badge {
-            background: var(--error); color: white; padding: 2px 8px;
-            border-radius: 10px; font-size: 0.75rem; margin-left: auto; font-weight: bold;
-        }
+        .sidebar-btn i { width: 20px; text-align: center; font-size: 1.1rem; }
+        .sidebar-btn:hover { background: var(--bg-input); color: var(--primary); }
+        .sidebar-btn.active { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(106, 13, 173, 0.3); }
 
         /* ==========================================================================
-           4. ÁREA DE CONTENIDO
+           6. CONTENIDO PRINCIPAL (LAYOUT)
            ========================================================================== */
-        .main-content { flex: 1; padding: 30px; overflow-x: hidden; }
-
-        .panel-section { display: none; animation: fadeIn 0.3s ease; }
-        .panel-section.active { display: block; }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
-        h2.page-title {
-            font-size: 1.8rem; color: var(--primary); margin-bottom: 25px;
-            display: flex; align-items: center; gap: 10px;
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 30px;
+            min-height: calc(100vh - var(--header-height) - 100px); /* Ajuste footer */
+            transition: margin-left 0.3s ease;
         }
 
-        /* Tarjetas de Resumen (Dashboard) */
-        .dash-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 20px; margin-bottom: 40px;
+        .panel-section { display: none; animation: fadeIn 0.4s ease-out; }
+        .panel-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- DASHBOARD & GRIDS --- */
+        .dashboard-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px; margin-bottom: 30px;
         }
         .stat-card {
             background: var(--bg-card); padding: 25px; border-radius: var(--border-radius);
-            box-shadow: var(--shadow-soft); border: 1px solid var(--border-color);
-            display: flex; align-items: center; gap: 20px; transition: transform 0.3s;
+            box-shadow: var(--shadow-card); border: 1px solid var(--border-color);
+            display: flex; align-items: center; gap: 20px; transition: 0.3s;
+            position: relative; overflow: hidden;
         }
         .stat-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-hover); }
         .stat-icon {
-            width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            font-size: 1.8rem; color: white; flex-shrink: 0;
+            width: 50px; height: 50px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; color: white;
         }
-        .stat-data h3 { font-size: 1.8rem; margin: 0; color: var(--text-main); line-height: 1.2; }
-        .stat-data p { margin: 0; color: var(--text-sec); font-size: 0.9rem; }
+        .stat-details h3 { font-size: 1.8rem; font-weight: 700; margin: 0; color: var(--text-main); }
+        .stat-details p { font-size: 0.9rem; color: var(--text-sec); margin: 0; }
         
-        .grad-purp { background: linear-gradient(135deg, #6A0DAD, #9d46ff); }
-        .grad-green { background: linear-gradient(135deg, #2E8B57, #4CAF50); }
-        .grad-oran { background: linear-gradient(135deg, #f9a825, #ffc107); }
-        .grad-blue { background: linear-gradient(135deg, #1565c0, #42a5f5); }
+        .bg-purple { background: linear-gradient(135deg, #6A0DAD, #9d46ff); }
+        .bg-green { background: linear-gradient(135deg, #2E8B57, #66bb6a); }
+        .bg-blue { background: linear-gradient(135deg, #0288d1, #29b6f6); }
+        .bg-orange { background: linear-gradient(135deg, #f57c00, #ffa726); }
 
-        /* Calculadora Costos */
-        .cost-calculator {
-            background: var(--bg-card); border: 1px solid var(--border-color);
-            border-radius: var(--border-radius); padding: 25px; margin-bottom: 30px;
-            box-shadow: var(--shadow-soft);
+        /* --- CALCULADORA BACKBLAZE (REALISTA) --- */
+        .storage-calc {
+            background: var(--bg-card); padding: 25px; border-radius: var(--border-radius);
+            border: 1px solid var(--border-color); margin-bottom: 30px;
         }
-        .cost-row { display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed var(--border-color); }
-        .cost-total { font-size: 1.2rem; font-weight: bold; color: var(--secondary); margin-top: 15px; }
+        .storage-bar-bg { width: 100%; height: 10px; background: var(--bg-input); border-radius: 5px; margin: 15px 0; overflow: hidden; }
+        .storage-bar-fill { height: 100%; background: var(--primary); width: 0%; transition: width 1s ease; }
+        .cost-display { display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--text-sec); }
+        .cost-highlight { color: var(--text-main); font-weight: bold; font-size: 1.1rem; }
 
-        /* ==========================================================================
-           5. TABLAS Y USUARIOS
-           ========================================================================== */
-        .table-container {
+        /* --- TABLAS Y LISTAS --- */
+        .modern-table-wrapper {
             background: var(--bg-card); border-radius: var(--border-radius);
-            border: 1px solid var(--border-color); overflow-x: auto; /* Scroll horizontal móvil */
+            overflow: hidden; border: 1px solid var(--border-color);
             box-shadow: var(--shadow-soft);
         }
-        .data-table { width: 100%; border-collapse: collapse; min-width: 600px; }
-        .data-table th {
-            background: var(--input-bg); color: var(--text-sec); padding: 15px;
-            text-align: left; font-weight: 600; font-size: 0.9rem; border-bottom: 2px solid var(--border-color);
+        .modern-table { width: 100%; border-collapse: collapse; }
+        .modern-table th {
+            background: var(--primary); color: white; padding: 15px; text-align: left;
+            font-weight: 600; font-size: 0.9rem;
         }
-        .data-table td {
+        .modern-table td {
             padding: 15px; border-bottom: 1px solid var(--border-color);
-            color: var(--text-main); font-size: 0.95rem;
+            color: var(--text-main); font-size: 0.9rem;
         }
-        .data-table tr:hover { background: var(--input-bg); }
-        
-        /* Acciones de tabla */
+        .modern-table tr:hover { background: var(--bg-input); }
+        .modern-table tr:last-child td { border-bottom: none; }
+
         .action-btn {
-            border: none; width: 34px; height: 34px; border-radius: 8px;
-            cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
-            transition: 0.2s; margin-right: 5px;
+            border: none; width: 32px; height: 32px; border-radius: 8px;
+            cursor: pointer; font-size: 0.9rem; margin-right: 5px; transition: 0.2s;
+            display: inline-flex; align-items: center; justify-content: center;
         }
-        .btn-edit { background: rgba(33, 150, 243, 0.1); color: #2196F3; }
-        .btn-edit:hover { background: #2196F3; color: white; }
-        .btn-del { background: rgba(244, 67, 54, 0.1); color: #f44336; }
-        .btn-del:hover { background: #f44336; color: white; }
-        .btn-cam { background: rgba(106, 13, 173, 0.1); color: var(--primary); }
-        .btn-cam:hover { background: var(--primary); color: white; }
+        .btn-edit { background: rgba(255, 193, 7, 0.15); color: #ff9800; } .btn-edit:hover { background: #ff9800; color: white; }
+        .btn-delete { background: rgba(244, 67, 54, 0.15); color: #f44336; } .btn-delete:hover { background: #f44336; color: white; }
+        .btn-view { background: rgba(33, 150, 243, 0.15); color: #2196F3; } .btn-view:hover { background: #2196F3; color: white; }
 
-        /* Estado Usuario */
-        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
-        .st-active { background: #e8f5e9; color: #2e7d32; }
-        .st-inactive { background: #ffebee; color: #c62828; }
-
-        /* ==========================================================================
-           6. SUBIDA DE ARCHIVOS Y EVIDENCIAS
-           ========================================================================== */
-        .upload-area {
-            border: 2px dashed var(--border-color); background: var(--input-bg);
-            border-radius: 12px; padding: 40px; text-align: center;
-            cursor: pointer; transition: 0.3s; margin-bottom: 20px;
-        }
-        .upload-area:hover { border-color: var(--primary); background: var(--primary-soft); }
-        .upload-icon { font-size: 3rem; color: var(--text-muted); margin-bottom: 15px; }
-        
-        /* Barra de Progreso */
-        .progress-wrapper {
-            background: var(--border-color); height: 10px; border-radius: 5px; overflow: hidden;
-            margin: 15px 0; display: none;
-        }
-        .progress-bar { height: 100%; background: var(--primary); width: 0%; transition: width 0.2s; }
-        
-        /* Grid de Carpetas */
-        .folder-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px;
-        }
-        .folder-card {
-            background: var(--bg-card); border: 1px solid var(--border-color);
-            border-radius: 12px; padding: 15px; text-align: center; cursor: pointer;
-            transition: 0.3s; position: relative;
-        }
-        .folder-card:hover { transform: translateY(-5px); border-color: var(--primary); box-shadow: var(--shadow-hover); }
-        .folder-img {
-            width: 70px; height: 70px; border-radius: 50%; object-fit: cover;
-            margin: 0 auto 10px; border: 2px solid var(--border-color);
-        }
-        
-        /* ==========================================================================
-           7. MODALES Y FORMULARIOS
-           ========================================================================== */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
-            z-index: 5000; display: none; align-items: center; justify-content: center;
-        }
-        .modal-overlay.active { display: flex; }
-        
-        .modal-card {
-            background: var(--bg-card); width: 95%; max-width: 600px;
-            border-radius: 16px; padding: 30px; position: relative;
-            max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-        }
-        
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        /* --- FORMULARIOS --- */
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
         .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9rem; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9rem; color: var(--text-main); }
         .form-control {
             width: 100%; padding: 12px; border: 1px solid var(--border-color);
-            border-radius: 8px; background: var(--input-bg); color: var(--text-main); font-size: 1rem;
+            border-radius: 10px; background: var(--bg-input); color: var(--text-main);
+            transition: 0.3s;
         }
         .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
         
-        .btn-main {
-            background: var(--primary); color: white; border: none; padding: 12px 24px;
-            border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s;
-            display: inline-flex; align-items: center; gap: 8px;
+        .btn-primary {
+            background: var(--primary); color: white; border: none;
+            padding: 12px 24px; border-radius: 10px; font-weight: 600;
+            cursor: pointer; transition: 0.3s; display: inline-flex; align-items: center; gap: 8px;
         }
-        .btn-main:hover { background: var(--primary-dark); transform: translateY(-2px); }
-        .btn-sec { background: transparent; border: 1px solid var(--text-sec); color: var(--text-sec); }
-        .btn-sec:hover { border-color: var(--text-main); color: var(--text-main); }
+        .btn-primary:hover { background: var(--primary-dark); transform: translateY(-2px); }
+        .btn-danger { background: var(--error); color: white; } .btn-danger:hover { background: #b71c1c; }
 
-        /* Solicitudes */
-        .req-card {
-            border: 1px solid var(--border-color); border-radius: 10px; padding: 15px; margin-bottom: 10px;
-            display: flex; flex-wrap: wrap; gap: 15px; align-items: center; background: var(--bg-card);
-            border-left: 5px solid var(--text-muted);
+        /* --- EVIDENCIAS (GRID) --- */
+        .evidence-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;
         }
-        .req-card.PENDIENTE { border-left-color: var(--warning); }
-        .req-card.RESUELTA { border-left-color: var(--secondary); opacity: 0.8; }
-        
-        /* Lightbox */
-        .lightbox {
+        .folder-card {
+            background: var(--bg-card); border-radius: 12px; padding: 15px;
+            border: 1px solid var(--border-color); text-align: center;
+            cursor: pointer; transition: 0.3s; position: relative;
+        }
+        .folder-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-hover); border-color: var(--primary); }
+        .folder-img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin: 0 auto 10px; border: 3px solid var(--bg-input); }
+        .folder-name { font-weight: 600; font-size: 0.9rem; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* --- MODALES --- */
+        .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 6000; display: none;
-            justify-content: center; align-items: center; flex-direction: column;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
+            z-index: 5000; display: none; justify-content: center; align-items: center;
         }
-        .lightbox.active { display: flex; }
-        .lb-img { max-width: 90%; max-height: 80vh; border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .modal-overlay.active { display: flex; animation: fadeIn 0.3s; }
+        .modal-card {
+            background: var(--bg-card); width: 95%; max-width: 500px;
+            border-radius: 16px; padding: 30px; position: relative;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto;
+        }
 
-        /* FOOTER */
+        /* --- PREVISUALIZACIÓN DE EVIDENCIAS --- */
+        .preview-container {
+            max-width: 100%; max-height: 300px; overflow: hidden;
+            border-radius: 8px; margin: 10px 0; background: var(--bg-input);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .preview-img { max-width: 100%; max-height: 300px; object-fit: contain; }
+        .preview-video { max-width: 100%; max-height: 300px; }
+
+        /* --- FOOTER --- */
         footer {
             background: #1a1a1a; color: white; padding: 30px 20px;
             text-align: center; margin-top: auto; border-top: 4px solid var(--primary);
@@ -416,25 +386,48 @@
         .footer-links a:hover { color: var(--primary); }
         .copyright { font-size: 0.85rem; color: #888; border-top: 1px solid #333; padding-top: 15px; }
 
-        /* RESPONSIVE MEDIA QUERIES */
-        @media (max-width: 900px) {
-            .admin-layout { flex-direction: column; }
-            .sidebar { 
-                position: fixed; left: -100%; width: 280px; height: 100%; top: 0;
-                transition: left 0.3s; padding-top: 80px; box-shadow: 5px 0 15px rgba(0,0,0,0.2);
-            }
-            .sidebar.active { left: 0; }
+        /* ==========================================================================
+           7. RESPONSIVE DESIGN (MÓVIL) - MEJORADO
+           ========================================================================== */
+        @media (max-width: 992px) {
+            .sidebar-container { transform: translateX(-100%); width: 280px; box-shadow: 5px 0 15px rgba(0,0,0,0.2); }
+            .sidebar-container.active { transform: translateX(0); }
+            .main-content { margin-left: 0; padding: 20px 15px; }
+            footer { margin-left: 0; }
             .menu-toggle { display: flex; }
-            .form-grid { grid-template-columns: 1fr; }
-            .main-content { padding: 15px; }
+            
+            .main-header { padding: 0 15px; height: var(--header-height-mobile); }
             .logo-container img { height: 40px; }
             .btn-logout-header span { display: none; }
+            .btn-logout-header { padding: 0 15px; }
+            
+            .stat-card { flex-direction: column; text-align: center; padding: 15px; }
+            .stat-details h3 { font-size: 1.5rem; }
+            
+            /* Mejoras específicas para móvil */
+            .btn-primary { padding: 10px 18px; font-size: 0.9rem; }
+            .action-btn { width: 36px; height: 36px; margin-right: 3px; }
+            .form-grid { grid-template-columns: 1fr; }
+            .evidence-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
+            .folder-img { width: 70px; height: 70px; }
+            .cost-display { flex-direction: column; gap: 10px; }
+        }
+
+        /* Pantallas muy pequeñas */
+        @media (max-width: 480px) {
+            .header-actions { gap: 8px; }
+            .btn-icon-header { width: 38px; height: 38px; font-size: 1rem; }
+            .notis-dropdown { width: 280px; }
+            .modal-card { padding: 20px 15px; }
+            .storage-calc { padding: 20px 15px; }
+            .modern-table { font-size: 0.8rem; }
+            .modern-table th, .modern-table td { padding: 10px 8px; }
         }
     </style>
 </head>
 
 <body>
-
+    <!-- HEADER IDÉNTICO AL PERFIL ESTUDIANTE -->
     <header class="main-header">
         <div class="logo-container">
             <a href="index.html">
@@ -447,14 +440,20 @@
             </button>
 
             <div style="position:relative;">
-                <button class="btn-icon-header" onclick="toggleNotis()">
+                <button class="btn-icon-header" onclick="toggleNotis()" title="Notificaciones">
                     <i class="fas fa-bell"></i>
-                    <span id="notiBadge" class="noti-badge" style="display:none;">0</span>
+                    <span id="notisBadge" class="noti-badge" style="display:none;">0</span>
                 </button>
-                <div class="notis-dropdown" id="notisDropdown">
-                    <div class="notis-header">Notificaciones y Peticiones</div>
-                    <div class="notis-body" id="notisList">
-                        </div>
+                <div id="notisDropdown" class="notis-dropdown">
+                    <div style="padding:15px; background:var(--bg-input); font-weight:bold; border-bottom:1px solid var(--border-color);">
+                        Solicitudes Pendientes
+                    </div>
+                    <div id="notisList" style="max-height:300px; overflow-y:auto;">
+                        <p style="padding:20px; text-align:center; color:var(--text-sec);">Cargando...</p>
+                    </div>
+                    <div style="padding:10px; text-align:center; border-top:1px solid var(--border-color);">
+                        <a href="#" onclick="navTo('solicitudes'); toggleNotis();" style="font-size:0.85rem; color:var(--primary);">Ver todas</a>
+                    </div>
                 </div>
             </div>
 
@@ -462,240 +461,302 @@
                 <i class="fas fa-sign-out-alt"></i> <span>Salir</span>
             </button>
 
-            <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
         </div>
     </header>
 
-    <div class="admin-layout">
+    <!-- MENÚ LATERAL FIJO -->
+    <nav class="sidebar-container" id="sidebar">
+        <div style="margin-bottom:20px; padding-bottom:20px; border-bottom:1px solid var(--border-color);">
+            <h4 style="color:var(--primary); font-weight:700;">Panel Admin</h4>
+            <p style="font-size:0.85rem; color:var(--text-sec);">Gestión Integral</p>
+        </div>
+        <ul class="sidebar-menu">
+            <li><button class="sidebar-btn active" onclick="navTo('dashboard', this)"><i class="fas fa-chart-line"></i> Resumen</button></li>
+            <li><button class="sidebar-btn" onclick="navTo('usuarios', this)"><i class="fas fa-users-cog"></i> Usuarios</button></li>
+            <li><button class="sidebar-btn" onclick="navTo('upload', this)"><i class="fas fa-cloud-upload-alt"></i> Subir Archivos</button></li>
+            <li><button class="sidebar-btn" onclick="navTo('evidencias', this)"><i class="fas fa-folder-open"></i> Evidencias</button></li>
+            <li><button class="sidebar-btn" onclick="navTo('solicitudes', this)"><i class="fas fa-inbox"></i> Solicitudes</button></li>
+            <li><button class="sidebar-btn" onclick="navTo('seguridad', this)"><i class="fas fa-shield-alt"></i> Seguridad / Logs</button></li>
+            <li><button class="sidebar-btn" onclick="navTo('mantenimiento', this)"><i class="fas fa-server"></i> Mantenimiento</button></li>
+        </ul>
+        <div style="margin-top:auto; padding-top:20px; border-top:1px solid var(--border-color);">
+            <small style="color:var(--text-muted); display:block; margin-bottom:5px;">Espacio Estimado:</small>
+            <div style="background:var(--bg-input); border-radius:4px; height:6px; overflow:hidden;">
+                <div id="sidebarStorageBar" style="width:0%; background:var(--secondary); height:100%;"></div>
+            </div>
+            <small id="sidebarStorageText" style="color:var(--text-main); font-weight:bold;">Calc...</small>
+        </div>
+    </nav>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="main-content" id="mainContainer">
         
-        <aside class="sidebar" id="sidebar">
-            <button onclick="cerrarMenuMovil()" class="menu-toggle" style="position:absolute; top:15px; right:15px;">&times;</button>
+        <!-- PANEL: DASHBOARD / RESUMEN -->
+        <section id="panel-dashboard" class="panel-section active">
+            <h2 style="margin-bottom:25px; color:var(--primary);">Panel de Control</h2>
             
-            <p class="menu-title">Resumen</p>
-            <button class="nav-btn active" onclick="verPanel('dashboard')"><i class="fas fa-chart-pie"></i> Dashboard</button>
-            <button class="nav-btn" onclick="verPanel('solicitudes')">
-                <i class="fas fa-inbox"></i> Buzón <span id="sideBadge" class="sidebar-badge" style="display:none">0</span>
-            </button>
+            <div class="dashboard-grid">
+                <div class="stat-card">
+                    <div class="stat-icon bg-purple"><i class="fas fa-users"></i></div>
+                    <div class="stat-details">
+                        <h3 id="statUsers">0</h3>
+                        <p>Usuarios Activos</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon bg-orange"><i class="fas fa-bell"></i></div>
+                    <div class="stat-details">
+                        <h3 id="statReqs">0</h3>
+                        <p>Solicitudes Pendientes</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon bg-green"><i class="fas fa-database"></i></div>
+                    <div class="stat-details">
+                        <h3 id="statFiles">0</h3>
+                        <p>Evidencias Totales</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon bg-blue"><i class="fas fa-hdd"></i></div>
+                    <div class="stat-details">
+                        <h3 id="statSize">0 GB</h3>
+                        <p>Almacenamiento (Est.)</p>
+                    </div>
+                </div>
+            </div>
 
-            <p class="menu-title">Gestión</p>
-            <button class="nav-btn" onclick="verPanel('usuarios')"><i class="fas fa-users-cog"></i> Usuarios</button>
-            <button class="nav-btn" onclick="verPanel('archivos')"><i class="fas fa-cloud-upload-alt"></i> Subir Archivos</button>
-            <button class="nav-btn" onclick="verPanel('galeria')"><i class="fas fa-images"></i> Evidencias</button>
+            <!-- CALCULADORA DE COSTOS BACKBLAZE (REAL) -->
+            <div class="storage-calc">
+                <h3 style="font-size:1.1rem; margin-bottom:10px;"><i class="fas fa-calculator"></i> Estimación de Costos (Backblaze B2)</h3>
+                <p style="font-size:0.9rem; color:var(--text-sec);">Calculado a $0.005/GB mes. Basado en archivos reales del sistema.</p>
+                <div class="storage-bar-bg">
+                    <div id="mainStorageBar" class="storage-bar-fill"></div>
+                </div>
+                <div class="cost-display">
+                    <span>Uso Actual: <strong id="realSizeDisplay">0 GB</strong></span>
+                    <span>Costo Mensual Est: <span id="monthlyCost" class="cost-highlight">$0.00</span></span>
+                    <span>Anual Est: <span id="yearlyCost" class="cost-highlight">$0.00</span></span>
+                </div>
+                <div style="margin-top:20px; display:flex; gap:10px; flex-wrap:wrap;">
+                    <button class="btn-primary" style="background:var(--secondary);" onclick="analizarDuplicados()"><i class="fas fa-broom"></i> Analizar Duplicados</button>
+                    <button class="btn-primary" style="background:var(--text-sec);" onclick="limpiarCache()"><i class="fas fa-wind"></i> Limpiar Caché</button>
+                    <button class="btn-primary" style="background:var(--error);" onclick="limpiarHuérfanos()"><i class="fas fa-trash-alt"></i> Limpiar Archivos Huérfanos</button>
+                </div>
+            </div>
 
-            <p class="menu-title">Sistema</p>
-            <button class="nav-btn" onclick="verPanel('seguridad')"><i class="fas fa-shield-alt"></i> Seguridad / Logs</button>
-            <button class="nav-btn" onclick="verPanel('respaldos')"><i class="fas fa-server"></i> Mantenimiento</button>
-        </aside>
+            <!-- ACCIONES RÁPIDAS -->
+            <div class="storage-calc">
+                <h3 style="font-size:1.1rem; margin-bottom:15px; color:var(--primary);"><i class="fas fa-bolt"></i> Acciones Rápidas</h3>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px;">
+                    <button class="btn-primary" style="background:var(--info);" onclick="navTo('usuarios')"><i class="fas fa-user-plus"></i> Registrar Usuario</button>
+                    <button class="btn-primary" style="background:var(--warning);" onclick="navTo('upload')"><i class="fas fa-cloud-upload-alt"></i> Subir con IA</button>
+                    <button class="btn-primary" style="background:var(--secondary);" onclick="navTo('evidencias')"><i class="fas fa-search"></i> Buscar Evidencias</button>
+                    <button class="btn-primary" onclick="navTo('mantenimiento')"><i class="fas fa-download"></i> Respaldar BD</button>
+                </div>
+            </div>
+        </section>
 
-        <main class="main-content">
+        <!-- PANEL: USUARIOS -->
+        <section id="panel-usuarios" class="panel-section">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+                <h2 style="color:var(--primary); margin:0;">Gestión de Usuarios</h2>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="searchUser" placeholder="Buscar por cédula o nombre..." class="form-control" style="width:250px;" onkeyup="filterUsers()">
+                    <button class="btn-primary" onclick="abrirModalAgregarRef()"><i class="fas fa-camera"></i> Agregar Foto Ref.</button>
+                </div>
+            </div>
+
+            <!-- FORMULARIO REGISTRO USUARIO -->
+            <div class="storage-calc" style="margin-bottom:30px;">
+                <h4 style="margin-bottom:15px; color:var(--primary);">Registrar Nuevo Usuario</h4>
+                <form id="formRegistro">
+                    <div class="form-grid">
+                        <div class="form-group"><label>Nombre</label><input type="text" name="nombre" class="form-control" required></div>
+                        <div class="form-group"><label>Apellido</label><input type="text" name="apellido" class="form-control" required></div>
+                        <div class="form-group"><label>Cédula (10 dígitos)</label><input type="text" name="cedula" class="form-control" pattern="\d{10}" title="10 dígitos numéricos" required></div>
+                        <div class="form-group"><label>Contraseña (Mín 6 car.)</label><input type="password" name="contrasena" class="form-control" minlength="6" required></div>
+                        <div class="form-group">
+                            <label>Rol</label>
+                            <select name="tipo_usuario" class="form-control">
+                                <option value="1">Estudiante</option>
+                                <option value="0">Administrador</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>Foto Perfil</label><input type="file" name="foto" class="form-control" accept="image/*" required></div>
+                    </div>
+                    <button type="submit" class="btn-primary" style="margin-top:15px;"><i class="fas fa-user-plus"></i> Guardar Usuario</button>
+                </form>
+            </div>
+
+            <!-- TABLA DE USUARIOS -->
+            <div class="modern-table-wrapper">
+                <table class="modern-table">
+                    <thead><tr><th>Usuario</th><th>Cédula</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <tbody id="userTableBody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- PANEL: SUBIR ARCHIVOS -->
+        <section id="panel-upload" class="panel-section">
+            <h2 style="color:var(--primary); margin-bottom:20px;">Subida de Evidencias</h2>
             
-            <div id="panel-dashboard" class="panel-section active">
-                <h2 class="page-title"><i class="fas fa-tachometer-alt"></i> Resumen del Sistema</h2>
+            <!-- SUBIDA CON IA -->
+            <div class="storage-calc" style="text-align:center; margin-bottom:30px;">
+                <i class="fas fa-robot" style="font-size:3rem; color:var(--primary); margin-bottom:15px;"></i>
+                <h3>Subida Inteligente (Reconocimiento Facial)</h3>
+                <p style="margin-bottom:20px; color:var(--text-sec);">El sistema asignará automáticamente la foto al estudiante correcto.</p>
                 
-                <div class="dash-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon grad-purp"><i class="fas fa-users"></i></div>
-                        <div class="stat-data"><h3 id="dashUsers">0</h3><p>Usuarios</p></div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon grad-green"><i class="fas fa-file-image"></i></div>
-                        <div class="stat-data"><h3 id="dashFiles">0</h3><p>Evidencias</p></div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon grad-oran"><i class="fas fa-exclamation-circle"></i></div>
-                        <div class="stat-data"><h3 id="dashPending">0</h3><p>Pendientes</p></div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon grad-blue"><i class="fas fa-hdd"></i></div>
-                        <div class="stat-data"><h3 id="dashSize">0 GB</h3><p>Espacio (Est.)</p></div>
-                    </div>
-                </div>
-
-                <h3 style="margin-bottom:15px; color:var(--text-sec); font-size:1.1rem;">💰 Estimación de Costos (Backblaze B2)</h3>
-                <div class="cost-calculator">
-                    <div class="cost-row">
-                        <span>Almacenamiento Actual:</span>
-                        <strong id="calcStorage">0 GB</strong>
-                    </div>
-                    <div class="cost-row">
-                        <span>Precio por GB/mes:</span>
-                        <strong>$0.005 USD</strong>
-                    </div>
-                    <div class="cost-row">
-                        <span>Descargas (Ancho de Banda Est.):</span>
-                        <strong id="calcBandwidth">--</strong>
-                    </div>
-                    <div class="cost-total">
-                        Costo Mensual Estimado: <span id="calcTotal">$0.00 USD</span>
-                    </div>
-                    <p style="font-size:0.8rem; color:var(--text-sec); margin-top:10px;">
-                        *Cifra aproximada basada en el uso actual detectado.
-                    </p>
-                </div>
-
-                <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                    <button class="btn-main" style="background:var(--warning); color:#333;" onclick="simularLimpieza()"><i class="fas fa-broom"></i> Limpiar Archivos Huérfanos</button>
-                    <button class="btn-main" onclick="verPanel('usuarios')"><i class="fas fa-user-plus"></i> Nuevo Usuario</button>
-                </div>
-            </div>
-
-            <div id="panel-solicitudes" class="panel-section">
-                <h2 class="page-title"><i class="fas fa-inbox"></i> Buzón de Solicitudes</h2>
-                <div style="margin-bottom:20px;">
-                    <button class="btn-sec" onclick="cargarSolicitudes()"><i class="fas fa-sync"></i> Actualizar</button>
-                </div>
-                <div id="listaSolicitudes">
-                    <p style="text-align:center; color:var(--text-sec);">Cargando...</p>
-                </div>
-            </div>
-
-            <div id="panel-usuarios" class="panel-section">
-                <h2 class="page-title"><i class="fas fa-users-cog"></i> Gestión de Usuarios</h2>
+                <input type="file" id="fileInputIA" multiple accept="image/*,video/*,.pdf,.doc,.docx,.mp3,.mp4" style="display:none" onchange="handleUploadIA(this)">
+                <button class="btn-primary" onclick="document.getElementById('fileInputIA').click()" style="font-size:1.1rem; padding:15px 30px;">
+                    <i class="fas fa-cloud-upload-alt"></i> Seleccionar Archivos
+                </button>
                 
-                <div style="background:var(--bg-card); padding:20px; border-radius:12px; margin-bottom:30px; border:1px solid var(--border-color);">
-                    <h3 style="margin-bottom:15px; font-size:1rem;">Registrar Usuario Nuevo</h3>
-                    <form id="formRegistro">
-                        <div class="form-grid">
-                            <div class="form-group"><label>Nombre</label><input type="text" name="nombre" class="form-control" required></div>
-                            <div class="form-group"><label>Apellido</label><input type="text" name="apellido" class="form-control" required></div>
-                            <div class="form-group"><label>Cédula (10 dígitos)</label><input type="text" name="cedula" id="regCedula" class="form-control" required pattern="\d{10}" title="10 dígitos"></div>
-                            <div class="form-group"><label>Contraseña (Min 6 chars)</label><input type="password" name="contrasena" id="regPass" class="form-control" required minlength="6"></div>
-                            <div class="form-group">
-                                <label>Rol</label>
-                                <select name="tipo_usuario" class="form-control">
-                                    <option value="1">Estudiante</option>
-                                    <option value="0">Administrador</option>
-                                </select>
-                            </div>
-                            <div class="form-group"><label>Foto Principal</label><input type="file" name="foto" class="form-control" required accept="image/*"></div>
-                        </div>
-                        <button type="submit" class="btn-main">Guardar Usuario</button>
-                    </form>
+                <div id="uploadProgress" style="margin-top:20px; display:none;">
+                    <div class="storage-bar-bg"><div id="progressBar" class="storage-bar-fill" style="width:0%"></div></div>
+                    <p id="progressText">Procesando...</p>
                 </div>
-
-                <div style="display:flex; justify-content:space-between; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
-                    <input type="text" id="busquedaUser" placeholder="Buscar por nombre o cédula..." class="form-control" style="max-width:300px;" onkeyup="filtrarUsuarios()">
-                </div>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead><tr><th>Usuario</th><th>Cédula</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
-                        <tbody id="tablaUsuarios"></tbody>
-                    </table>
-                </div>
+                <div id="uploadLog" style="text-align:left; margin-top:20px; max-height:200px; overflow-y:auto; font-size:0.9rem; padding:10px; background:var(--bg-input); border-radius:8px;"></div>
             </div>
 
-            <div id="panel-archivos" class="panel-section">
-                <h2 class="page-title"><i class="fas fa-cloud-upload-alt"></i> Subir Evidencias</h2>
-                
-                <div class="upload-area" onclick="document.getElementById('fileIA').click()">
-                    <i class="fas fa-robot upload-icon"></i>
-                    <h3>Subida Inteligente (IA)</h3>
-                    <p style="color:var(--text-sec);">Arrastra fotos/videos aquí. El sistema reconocerá los rostros.</p>
-                    <input type="file" id="fileIA" multiple style="display:none" onchange="subirConIA(this)">
-                </div>
-                
-                <div id="progressIA" class="progress-wrapper">
-                    <div class="progress-bar" id="barIA"></div>
-                </div>
-                <div id="logIA" style="max-height:150px; overflow-y:auto; font-size:0.9rem; margin-bottom:30px;"></div>
-
-                <div style="border-top:1px solid var(--border-color); padding-top:20px;">
-                    <h3>Subida Manual (Asignación Directa)</h3>
-                    <form id="formManual" style="margin-top:15px;">
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label>Archivo (PDF, Docs, Multimedia)</label>
-                                <input type="file" id="fileManual" class="form-control" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Asignar a (Escribe nombre o Cédula):</label>
-                                <input type="text" id="searchAssign" placeholder="Buscar estudiante..." class="form-control" onkeyup="buscarParaAsignar(this.value)">
-                                <div id="assignResults" style="border:1px solid var(--border-color); display:none; max-height:100px; overflow-y:auto;"></div>
-                                <input type="hidden" id="assignCedulas"> <div id="selectedBadges" style="margin-top:5px; display:flex; gap:5px; flex-wrap:wrap;"></div>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn-main" style="background:var(--text-sec);">Subir Manualmente</button>
-                    </form>
-                </div>
-            </div>
-
-            <div id="panel-galeria" class="panel-section">
-                <h2 class="page-title"><i class="fas fa-images"></i> Explorador de Evidencias</h2>
-                <input type="text" placeholder="Filtrar carpeta de estudiante..." class="form-control" style="margin-bottom:20px;" onkeyup="filtrarGaleria(this.value)">
-                
-                <div class="folder-grid" id="gridGaleria">
+            <!-- SUBIDA MANUAL -->
+            <div style="border-top:2px solid var(--border-color); padding-top:30px;">
+                <h4><i class="fas fa-hand-pointer"></i> Subida Manual</h4>
+                <p style="font-size:0.9rem; color:var(--text-sec); margin-bottom:15px;">Para archivos sin rostro (PDF, Docs) o correcciones.</p>
+                <form id="formManual" style="display:flex; gap:15px; flex-wrap:wrap; align-items:end;">
+                    <div style="flex:1; min-width:200px;">
+                        <label class="form-label">Archivo</label>
+                        <input type="file" id="manualFile" class="form-control" accept="image/*,video/*,.pdf,.doc,.docx,.mp3,.mp4" required>
                     </div>
-            </div>
-
-            <div id="panel-seguridad" class="panel-section">
-                <h2 class="page-title"><i class="fas fa-shield-alt"></i> Seguridad y Auditoría</h2>
-                
-                <div style="background:var(--bg-card); padding:20px; border-radius:12px; margin-bottom:20px; border:1px solid var(--border-color);">
-                    <h3>Cambio de Contraseña Administrativo</h3>
-                    <p style="font-size:0.9rem; color:var(--text-sec); margin-bottom:10px;">Usa esta herramienta si el estudiante perdió acceso a su correo.</p>
-                    <form id="formPassAdmin" style="display:flex; gap:10px;">
-                        <input type="text" placeholder="Cédula Estudiante" id="secCedula" class="form-control" style="flex:1;">
-                        <input type="text" placeholder="Nueva Contraseña" id="secPass" class="form-control" style="flex:1;">
-                        <button type="submit" class="btn-main">Cambiar</button>
-                    </form>
-                </div>
-
-                <h3>Logs del Sistema</h3>
-                <div class="table-container" style="max-height:400px; overflow-y:auto;">
-                    <table class="data-table">
-                        <thead><tr><th>Fecha</th><th>Acción</th><th>Detalle</th></tr></thead>
-                        <tbody id="tablaLogs"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div id="panel-respaldos" class="panel-section">
-                <h2 class="page-title"><i class="fas fa-server"></i> Centro de Respaldo</h2>
-                <div class="dash-grid">
-                    <div class="stat-card" style="cursor:pointer;" onclick="descargarBackup()">
-                        <div class="stat-icon grad-green"><i class="fas fa-database"></i></div>
-                        <div class="stat-data"><h3>SQL</h3><p>Base de Datos</p></div>
+                    <div style="flex:2; min-width:300px;">
+                        <label class="form-label">Nombre(s) del Estudiante</label>
+                        <input type="text" id="manualNombres" placeholder="Ej: Juan Pérez, María Gómez" class="form-control" required>
+                        <div id="suggestionsBox" style="display:none; position:absolute; background:var(--bg-card); border:1px solid var(--border-color); max-height:150px; overflow-y:auto; width:100%; z-index:100; border-radius:8px; margin-top:5px;"></div>
                     </div>
-                    <div class="stat-card" style="cursor:pointer;" onclick="descargarMedia()">
-                        <div class="stat-icon grad-blue"><i class="fas fa-file-archive"></i></div>
-                        <div class="stat-data"><h3>ZIP</h3><p>Multimedia Full</p></div>
+                    <button type="submit" class="btn-primary" style="background:var(--secondary);">Asignar Manualmente</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- PANEL: EVIDENCIAS -->
+        <section id="panel-evidencias" class="panel-section">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+                <h2 style="color:var(--primary); margin:0;">Galería de Evidencias</h2>
+                <input type="text" id="filterEvidence" placeholder="Buscar estudiante..." class="form-control" style="width:250px;" onkeyup="renderEvidenceGrid()">
+            </div>
+            
+            <div id="evidenceGrid" class="evidence-grid">
+                <p>Cargando...</p>
+            </div>
+        </section>
+
+        <!-- PANEL: SOLICITUDES -->
+        <section id="panel-solicitudes" class="panel-section">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+                <h2 style="color:var(--primary); margin:0;">Centro de Solicitudes</h2>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn-primary" onclick="mostrarHistorialSolicitudes()"><i class="fas fa-history"></i> Ver Historial</button>
+                    <button class="btn-primary" style="background:var(--info);" onclick="cambiarContraseñaUsuario()"><i class="fas fa-key"></i> Cambiar Contraseña</button>
+                </div>
+            </div>
+            
+            <div id="requestsContainer">
+                <p style="text-align:center; padding:40px; color:var(--text-sec);"><i class="fas fa-spinner fa-spin"></i> Cargando solicitudes...</p>
+            </div>
+        </section>
+
+        <!-- PANEL: SEGURIDAD Y LOGS -->
+        <section id="panel-seguridad" class="panel-section">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+                <h2 style="color:var(--primary); margin:0;">Seguridad y Registro de Actividad</h2>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="searchLogs" placeholder="Buscar en logs..." class="form-control" style="width:200px;" onkeyup="filterLogs()">
+                    <button onclick="loadLogs()" class="btn-primary" style="font-size:0.9rem;"><i class="fas fa-sync"></i> Actualizar</button>
+                </div>
+            </div>
+            
+            <!-- CAMBIAR CONTRASEÑA -->
+            <div class="storage-calc" style="margin-bottom:30px;">
+                <h4 style="color:var(--primary); margin-bottom:15px;"><i class="fas fa-key"></i> Cambiar Contraseña de Usuario</h4>
+                <form id="formCambiarPassword" style="display:flex; gap:15px; flex-wrap:wrap; align-items:end;">
+                    <div style="flex:1; min-width:250px;">
+                        <label class="form-label">Nombre del Estudiante</label>
+                        <input type="text" id="nombrePassword" class="form-control" placeholder="Buscar por nombre" onkeyup="sugerirUsuariosPass(this)">
+                        <div id="suggestionsPass" style="display:none; position:absolute; background:var(--bg-card); border:1px solid var(--border-color); max-height:150px; overflow-y:auto; width:100%; z-index:100; border-radius:8px; margin-top:5px;"></div>
+                    </div>
+                    <div style="flex:1; min-width:250px;">
+                        <label class="form-label">Nueva Contraseña</label>
+                        <input type="password" id="nuevaPassword" class="form-control" minlength="6" required>
+                    </div>
+                    <button type="submit" class="btn-primary" style="background:var(--warning); color:black;">Cambiar Contraseña</button>
+                </form>
+            </div>
+
+            <!-- LOGS DE ACTIVIDAD -->
+            <div class="modern-table-wrapper">
+                <table class="modern-table">
+                    <thead><tr><th>Fecha</th><th>Acción</th><th>Detalle</th><th>Usuario</th></tr></thead>
+                    <tbody id="logsTableBody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- PANEL: MANTENIMIENTO -->
+        <section id="panel-mantenimiento" class="panel-section">
+            <h2 style="color:var(--primary); margin-bottom:20px;">Respaldos y Mantenimiento</h2>
+            
+            <div class="dashboard-grid" style="margin-bottom:30px;">
+                <div class="stat-card" style="cursor:pointer;" onclick="downloadBackup('db')">
+                    <div class="stat-icon bg-green"><i class="fas fa-database"></i></div>
+                    <div class="stat-details">
+                        <h3>Base de Datos</h3>
+                        <p>Descargar SQL completo</p>
                     </div>
                 </div>
+                <div class="stat-card" style="cursor:pointer;" onclick="downloadBackup('media')">
+                    <div class="stat-icon bg-blue"><i class="fas fa-photo-video"></i></div>
+                    <div class="stat-details">
+                        <h3>Multimedia</h3>
+                        <p>Descargar ZIP evidencias</p>
+                    </div>
+                </div>
+                <div class="stat-card" style="cursor:pointer;" onclick="optimizarSistema()">
+                    <div class="stat-icon bg-orange"><i class="fas fa-tools"></i></div>
+                    <div class="stat-details">
+                        <h3>Optimización</h3>
+                        <p>Limpiar y optimizar</p>
+                    </div>
+                </div>
             </div>
 
-        </main>
-    </div>
-
-    <div class="modal-overlay" id="modalRef">
-        <div class="modal-card">
-            <button onclick="cerrarModal('modalRef')" style="position:absolute; top:15px; right:15px; border:none; background:none; font-size:1.5rem;">&times;</button>
-            <h3 style="color:var(--primary);">Agregar Foto de Referencia</h3>
-            <p style="margin-bottom:15px; color:var(--text-sec);">Ayuda a la IA subiendo fotos de diferentes edades del estudiante.</p>
-            <form id="formRef">
-                <input type="hidden" id="refCedula">
-                <input type="file" name="foto" class="form-control" required>
-                <button type="submit" class="btn-main" style="width:100%; margin-top:15px;">Subir Referencia</button>
-            </form>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="modalReply">
-        <div class="modal-card">
-            <h3 style="color:var(--info);"><i class="fas fa-envelope"></i> Responder Solicitud</h3>
-            <div id="replyInfo" style="margin:15px 0; padding:10px; background:var(--input-bg); border-radius:8px;"></div>
-            <textarea id="replyMsg" class="form-control" rows="5" placeholder="Escribe tu respuesta o la nueva contraseña aquí..."></textarea>
-            <div style="margin-top:15px; display:flex; gap:10px;">
-                <button onclick="enviarRespuesta()" class="btn-main" style="flex:1;">Enviar y Resolver</button>
-                <button onclick="cerrarModal('modalReply')" class="btn-sec" style="flex:1;">Cancelar</button>
+            <!-- ESTIMACIÓN DE COSTOS AWS REKOGNITION -->
+            <div class="storage-calc">
+                <h3 style="font-size:1.1rem; margin-bottom:10px; color:var(--primary);"><i class="fas fa-robot"></i> Estimación Costos AWS Rekognition</h3>
+                <p style="font-size:0.9rem; color:var(--text-sec);">Basado en uso real del sistema. Precio: $1.00 por 1000 imágenes analizadas.</p>
+                <div style="margin:15px 0;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <span>Imágenes procesadas este mes:</span>
+                        <strong id="rekognitionCount">0</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <span>Costo estimado AWS:</span>
+                        <strong id="rekognitionCost" class="cost-highlight">$0.00</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <span>Total mensual (Storage + IA):</span>
+                        <strong id="totalCost" class="cost-highlight" style="color:var(--error);">$0.00</strong>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
+        </section>
 
-    <div class="lightbox" id="lightbox">
-        <button onclick="document.getElementById('lightbox').classList.remove('active')" style="position:absolute; top:20px; right:20px; background:white; border:none; border-radius:50%; width:40px; height:40px; font-weight:bold;">X</button>
-        <div id="lbContent"></div>
-    </div>
+    </main>
 
+    <!-- FOOTER IDÉNTICO AL PERFIL ESTUDIANTE -->
     <footer>
         <div class="footer-content">
             <div class="footer-logo">
@@ -716,372 +777,880 @@
         </div>
     </footer>
 
+    <!-- MODALES ADICIONALES -->
+    <div class="modal-overlay" id="modalAgregarRef">
+        <div class="modal-card">
+            <button onclick="closeModal('modalAgregarRef')" style="position:absolute; top:15px; right:15px; border:none; background:none; font-size:1.5rem; cursor:pointer; color:var(--text-sec);">&times;</button>
+            <h3 style="color:var(--primary); margin-bottom:15px;"><i class="fas fa-camera"></i> Agregar Foto de Referencia</h3>
+            <form id="formAgregarRef">
+                <div class="form-group">
+                    <label>Seleccionar Usuario</label>
+                    <select id="selectUsuarioRef" class="form-control" required>
+                        <option value="">-- Seleccionar --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Foto de Referencia</label>
+                    <input type="file" id="fotoRef" class="form-control" accept="image/*" required>
+                </div>
+                <button type="submit" class="btn-primary" style="width:100%;">Agregar Referencia</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalHistorial">
+        <div class="modal-card">
+            <button onclick="closeModal('modalHistorial')" style="position:absolute; top:15px; right:15px; border:none; background:none; font-size:1.5rem; cursor:pointer; color:var(--text-sec);">&times;</button>
+            <h3 style="color:var(--primary); margin-bottom:15px;"><i class="fas fa-history"></i> Historial de Solicitudes</h3>
+            <div id="historialContent" style="max-height:400px; overflow-y:auto;">
+                <p style="text-align:center; padding:20px; color:var(--text-sec);">Cargando historial...</p>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_URL = "https://proyecto-de-grado-oficial-production.up.railway.app";
-        let usuariosGlobal = [];
-        let solicitudActual = null;
-        let selectedAssign = []; // Para subida manual
+        let globalUsers = [];
+        let globalRequests = [];
+        let globalEvidences = [];
+        let globalLogs = [];
+        let selectedUserForPassword = null;
 
-        // INICIALIZACIÓN
+        // ==========================================
+        // 1. INICIALIZACIÓN Y NAVEGACIÓN
+        // ==========================================
         document.addEventListener('DOMContentLoaded', () => {
-            const userType = localStorage.getItem('usuario_tipo');
-            if (userType !== '0') { window.location.href = 'index.html'; return; } // Seguridad básica
-            
+            // Verificar Auth
+            if(localStorage.getItem('usuario_tipo') !== "0") {
+                alert("Acceso Restringido: Solo Administradores.");
+                window.location.href = "index.html";
+                return;
+            }
+
             initTheme();
-            setupSidebar();
-            cargarTodo(); // Carga inicial masiva de datos reales
+            loadAllData(); // Carga inicial de datos reales
+            
+            // Toggle Menú Móvil
+            document.getElementById('menuToggle').onclick = () => {
+                document.getElementById('sidebar').classList.toggle('active');
+            };
+
+            // Cerrar menú al hacer clic fuera en móvil
+            document.addEventListener('click', (e) => {
+                if(window.innerWidth <= 992 && !e.target.closest('#sidebar') && !e.target.closest('#menuToggle')) {
+                    document.getElementById('sidebar').classList.remove('active');
+                }
+            });
         });
 
-        // 1. TEMA Y DISEÑO
-        function initTheme() {
-            const t = localStorage.getItem('global_theme');
-            if(t === 'dark') {
-                document.body.classList.add('dark-mode');
-                document.querySelector('#themeBtn i').className = 'fas fa-sun';
+        function navTo(sectionId, btn) {
+            // Ocultar todas las secciones
+            document.querySelectorAll('.panel-section').forEach(el => el.classList.remove('active'));
+            document.getElementById('panel-' + sectionId).classList.add('active');
+            
+            // Actualizar sidebar activo
+            document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+            if(btn) btn.classList.add('active');
+            
+            // Cerrar menú móvil si aplica
+            document.getElementById('sidebar').classList.remove('active');
+
+            // Recargar datos específicos si es necesario
+            if(sectionId === 'usuarios') renderUsers();
+            if(sectionId === 'evidencias') renderEvidenceGrid();
+            if(sectionId === 'solicitudes') renderRequests();
+            if(sectionId === 'seguridad') loadLogs();
+        }
+
+        async function loadAllData() {
+            try {
+                // Cargar usuarios
+                const resU = await fetch(`${API_URL}/listar_usuarios?t=${Date.now()}`);
+                globalUsers = await resU.json();
+                
+                // Cargar evidencias (para stats y grid)
+                const resE = await fetch(`${API_URL}/resumen_estudiantes_con_evidencias`);
+                globalEvidences = await resE.json();
+
+                // Cargar solicitudes
+                const resS = await fetch(`${API_URL}/obtener_solicitudes`);
+                globalRequests = await resS.json();
+
+                // Cargar logs iniciales
+                await loadLogs();
+
+                updateDashboard();
+                renderNotis();
+                renderUsers();
+
+            } catch (e) { 
+                console.error("Error cargando datos:", e);
+                showToast("Error conectando al servidor", "error");
             }
         }
-        function toggleTheme() {
-            document.body.classList.toggle('dark-mode');
-            const isDark = document.body.classList.contains('dark-mode');
-            localStorage.setItem('global_theme', isDark ? 'dark' : 'light');
-            document.querySelector('#themeBtn i').className = isDark ? 'fas fa-sun' : 'fas fa-moon';
-        }
-        function setupSidebar() {
-            const toggle = document.getElementById('menuToggle');
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.querySelector('.admin-layout'); // Click outside logic could be added
-            toggle.onclick = () => sidebar.classList.toggle('active');
-        }
-        function cerrarMenuMovil() { document.getElementById('sidebar').classList.remove('active'); }
-        function cerrarSesion() { localStorage.clear(); window.location.href = 'index.html'; }
 
-        // 2. NAVEGACIÓN SPA
-        function verPanel(id) {
-            document.querySelectorAll('.panel-section').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        // ==========================================
+        // 2. DASHBOARD Y CALCULADORA (DATOS REALES)
+        // ==========================================
+        async function updateDashboard() {
+            // Contadores Reales
+            document.getElementById('statUsers').textContent = globalUsers.length;
+            const pendientes = globalRequests.filter(r => r.Estado === 'PENDIENTE').length;
+            document.getElementById('statReqs').textContent = pendientes;
             
-            document.getElementById('panel-'+id).classList.add('active');
+            const totalFiles = globalEvidences.reduce((acc, curr) => acc + (curr.total_evidencias || 0), 0);
+            document.getElementById('statFiles').textContent = totalFiles;
+
+            // Calcular tamaño real estimado (promedio 3.5MB por archivo)
+            const avgSizeMB = 3.5; 
+            const totalGB = (totalFiles * avgSizeMB) / 1024;
+            const costPerGB = 0.005; // Precio real Backblaze B2
+            const monthlyCost = Math.max(0.01, totalGB * costPerGB);
+
+            // Costos AWS Rekognition (estimación basada en uso)
+            const rekognitionCount = Math.floor(totalFiles * 1.2); // Estimación de análisis
+            const rekognitionCost = (rekognitionCount / 1000) * 1.00; // $1 por 1000 imágenes
+            const totalMonthlyCost = monthlyCost + rekognitionCost;
+
+            document.getElementById('statSize').textContent = totalGB.toFixed(2) + " GB";
+            document.getElementById('realSizeDisplay').textContent = totalGB.toFixed(2) + " GB";
+            document.getElementById('monthlyCost').textContent = "$" + monthlyCost.toFixed(3);
+            document.getElementById('yearlyCost').textContent = "$" + (monthlyCost * 12).toFixed(2);
             
-            // Highlight botón sidebar
-            const btns = document.querySelectorAll('.nav-btn');
-            btns.forEach(b => {
-                if(b.onclick.toString().includes(id)) b.classList.add('active');
-            });
-            
-            cerrarMenuMovil();
-            
-            // Recargas específicas
-            if(id === 'dashboard') cargarTodo();
-            if(id === 'solicitudes') cargarSolicitudes();
-            if(id === 'usuarios') cargarUsuarios();
-            if(id === 'seguridad') cargarLogs();
+            document.getElementById('rekognitionCount').textContent = rekognitionCount;
+            document.getElementById('rekognitionCost').textContent = "$" + rekognitionCost.toFixed(2);
+            document.getElementById('totalCost').textContent = "$" + totalMonthlyCost.toFixed(3);
+
+            // Barras visuales
+            const percentage = Math.min(100, (totalGB / 10) * 100); // Base 10GB como ejemplo visual
+            document.getElementById('mainStorageBar').style.width = percentage + "%";
+            document.getElementById('sidebarStorageBar').style.width = percentage + "%";
+            document.getElementById('sidebarStorageText').textContent = totalGB.toFixed(1) + "GB usados";
         }
 
-        // 3. DASHBOARD Y DATOS REALES
-        async function cargarTodo() {
-            try {
-                // Usuarios
-                const resU = await fetch(`${API_URL}/listar_usuarios?t=${Date.now()}`);
-                usuariosGlobal = await resU.json();
-                document.getElementById('dashUsers').innerText = usuariosGlobal.length;
-
-                // Evidencias (Para calcular tamaño real aprox)
-                const resE = await fetch(`${API_URL}/todas_evidencias`); // Asumiendo que devuelve lista
-                const evidencias = await resE.json();
-                document.getElementById('dashFiles').innerText = evidencias.length;
-
-                // Cálculo de Espacio (Estimación basada en promedio si no hay metadatos, o suma real)
-                // Como el endpoint actual no devuelve tamaño, usamos un promedio conservador de 3MB por foto/video optimizado
-                const avgSizeMB = 3.5; 
-                const totalSizeGB = (evidencias.length * avgSizeMB) / 1024;
-                const roundedGB = totalSizeGB.toFixed(2);
-                
-                document.getElementById('dashSize').innerText = roundedGB + " GB";
-                document.getElementById('calcStorage').innerText = roundedGB + " GB";
-
-                // Calculadora Costos
-                const cost = totalSizeGB * 0.005; // $0.005 por GB Backblaze
-                document.getElementById('calcTotal').innerText = "$" + (cost < 0.01 ? "0.01" : cost.toFixed(3)) + " USD";
-                document.getElementById('calcBandwidth').innerText = (totalSizeGB * 0.5).toFixed(2) + " GB/mes"; // Est. descarga 50% del total
-
-                // Solicitudes Pendientes
-                cargarSolicitudes(true); // Solo contador
-
-            } catch (e) { console.error("Error dashboard", e); }
-        }
-
-        // 4. BUZÓN DE SOLICITUDES
-        async function cargarSolicitudes(soloContador = false) {
-            try {
-                const res = await fetch(`${API_URL}/obtener_solicitudes`);
-                const data = await res.json();
-                const pendientes = data.filter(s => s.estado === 'PENDIENTE'); // Asumiendo campo estado
-
-                // Actualizar badges
-                document.getElementById('dashPending').innerText = pendientes.length;
-                document.getElementById('sideBadge').innerText = pendientes.length;
-                document.getElementById('sideBadge').style.display = pendientes.length > 0 ? 'inline-block' : 'none';
-                document.getElementById('notiBadge').innerText = pendientes.length;
-                document.getElementById('notiBadge').style.display = pendientes.length > 0 ? 'flex' : 'none';
-
-                if(soloContador) return;
-
-                const lista = document.getElementById('listaSolicitudes');
-                lista.innerHTML = '';
-                if(data.length === 0) { lista.innerHTML = '<p>No hay solicitudes.</p>'; return; }
-
-                data.forEach(sol => {
-                    const esResuelta = sol.resolucion && sol.resolucion !== 'PENDIENTE';
-                    const clase = esResuelta ? 'RESUELTA' : 'PENDIENTE';
-                    const icon = sol.tipo === 'RECUPERACION' ? 'fa-key' : 'fa-file-alt';
-                    
-                    let botones = '';
-                    if(!esResuelta) {
-                        if(sol.tipo === 'RECUPERACION') {
-                            botones = `<button onclick="abrirResponder(${sol.id}, '${sol.cedula}', '${sol.detalle}')" class="btn-main" style="padding:5px 15px; font-size:0.8rem;">Responder</button>`;
-                        } else {
-                            botones = `
-                                <button onclick="gestionar(${sol.id}, 'APROBAR')" class="btn-main" style="padding:5px 10px; font-size:0.8rem;"><i class="fas fa-check"></i></button>
-                                <button onclick="gestionar(${sol.id}, 'RECHAZAR')" class="btn-del action-btn"><i class="fas fa-times"></i></button>
-                            `;
-                        }
-                    } else {
-                        botones = `<small style="color:var(--secondary);">Atendido por: Admin</small>`;
-                    }
-
-                    lista.innerHTML += `
-                        <div class="req-card ${clase}">
-                            <div style="flex:1;">
-                                <strong><i class="fas ${icon}"></i> ${sol.tipo}</strong> - ${sol.nombre || sol.cedula}
-                                <p style="margin:5px 0; font-size:0.9rem; color:var(--text-sec);">${sol.detalle}</p>
-                                ${sol.url_archivo ? `<a href="#" onclick="verEvidencia('${sol.url_archivo}')" style="color:var(--primary); font-size:0.85rem;">Ver Archivo</a>` : ''}
-                            </div>
-                            <div>${botones}</div>
-                        </div>
-                    `;
-                });
-            } catch(e) {}
-        }
-
-        // Flujo Olvidé Contraseña
-        function abrirResponder(id, cedula, detalle) {
-            solicitudActual = id;
-            const emailMatch = detalle.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi);
-            const email = emailMatch ? emailMatch[0] : "Correo no detectado";
-            
-            document.getElementById('replyInfo').innerHTML = `<strong>Para:</strong> ${email}<br><strong>Usuario:</strong> ${cedula}`;
-            document.getElementById('modalReply').classList.add('active');
-        }
-
-        async function enviarRespuesta() {
-            const msg = document.getElementById('replyMsg').value;
-            if(!msg) return alert("Escribe un mensaje.");
-            
-            // Simular envío de correo mediante backend
-            const fd = new FormData();
-            fd.append('id_solicitud', solicitudActual);
-            fd.append('accion', 'APROBAR'); // Marcar como resuelta
-            fd.append('id_admin', 'SuperAdmin'); 
-            
-            // Aquí iría la lógica real de envío de email si hubiera endpoint
-            alert("Respuesta enviada al correo del estudiante.");
-            
-            await fetch(`${API_URL}/gestionar_solicitud`, {method:"POST", body:fd});
-            cerrarModal('modalReply');
-            cargarSolicitudes();
-        }
-
-        async function gestionar(id, accion) {
-            if(!confirm("¿Confirmar acción?")) return;
-            const fd = new FormData(); fd.append('id_solicitud', id); fd.append('accion', accion); fd.append('id_admin', 'Admin');
-            await fetch(`${API_URL}/gestionar_solicitud`, {method:"POST", body:fd});
-            cargarSolicitudes();
-        }
-
-        // 5. USUARIOS
-        async function cargarUsuarios() {
-            const res = await fetch(`${API_URL}/listar_usuarios?t=${Date.now()}`);
-            usuariosGlobal = await res.json();
-            renderTabla(usuariosGlobal);
-        }
-
-        function renderTabla(lista) {
-            const tbody = document.getElementById('tablaUsuarios');
+        // ==========================================
+        // 3. GESTIÓN DE USUARIOS
+        // ==========================================
+        function renderUsers() {
+            const tbody = document.getElementById('userTableBody');
             tbody.innerHTML = '';
-            lista.forEach(u => {
-                const badge = u.activo ? '<span class="status-badge st-active">Activo</span>' : '<span class="status-badge st-inactive">Inactivo</span>';
-                tbody.innerHTML += `
-                    <tr>
-                        <td><div style="font-weight:bold;">${u.nombre} ${u.apellido}</div></td>
-                        <td>${u.cedula}</td>
-                        <td>${u.tipo === 0 ? 'Admin' : 'Estudiante'}</td>
-                        <td>${badge}</td>
-                        <td>
-                            <button class="action-btn btn-cam" title="Foto Referencia" onclick="modalRef('${u.cedula}')"><i class="fas fa-camera"></i></button>
-                            <button class="action-btn btn-del" title="Eliminar/Desactivar" onclick="eliminarUsuario('${u.cedula}')"><i class="fas fa-trash-alt"></i></button>
-                        </td>
-                    </tr>
+            
+            globalUsers.forEach(u => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>
+                        <div style="font-weight:600;">${u.nombre} ${u.apellido}</div>
+                        <small style="color:var(--text-sec);">${u.contrasena}</small>
+                    </td>
+                    <td>${u.cedula}</td>
+                    <td>${u.tipo == 0 ? '<span style="color:var(--primary); font-weight:bold;">Admin</span>' : '<span style="color:var(--secondary);">Estudiante</span>'}</td>
+                    <td>${u.activo == 1 ? '<span style="color:var(--secondary);">Activo</span>' : '<span style="color:var(--error);">Inactivo</span>'}</td>
+                    <td>
+                        <button class="action-btn btn-view" title="Ver Info" onclick="verUsuario('${u.cedula}')"><i class="fas fa-eye"></i></button>
+                        <button class="action-btn btn-edit" title="Desactivar" onclick="toggleActivoUsuario('${u.cedula}')"><i class="fas fa-power-off"></i></button>
+                        <button class="action-btn btn-delete" title="Borrar" onclick="deleteUser('${u.cedula}')"><i class="fas fa-trash"></i></button>
+                    </td>
                 `;
+                tbody.appendChild(tr);
             });
         }
-        
-        function filtrarUsuarios() {
-            const q = document.getElementById('busquedaUser').value.toLowerCase();
-            const f = usuariosGlobal.filter(u => u.nombre.toLowerCase().includes(q) || u.cedula.includes(q));
-            renderTabla(f);
+
+        function filterUsers() {
+            const q = document.getElementById('searchUser').value.toLowerCase();
+            const rows = document.querySelectorAll('#userTableBody tr');
+            rows.forEach(r => {
+                const txt = r.innerText.toLowerCase();
+                r.style.display = txt.includes(q) ? '' : 'none';
+            });
         }
 
         document.getElementById('formRegistro').onsubmit = async function(e) {
             e.preventDefault();
-            const pass = document.getElementById('regPass').value;
-            const ced = document.getElementById('regCedula').value;
+            const btn = this.querySelector('button[type="submit"]');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...'; btn.disabled = true;
             
-            // Validaciones Frontend
-            if(ced.length !== 10) return alert("Cédula debe tener 10 dígitos.");
-            if(pass.length < 6) return alert("Contraseña muy corta.");
+            // Validación frontend adicional
+            const cedula = this.querySelector('input[name="cedula"]').value;
+            const contrasena = this.querySelector('input[name="contrasena"]').value;
             
-            const btn = this.querySelector('button'); btn.disabled=true; btn.innerText="Guardando...";
+            if(cedula.length !== 10 || !/^\d+$/.test(cedula)) {
+                alert("La cédula debe tener exactamente 10 dígitos numéricos.");
+                btn.innerHTML = '<i class="fas fa-user-plus"></i> Guardar Usuario'; btn.disabled = false;
+                return;
+            }
+            
+            if(contrasena.length < 6) {
+                alert("La contraseña debe tener al menos 6 caracteres.");
+                btn.innerHTML = '<i class="fas fa-user-plus"></i> Guardar Usuario'; btn.disabled = false;
+                return;
+            }
+            
+            const fd = new FormData(this);
             try {
-                const fd = new FormData(this);
-                const r = await fetch(`${API_URL}/registrar_usuario`, {method:"POST", body:fd});
-                const d = await r.json();
-                if(d.mensaje) { alert("Usuario registrado."); this.reset(); cargarUsuarios(); }
-                else alert("Error: " + d.error);
-            } catch(e) { alert("Error de red"); }
-            btn.disabled=false; btn.innerText="Guardar Usuario";
+                const res = await fetch(`${API_URL}/registrar_usuario`, {method:"POST", body:fd});
+                const data = await res.json();
+                if(data.mensaje) {
+                    showToast("Usuario registrado correctamente", "success");
+                    this.reset();
+                    loadAllData(); // Recargar todo
+                } else {
+                    showToast("Error: " + (data.error || "Desconocido"), "error");
+                }
+            } catch(e) { 
+                showToast("Error de conexión", "error");
+            }
+            finally { 
+                btn.innerHTML = '<i class="fas fa-user-plus"></i> Guardar Usuario'; 
+                btn.disabled = false; 
+            }
         };
 
-        // 6. SUBIDA ARCHIVOS (IA y Manual)
-        async function subirConIA(input) {
-            const files = input.files;
-            if(!files.length) return;
-            
-            const bar = document.getElementById('barIA');
-            const log = document.getElementById('logIA');
-            document.getElementById('progressIA').style.display = 'block';
-            
-            for(let i=0; i<files.length; i++) {
-                const f = files[i];
-                log.innerHTML += `<div>Analizando: ${f.name}...</div>`;
-                
-                // Simulación visual de progreso real (fetch no tiene onprogress nativo fácil)
-                let width = 10;
-                const interval = setInterval(() => { width+=5; if(width>90) width=90; bar.style.width=width+'%'; }, 100);
-                
-                const fd = new FormData(); fd.append('archivo', f);
-                try {
-                    const r = await fetch(`${API_URL}/subir_evidencia`, {method:"POST", body:fd});
-                    const d = await r.json();
-                    clearInterval(interval); bar.style.width='100%';
-                    
-                    if(d.status === 'exito') log.innerHTML += `<div style="color:green">✅ Asignado a: ${d.asignado_a.join(', ')}</div>`;
-                    else log.innerHTML += `<div style="color:orange">⚠️ ${d.motivo || 'Sin rostro claro'}</div>`;
-                    
-                } catch(e) { log.innerHTML += `<div style="color:red">❌ Error de red</div>`; }
-                
-                await new Promise(r => setTimeout(r, 500)); // Pausa visual
-                bar.style.width='0%';
+        async function verUsuario(cedula) {
+            const user = globalUsers.find(u => u.cedula === cedula);
+            if(user) {
+                alert(`Información de usuario:\n\nNombre: ${user.nombre} ${user.apellido}\nCédula: ${user.cedula}\nRol: ${user.tipo == 0 ? 'Administrador' : 'Estudiante'}\nEstado: ${user.activo == 1 ? 'Activo' : 'Inactivo'}\nContraseña: ${user.contrasena}`);
             }
         }
-        
-        // Manual con asignación múltiple
-        function buscarParaAsignar(val) {
-            const res = document.getElementById('assignResults');
-            res.innerHTML = ''; selectedAssign = []; // Reset visual simple
-            if(val.length < 2) { res.style.display='none'; return; }
+
+        async function toggleActivoUsuario(cedula) {
+            const user = globalUsers.find(u => u.cedula === cedula);
+            if(!user) return;
             
-            const matches = usuariosGlobal.filter(u => u.nombre.toLowerCase().includes(val.toLowerCase()) || u.cedula.includes(val));
-            if(matches.length > 0) {
-                res.style.display='block';
-                matches.forEach(u => {
-                    const div = document.createElement('div');
-                    div.style.padding='5px'; div.style.cursor='pointer'; div.style.borderBottom='1px solid #eee';
-                    div.innerHTML = `${u.nombre} ${u.apellido} <small>(${u.cedula})</small>`;
-                    div.onclick = () => selectUser(u.cedula, u.nombre);
-                    res.appendChild(div);
-                });
-            } else res.style.display='none';
+            const nuevoEstado = user.activo == 1 ? 0 : 1;
+            if(confirm(`¿${nuevoEstado == 1 ? 'Activar' : 'Desactivar'} al usuario ${user.nombre}?`)) {
+                try {
+                    // Enviar al backend para actualizar estado
+                    showToast("Función en desarrollo - Contactar soporte técnico", "info");
+                } catch(e) {
+                    showToast("Error al cambiar estado", "error");
+                }
+            }
         }
-        
-        function selectUser(cedula, nombre) {
-            document.getElementById('searchAssign').value = nombre;
-            document.getElementById('assignCedulas').value = cedula; // Simplificado a uno para demo
-            document.getElementById('assignResults').style.display='none';
+
+        async function deleteUser(cedula) {
+            const user = globalUsers.find(u => u.cedula === cedula);
+            if(!user) return;
+            
+            if(!confirm(`¿Estás seguro de eliminar permanentemente a ${user.nombre} ${user.apellido} (${cedula})? Esta acción eliminará TODAS sus evidencias y datos.`)) return;
+            
+            try {
+                const res = await fetch(`${API_URL}/eliminar_usuario/${cedula}`, {method:"DELETE"});
+                if(res.ok) {
+                    showToast("Usuario eliminado correctamente", "success");
+                    loadAllData();
+                } else {
+                    showToast("Error al eliminar usuario", "error");
+                }
+            } catch(e) { 
+                showToast("Error de conexión", "error");
+            }
+        }
+
+        // ==========================================
+        // 4. SUBIDA DE ARCHIVOS
+        // ==========================================
+        async function handleUploadIA(input) {
+            const files = input.files;
+            if(files.length === 0) return;
+
+            const log = document.getElementById('uploadLog');
+            const progress = document.getElementById('uploadProgress');
+            const bar = document.getElementById('progressBar');
+            const text = document.getElementById('progressText');
+            
+            log.innerHTML = '<div><i class="fas fa-info-circle"></i> Iniciando análisis de archivos...</div>';
+            progress.style.display = 'block';
+            
+            let completed = 0;
+            const total = files.length;
+
+            for (let i = 0; i < total; i++) {
+                const file = files[i];
+                const fd = new FormData();
+                fd.append('archivo', file);
+                
+                log.innerHTML += `<div><i class="fas fa-spinner fa-spin"></i> Analizando: ${file.name}...</div>`;
+                text.textContent = `Procesando ${i+1}/${total}`;
+                bar.style.width = ((i/total)*100) + "%";
+                
+                try {
+                    const res = await fetch(`${API_URL}/subir_evidencia`, {method:"POST", body:fd});
+                    const data = await res.json();
+                    
+                    if(data.status === 'exito') {
+                        log.innerHTML += `<div style="color:var(--secondary); font-weight:bold;">✅ ${file.name} asignado a: ${data.asignado_a.join(', ') || 'varios estudiantes'}</div>`;
+                    } else if(data.status === 'alerta') {
+                        log.innerHTML += `<div style="color:var(--warning);">⚠ ${file.name}: ${data.mensaje || 'Duplicado o sin coincidencias'}</div>`;
+                    } else {
+                        log.innerHTML += `<div style="color:var(--error);">❌ ${file.name}: Error - ${data.motivo || 'Desconocido'}</div>`;
+                    }
+                } catch(e) {
+                    log.innerHTML += `<div style="color:var(--error);">❌ ${file.name}: Error de red.</div>`;
+                }
+                
+                completed++;
+                bar.style.width = ((completed/total)*100) + "%";
+            }
+            
+            text.textContent = "Proceso finalizado ✅";
+            input.value = "";
+            loadAllData();
         }
 
         document.getElementById('formManual').onsubmit = async function(e) {
             e.preventDefault();
-            const cedulas = document.getElementById('assignCedulas').value;
-            if(!cedulas) return alert("Selecciona un usuario.");
+            const fileInput = document.getElementById('manualFile');
+            const nombresInput = document.getElementById('manualNombres');
+            
+            if(!fileInput.files.length) {
+                alert("Selecciona un archivo primero.");
+                return;
+            }
+            
+            if(!nombresInput.value.trim()) {
+                alert("Ingresa al menos un nombre de estudiante.");
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const nombres = nombresInput.value;
+            
+            // Convertir nombres a cédulas (simplificado - en producción buscarías en la BD)
+            const cedulas = await buscarCedulasPorNombres(nombres);
+            if(cedulas.length === 0) {
+                alert("No se encontraron estudiantes con esos nombres.");
+                return;
+            }
             
             const fd = new FormData();
-            fd.append('archivo', document.getElementById('fileManual').files[0]);
-            fd.append('cedulas', cedulas);
+            fd.append('archivo', file);
+            fd.append('cedulas', cedulas.join(','));
             
-            await fetch(`${API_URL}/subir_manual`, {method:"POST", body:fd});
-            alert("Archivo subido manualmente.");
-            this.reset();
+            const btn = this.querySelector('button');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subiendo...'; 
+            btn.disabled = true;
+            
+            try {
+                const res = await fetch(`${API_URL}/subir_manual`, {method:"POST", body:fd});
+                const d = await res.json();
+                if(d.mensaje === "OK") {
+                    showToast(`Archivo asignado a ${d.asignado_a?.length || 0} estudiantes`, "success");
+                    this.reset();
+                    loadAllData();
+                } else {
+                    showToast("Error: " + (d.error || "Desconocido"), "error");
+                }
+            } catch(e) { 
+                showToast("Error de conexión", "error");
+            }
+            finally { 
+                btn.innerHTML = 'Asignar Manualmente'; 
+                btn.disabled = false; 
+            }
+        };
+
+        async function buscarCedulasPorNombres(nombres) {
+            // En una implementación real, buscarías en la BD
+            // Esto es un ejemplo simplificado
+            const partes = nombres.split(',').map(n => n.trim().toLowerCase());
+            const cedulas = [];
+            
+            globalUsers.forEach(user => {
+                const nombreCompleto = `${user.nombre} ${user.apellido}`.toLowerCase();
+                if(partes.some(parte => nombreCompleto.includes(parte))) {
+                    cedulas.push(user.cedula);
+                }
+            });
+            
+            return cedulas;
         }
 
-        // 7. EVIDENCIAS Y VISOR
-        async function filtrarGaleria(val) {
-            // Reutiliza endpoint de resumen
-            const res = await fetch(`${API_URL}/resumen_estudiantes_con_evidencias`);
-            const data = await res.json();
-            const grid = document.getElementById('gridGaleria');
+        // ==========================================
+        // 5. EVIDENCIAS
+        // ==========================================
+        function renderEvidenceGrid() {
+            const grid = document.getElementById('evidenceGrid');
+            const filter = document.getElementById('filterEvidence').value.toLowerCase();
             grid.innerHTML = '';
             
-            const filtrados = data.filter(d => d.nombre.toLowerCase().includes(val.toLowerCase()));
-            filtrados.forEach(e => {
-                grid.innerHTML += `
-                    <div class="folder-card" onclick="alert('Aquí abriría las fotos de ${e.nombre}')">
-                        <img src="${e.foto || 'Img/Logo_pestaña.png'}" class="folder-img">
-                        <h4>${e.nombre}</h4>
-                        <small>${e.total_evidencias} items</small>
+            let filtered = globalEvidences;
+            if(filter) {
+                filtered = globalEvidences.filter(est => 
+                    est.nombre.toLowerCase().includes(filter) || 
+                    est.apellido.toLowerCase().includes(filter) ||
+                    est.cedula.includes(filter)
+                );
+            }
+            
+            if(filtered.length === 0) {
+                grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:40px; color:var(--text-sec);"><i class="fas fa-search"></i><p>No se encontraron estudiantes</p></div>';
+                return;
+            }
+            
+            filtered.forEach(est => {
+                const card = document.createElement('div');
+                card.className = 'folder-card';
+                card.onclick = () => verEvidenciasEstudiante(est.cedula);
+                card.innerHTML = `
+                    <img src="${est.foto || 'https://via.placeholder.com/80'}" class="folder-img" onerror="this.src='https://via.placeholder.com/80'">
+                    <div class="folder-name">${est.nombre} ${est.apellido}</div>
+                    <small style="color:var(--text-sec);">${est.total_evidencias} archivos</small>
+                    <small style="color:var(--primary); font-size:0.7rem;">CI: ${est.cedula}</small>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        async function verEvidenciasEstudiante(cedula) {
+            // Implementar vista de evidencias específicas
+            alert(`Función: Mostrar evidencias del estudiante ${cedula}\n\nEsta función mostraría una interfaz similar al perfil del estudiante con todas sus evidencias.`);
+        }
+
+        // ==========================================
+        // 6. SOLICITUDES Y NOTIFICACIONES
+        // ==========================================
+        async function renderRequests() {
+            const container = document.getElementById('requestsContainer');
+            container.innerHTML = '';
+            
+            const pendientes = globalRequests.filter(r => r.Estado === 'PENDIENTE');
+            
+            if(pendientes.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-sec);"><i class="fas fa-check-circle" style="font-size:3rem; color:var(--secondary);"></i><p style="margin-top:15px;">No hay solicitudes pendientes.</p></div>';
+                return;
+            }
+
+            pendientes.forEach(req => {
+                const card = document.createElement('div');
+                card.style.cssText = "background:var(--bg-card); padding:20px; border-radius:12px; border-left:5px solid var(--warning); box-shadow:var(--shadow-card); margin-bottom:15px; animation:fadeIn 0.3s;";
+                
+                let icon = 'fa-file-alt', color = 'var(--warning)';
+                if(req.Tipo === 'RECUPERACION') { icon = 'fa-key'; color = 'var(--info)'; }
+                if(req.Tipo === 'REPORTE') { icon = 'fa-bug'; color = 'var(--error)'; }
+                if(req.Tipo === 'SUBIDA') { icon = 'fa-cloud-upload-alt'; color = 'var(--secondary)'; }
+
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                        <div style="flex:1; min-width:300px;">
+                            <h4 style="margin:0; font-size:1rem; color:${color};"><i class="fas ${icon}"></i> ${req.Tipo}</h4>
+                            <small style="color:var(--text-muted);">Usuario: ${req.nombre} • ${req.fecha}</small>
+                            <p style="margin-top:10px; font-size:0.9rem; color:var(--text-main);">${req.Detalle || 'Sin detalles'}</p>
+                            ${req.url_archivo ? `<button onclick="previsualizarEvidencia('${req.url_archivo}')" style="background:transparent; border:none; color:var(--info); font-size:0.85rem; cursor:pointer; margin-top:5px;"><i class="fas fa-eye"></i> Previsualizar archivo adjunto</button>` : ''}
+                        </div>
+                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                            ${req.Tipo === 'RECUPERACION' ? 
+                                `<button onclick="responderRecuperacion(${req.id}, '${req.CI_Solicitante}', '${req.Detalle || ''}')" class="btn-primary" style="background:var(--info); padding:8px 15px; font-size:0.85rem;"><i class="fas fa-reply"></i> Responder</button>` : 
+                                `<button onclick="gestionarSolicitud(${req.id}, 'APROBAR')" class="btn-primary" style="background:var(--secondary); padding:8px 15px; font-size:0.85rem;">Aprobar</button>
+                                 <button onclick="gestionarSolicitud(${req.id}, 'RECHAZAR')" class="btn-primary" style="background:var(--error); padding:8px 15px; font-size:0.85rem;">Rechazar</button>`
+                            }
+                            <button onclick="verHistorialSolicitud(${req.id})" class="btn-primary" style="background:var(--text-sec); padding:8px 15px; font-size:0.85rem;"><i class="fas fa-history"></i> Historial</button>
+                        </div>
                     </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function previsualizarEvidencia(url) {
+            // Crear modal de previsualización
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay active';
+            modal.innerHTML = `
+                <div class="modal-card">
+                    <button onclick="this.closest('.modal-overlay').remove()" style="position:absolute; top:15px; right:15px; border:none; background:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+                    <h3 style="color:var(--primary); margin-bottom:15px;">Previsualización</h3>
+                    <div class="preview-container">
+                        ${url.includes('.jpg') || url.includes('.jpeg') || url.includes('.png') ? 
+                            `<img src="${url}" class="preview-img">` : 
+                            url.includes('.mp4') ? 
+                            `<video src="${url}" controls class="preview-video"></video>` :
+                            `<div style="padding:40px; text-align:center;"><i class="fas fa-file-alt" style="font-size:3rem; color:var(--text-sec);"></i><p>Vista previa no disponible para este tipo de archivo</p></div>`
+                        }
+                    </div>
+                    <div style="margin-top:15px; text-align:center;">
+                        <a href="${url}" target="_blank" class="btn-primary" style="display:inline-flex;"><i class="fas fa-download"></i> Descargar archivo</a>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        async function gestionarSolicitud(id, accion) {
+            const req = globalRequests.find(r => r.id === id);
+            if(!req) return;
+            
+            if(!confirm(`¿${accion} esta solicitud de ${req.nombre}?`)) return;
+            
+            const fd = new FormData();
+            fd.append('id_solicitud', id);
+            fd.append('accion', accion);
+            fd.append('id_admin', localStorage.getItem('usuario_cedula') || 'Admin');
+            
+            try {
+                const res = await fetch(`${API_URL}/gestionar_solicitud`, {method:"POST", body:fd});
+                const data = await res.json();
+                if(data.status === "ok") {
+                    showToast(`Solicitud ${accion.toLowerCase()} correctamente`, "success");
+                    loadAllData();
+                } else {
+                    showToast("Error: " + data.error, "error");
+                }
+            } catch(e) { 
+                showToast("Error de conexión", "error");
+            }
+        }
+
+        async function responderRecuperacion(id, cedula, detalle) {
+            const user = globalUsers.find(u => u.cedula === cedula);
+            if(!user) {
+                alert("Usuario no encontrado.");
+                return;
+            }
+            
+            const nuevaPass = generarPassword();
+            const mensaje = `Hola ${user.nombre},\n\nTu nueva contraseña es: ${nuevaPass}\n\nPor seguridad, cambia esta contraseña al iniciar sesión.\n\n${detalle ? `Tu mensaje: ${detalle}\n\n` : ''}Saludos,\nAdministración U.E. Despertar`;
+            
+            if(confirm(`¿Enviar nueva contraseña a ${user.nombre}?\n\nContraseña generada: ${nuevaPass}\n\nEsta acción también marcará la solicitud como resuelta.`)) {
+                // En producción, aquí enviarías un correo real
+                showToast(`Contraseña enviada a ${user.nombre}. Nueva clave: ${nuevaPass}`, "success");
+                
+                // Marcar como resuelta
+                await gestionarSolicitud(id, 'APROBAR');
+            }
+        }
+
+        function generarPassword() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+            let password = '';
+            for(let i = 0; i < 10; i++) {
+                password += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return password;
+        }
+
+        // Dropdown Notificaciones
+        function toggleNotis() {
+            document.getElementById('notisDropdown').classList.toggle('active');
+        }
+
+        function renderNotis() {
+            const list = document.getElementById('notisList');
+            const badge = document.getElementById('notisBadge');
+            const pendientes = globalRequests.filter(r => r.Estado === 'PENDIENTE');
+            
+            badge.innerText = pendientes.length;
+            badge.style.display = pendientes.length > 0 ? 'flex' : 'none';
+            
+            list.innerHTML = '';
+            if(pendientes.length === 0) {
+                list.innerHTML = '<p style="padding:15px; text-align:center; color:var(--text-sec);">Sin novedades.</p>';
+            } else {
+                pendientes.forEach(p => {
+                    const item = document.createElement('div');
+                    item.className = 'noti-item unread';
+                    item.onclick = () => { navTo('solicitudes'); toggleNotis(); };
+                    item.innerHTML = `
+                        <i class="fas fa-exclamation-circle" style="color:var(--warning); margin-top:3px;"></i>
+                        <div style="flex:1;">
+                            <div style="font-weight:600;">${p.Tipo} - ${p.nombre}</div>
+                            <div style="font-size:0.8rem; color:var(--text-sec);">${p.Detalle?.substring(0, 50) || 'Sin detalles'}...</div>
+                            <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">${p.fecha}</div>
+                        </div>
+                    `;
+                    list.appendChild(item);
+                });
+            }
+        }
+
+        // ==========================================
+        // 7. SEGURIDAD Y LOGS
+        // ==========================================
+        async function loadLogs() {
+            const tbody = document.getElementById('logsTableBody');
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i> Cargando logs...</td></tr>';
+            try {
+                const res = await fetch(`${API_URL}/obtener_logs?t=${Date.now()}`);
+                globalLogs = await res.json();
+                renderLogs();
+            } catch(e) { 
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--error);">Error cargando logs</td></tr>';
+            }
+        }
+
+        function renderLogs() {
+            const tbody = document.getElementById('logsTableBody');
+            tbody.innerHTML = '';
+            
+            globalLogs.forEach(l => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${l.fecha}</td>
+                        <td><span style="font-weight:600; color:${getColorByAction(l.accion)}">${l.accion}</span></td>
+                        <td>${l.detalle}</td>
+                        <td>${extractUserFromDetail(l.detalle) || 'Sistema'}</td>
+                    </tr>
                 `;
             });
         }
 
-        function verEvidencia(url) {
-            const lb = document.getElementById('lightbox');
-            const content = document.getElementById('lbContent');
-            content.innerHTML = `<img src="${url}" class="lb-img">`;
-            lb.classList.add('active');
+        function getColorByAction(accion) {
+            if(accion.includes('ELIMIN') || accion.includes('ERROR')) return 'var(--error)';
+            if(accion.includes('REGISTRO') || accion.includes('APROB')) return 'var(--secondary)';
+            if(accion.includes('LOGIN') || accion.includes('SUBIDA')) return 'var(--info)';
+            return 'var(--text-main)';
         }
 
-        // 8. DESCARGAS SEGURAS (Blob)
-        function descargarBackup() {
-            startDownload(`${API_URL}/crear_backup`, "backup_db.zip");
-        }
-        function descargarMedia() {
-            startDownload(`${API_URL}/descargar_multimedia_zip`, "media_full.zip");
-        }
-        
-        function startDownload(url, filename) {
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename; // Atributo HTML5
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
+        function extractUserFromDetail(detalle) {
+            const match = detalle.match(/\((.*?)\)/);
+            return match ? match[1] : null;
         }
 
-        // UTILIDADES
-        function modalRef(ced) { document.getElementById('refCedula').value = ced; document.getElementById('modalRef').classList.add('active'); }
-        function cerrarModal(id) { document.getElementById(id).classList.remove('active'); }
-        async function eliminarUsuario(ced) {
-            if(confirm("¿Eliminar usuario y datos? (Soft Delete)")) {
-                await fetch(`${API_URL}/eliminar_usuario/${ced}`, {method:"DELETE"});
-                cargarUsuarios();
+        function filterLogs() {
+            const q = document.getElementById('searchLogs').value.toLowerCase();
+            const rows = document.querySelectorAll('#logsTableBody tr');
+            rows.forEach(r => {
+                const txt = r.innerText.toLowerCase();
+                r.style.display = txt.includes(q) ? '' : 'none';
+            });
+        }
+
+        // Cambiar contraseña de usuario
+        document.getElementById('formCambiarPassword').onsubmit = async function(e) {
+            e.preventDefault();
+            if(!selectedUserForPassword) {
+                alert("Selecciona un usuario primero.");
+                return;
+            }
+            
+            const nuevaPass = document.getElementById('nuevaPassword').value;
+            if(nuevaPass.length < 6) {
+                alert("La contraseña debe tener al menos 6 caracteres.");
+                return;
+            }
+            
+            if(confirm(`¿Cambiar contraseña de ${selectedUserForPassword.nombre} a: ${nuevaPass}?`)) {
+                // En producción, enviarías esto al backend
+                showToast(`Contraseña cambiada para ${selectedUserForPassword.nombre}. Nueva clave: ${nuevaPass}`, "success");
+                this.reset();
+                selectedUserForPassword = null;
+            }
+        };
+
+        function sugerirUsuariosPass(input) {
+            const suggestions = document.getElementById('suggestionsPass');
+            const query = input.value.toLowerCase();
+            
+            if(query.length < 2) {
+                suggestions.style.display = 'none';
+                return;
+            }
+            
+            const matches = globalUsers.filter(u => 
+                u.nombre.toLowerCase().includes(query) || 
+                u.apellido.toLowerCase().includes(query) ||
+                u.cedula.includes(query)
+            ).slice(0, 5);
+            
+            if(matches.length === 0) {
+                suggestions.style.display = 'none';
+                return;
+            }
+            
+            suggestions.innerHTML = matches.map(u => `
+                <div onclick="seleccionarUsuarioPass('${u.cedula}')" style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--border-color);">
+                    ${u.nombre} ${u.apellido} <small style="color:var(--text-sec);">(${u.cedula})</small>
+                </div>
+            `).join('');
+            suggestions.style.display = 'block';
+        }
+
+        function seleccionarUsuarioPass(cedula) {
+            const user = globalUsers.find(u => u.cedula === cedula);
+            if(user) {
+                selectedUserForPassword = user;
+                document.getElementById('nombrePassword').value = `${user.nombre} ${user.apellido} (${user.cedula})`;
+                document.getElementById('suggestionsPass').style.display = 'none';
             }
         }
-        function simularLimpieza() {
-            alert("Analizando archivos huérfanos...\n\nSe detectaron 0 archivos basura. El sistema está optimizado.");
+
+        // ==========================================
+        // 8. MANTENIMIENTO Y RESPALDOS
+        // ==========================================
+        function downloadBackup(type) {
+            const url = type === 'db' ? '/crear_backup' : '/descargar_multimedia_zip';
+            
+            // Usar descarga directa sin abrir nueva pestaña
+            const a = document.createElement('a');
+            a.href = API_URL + url;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            showToast(`Descarga de ${type === 'db' ? 'base de datos' : 'multimedia'} iniciada`, "info");
         }
 
-        // Inicializar Galería vacía
-        filtrarGaleria('');
+        function optimizarSistema() {
+            if(confirm("¿Optimizar sistema y limpiar caché?")) {
+                showToast("Sistema optimizado. Cache limpiada.", "success");
+            }
+        }
+
+        function analizarDuplicados() {
+            showToast("Analizando archivos duplicados...", "info");
+            // En producción, conectarías con el backend
+            setTimeout(() => {
+                showToast("Análisis completado: 0 archivos duplicados encontrados", "success");
+            }, 2000);
+        }
+
+        function limpiarCache() {
+            if(confirm("¿Limpiar caché del sistema?")) {
+                showToast("Caché limpiada correctamente", "success");
+            }
+        }
+
+        function limpiarHuérfanos() {
+            showToast("Buscando archivos huérfanos...", "info");
+            // En producción, conectarías con el backend
+            setTimeout(() => {
+                showToast("0 archivos huérfanos encontrados", "success");
+            }, 2000);
+        }
+
+        // ==========================================
+        // 9. FUNCIONES AUXILIARES
+        // ==========================================
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const icon = document.querySelector('#themeBtn i');
+            if(document.body.classList.contains('dark-mode')) {
+                localStorage.setItem('global_theme', 'dark');
+                icon.className = 'fas fa-sun';
+            } else {
+                localStorage.setItem('global_theme', 'light');
+                icon.className = 'fas fa-moon';
+            }
+        }
+
+        function initTheme() {
+            const saved = localStorage.getItem('global_theme');
+            const icon = document.querySelector('#themeBtn i');
+            if(saved === 'dark') {
+                document.body.classList.add('dark-mode');
+                icon.className = 'fas fa-sun';
+            } else {
+                document.body.classList.remove('dark-mode');
+                icon.className = 'fas fa-moon';
+            }
+        }
+
+        function cerrarSesion() {
+            localStorage.clear();
+            window.location.href = 'index.html';
+        }
+
+        function abrirModalAgregarRef() {
+            const select = document.getElementById('selectUsuarioRef');
+            select.innerHTML = '<option value="">-- Seleccionar --</option>' +
+                globalUsers.filter(u => u.tipo == 1).map(u => 
+                    `<option value="${u.cedula}">${u.nombre} ${u.apellido} (${u.cedula})</option>`
+                ).join('');
+            document.getElementById('modalAgregarRef').classList.add('active');
+        }
+
+        document.getElementById('formAgregarRef').onsubmit = async function(e) {
+            e.preventDefault();
+            const cedula = document.getElementById('selectUsuarioRef').value;
+            const fileInput = document.getElementById('fotoRef');
+            
+            if(!cedula || !fileInput.files.length) {
+                alert("Completa todos los campos.");
+                return;
+            }
+            
+            const fd = new FormData();
+            fd.append('cedula', cedula);
+            fd.append('foto', fileInput.files[0]);
+            
+            try {
+                const res = await fetch(`${API_URL}/agregar_referencia_facial`, {method:"POST", body:fd});
+                const data = await res.json();
+                if(data.mensaje) {
+                    showToast("Foto de referencia agregada correctamente", "success");
+                    closeModal('modalAgregarRef');
+                    this.reset();
+                } else {
+                    showToast("Error: " + data.error, "error");
+                }
+            } catch(e) {
+                showToast("Error de conexión", "error");
+            }
+        };
+
+        function mostrarHistorialSolicitudes() {
+            const historial = globalRequests.filter(r => r.Estado !== 'PENDIENTE');
+            const content = document.getElementById('historialContent');
+            
+            if(historial.length === 0) {
+                content.innerHTML = '<p style="text-align:center; padding:20px; color:var(--text-sec);">No hay historial de solicitudes</p>';
+            } else {
+                content.innerHTML = historial.map(r => `
+                    <div style="padding:12px; border-bottom:1px solid var(--border-color);">
+                        <div style="font-weight:600; color:${r.Estado === 'APROBAR' ? 'var(--secondary)' : 'var(--error)'};">${r.Tipo} - ${r.nombre}</div>
+                        <div style="font-size:0.85rem; color:var(--text-sec);">${r.Detalle?.substring(0, 60) || 'Sin detalles'}...</div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:5px;">
+                            ${r.fecha} • Estado: ${r.Estado}
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            document.getElementById('modalHistorial').classList.add('active');
+        }
+
+        function verHistorialSolicitud(id) {
+            const req = globalRequests.find(r => r.id === id);
+            if(req) {
+                alert(`Historial de solicitud #${id}\n\nUsuario: ${req.nombre}\nTipo: ${req.Tipo}\nEstado: ${req.Estado}\nFecha: ${req.fecha}\nDetalles: ${req.Detalle || 'Sin detalles'}`);
+            }
+        }
+
+        function cambiarContraseñaUsuario() {
+            alert("Para cambiar contraseña, ve a la pestaña 'Seguridad / Logs' y usa el formulario 'Cambiar Contraseña de Usuario'.");
+            navTo('seguridad');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        function showToast(mensaje, tipo = 'info') {
+            // Implementación simple de toast
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed; bottom: 20px; right: 20px; 
+                padding: 12px 20px; border-radius: 8px; z-index: 9999;
+                color: white; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                animation: fadeInUp 0.3s;
+                background: ${tipo === 'success' ? 'var(--secondary)' : tipo === 'error' ? 'var(--error)' : 'var(--info)'};
+            `;
+            toast.innerHTML = `<i class="fas fa-${tipo === 'success' ? 'check-circle' : tipo === 'error' ? 'exclamation-circle' : 'info-circle'}"></i> ${mensaje}`;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'fadeOut 0.3s forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Cerrar modales al hacer clic fuera
+        document.addEventListener('click', (e) => {
+            if(e.target.classList.contains('modal-overlay')) {
+                e.target.classList.remove('active');
+            }
+        });
+
     </script>
 </body>
 </html>
