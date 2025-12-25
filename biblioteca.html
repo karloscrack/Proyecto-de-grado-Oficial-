@@ -2,199 +2,948 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="Acceso al Portafolio - Plataforma de Evidencias Digitales">
+    <meta name="theme-color" content="#6A0DAD">
+    
     <title>Iniciar Sesión - Unidad Educativa Despertar</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="diseno.css">
+    
+    <link rel="icon" type="image/png" href="Img/Logo_pestaña.png">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600&display=swap" rel="stylesheet">
+
     <style>
-        /* =========================================
-           1. AJUSTES DE RESPONSIVIDAD Y TEMA
-           ========================================= */
-        
-        /* Variables de colores para el Tema */
+        /* ==========================================================================
+           1. SISTEMA DE DISEÑO & VARIABLES (DESIGN TOKENS) - RESTAURADO
+           ========================================================================== */
         :root {
-            /* ⚠️ IMPORTANTE: Asegúrate de que este nombre de archivo sea EXACTO al que tienes en tu carpeta Img */
-            --bg-image: url("Img/Gemini_Generated_Image_pv6zv4pv6zv4pv6z~2.jpg"); 
+            /* --- IDENTIDAD CORPORATIVA --- */
+            --primary: #6A0DAD;       /* Morado Institucional */
+            --primary-dark: #4a0072;  /* Morado Profundo (Hover) */
+            --primary-light: #9d46ff; /* Morado Brillante (Active) */
+            --primary-soft: rgba(106, 13, 173, 0.08);
             
-            /* CORRECCIÓN: Usamos linear-gradient para que sea válido como 'imagen' */
-            --bg-overlay: linear-gradient(rgba(255, 255, 255, 0.0), rgba(255, 255, 255, 0.0)); 
+            --secondary: #2E8B57;     /* Verde Éxito */
+            --secondary-hover: #1e5e3a;
             
-            --bg-card: rgba(255, 255, 255, 0.95);
+            --error: #d32f2f;         /* Rojo Alerta */
+            --warning: #f9a825;       /* Amarillo Precaución */
+            --info: #0288d1;          /* Azul Información */
+            
+            /* --- PALETA DE COLORES (MODO CLARO) --- */
+            --bg-image: url('Img/Gemini_Generated_Image_pv6zv4pv6zv4pv6z~2.jpg'); /* Fondo texturizado */
+            --bg-body: #f4f6f9;
+            --bg-card: #ffffff;
             --bg-header: rgba(255, 255, 255, 0.95);
-            --bg-menu: #ffffff;
-            --bg-footer: #f5f5f5; 
-            --text-main: #333;
-            --text-sec: #666;
-            --input-bg: #fff;
-            --border-color: #ccc;
-            --icon-color: #6A0DAD;
-        }
-
-        body.dark-mode {
-            /* Misma imagen en modo oscuro */
-            --bg-image: url("Img/Gemini_Generated_Image_pv6zv4pv6zv4pv6z~2.jpg");
-
-            /* CORRECCIÓN: Degradado oscuro válido */
-            --bg-overlay: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7));
+            --bg-sidebar: #ffffff;
             
-            --bg-card: #1e1e1e;
-            --bg-header: #1e1e1e;
-            --bg-menu: #1e1e1e;
-            --bg-footer: #121212;
-            --text-main: #f0f0f0;
-            --text-sec: #ccc;
-            --input-bg: #2d2d2d;
-            --border-color: #444;
-            --icon-color: #fff;
+            --text-main: #2c3e50;
+            --text-sec: #5f6368;
+            --text-muted: #9aa0a6;
+            --text-inverse: #ffffff;
+            
+            --border-color: #e0e0e0;
+            --input-bg: #f8f9fa;
+            
+            /* --- SOMBRAS Y PROFUNDIDAD --- */
+            --shadow-soft: 0 4px 20px rgba(0,0,0,0.05);
+            --shadow-hover: 0 10px 25px rgba(106, 13, 173, 0.15);
+            --shadow-card: 0 2px 8px rgba(0,0,0,0.04);
+            --shadow-nav: 0 2px 15px rgba(0,0,0,0.05);
+            
+            /* --- EFECTOS DE VIDRIO (GLASSMORPHISM) --- */
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.5);
+            --glass-backdrop: blur(12px);
+            
+            /* --- DIMENSIONES --- */
+            --header-height: 80px;
+            --header-height-mobile: 70px;
+            --border-radius: 16px;
+            --transition-speed: 0.3s;
+            --transition-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+            
+            /* --- CAPAS (Z-INDEX) --- */
+            --z-back: -1;
+            --z-normal: 1;
+            --z-header: 1000;
+            --z-dropdown: 1100;
+            --z-overlay: 1500;
+            --z-sidebar: 2000;
+            --z-fab: 3000;
+            --z-modal: 5000;
+            --z-toast: 6000;
         }
 
+        /* ==========================================================================
+           2. MODO OSCURO (DARK MODE)
+           ========================================================================== */
+        body.dark-mode {
+            --bg-image: url('Img/Gemini_Generated_Image_pv6zv4pv6zv4pv6z~2.jpg');
+            --bg-body: #121212;
+            --bg-card: #1e1e1e;
+            --bg-header: rgba(30, 30, 30, 0.95);
+            --bg-sidebar: #1e1e1e;
+            
+            --text-main: #e8eaed;
+            --text-sec: #b0b3b8;
+            --text-muted: #6e7175;
+            
+            --border-color: #3c4043;
+            --input-bg: #2d2d2d;
+            
+            --shadow-soft: 0 4px 20px rgba(0,0,0,0.4);
+            --shadow-hover: 0 10px 30px rgba(0,0,0,0.6);
+            
+            --glass-bg: rgba(30, 30, 30, 0.85);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* ==========================================================================
+           3. RESET & BASE
+           ========================================================================== */
+        * { 
+            margin: 0; padding: 0; box-sizing: border-box; 
+            outline: none; -webkit-tap-highlight-color: transparent;
+        }
+        
         body {
-            /* Aplicación de la imagen de fondo */
-            background-image: var(--bg-overlay), var(--bg-image);
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-body);
+            background-image: var(--bg-image);
+            background-attachment: fixed;
             background-size: cover;
             background-position: center;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-            background-blend-mode: normal; /* Cambiado a normal para evitar conflictos visuales */
-            
-            transition: background-color 0.3s ease;
             color: var(--text-main);
-            background-color: var(--bg-card); 
-            margin: 0;
+            padding-top: var(--header-height);
+            transition: background var(--transition-speed), color var(--transition-speed);
+            min-height: 100vh;
+            display: flex; flex-direction: column;
+            overflow-x: hidden;
         }
 
-        /* Aplicar modo oscuro a los elementos */
-        .login-card {
-            background-color: var(--bg-card) !important;
-            color: var(--text-main);
-            transition: 0.3s;
+        a { text-decoration: none; color: inherit; transition: var(--transition-speed); }
+        ul { list-style: none; }
+        button, input, textarea, select { font-family: inherit; }
+
+        /* Scrollbar Estilizado */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary-dark); }
+
+        /* ==========================================================================
+           4. HEADER RESTAURADO (MISMO ESTILO QUE PERFIL.HTML)
+           ========================================================================== */
+        .main-header {
+            position: fixed; top: 0; left: 0; width: 100%;
+            height: var(--header-height);
+            background: var(--bg-header);
+            border-bottom: 3px solid var(--primary);
+            box-shadow: var(--shadow-nav);
+            z-index: var(--z-header);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 5%;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
         }
 
-        .header {
-            background: var(--bg-header) !important;
-            border-bottom: 1px solid var(--border-color);
+        .logo-container img {
+            height: 50px; width: auto;
+            transition: transform 0.3s var(--transition-bounce);
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+        }
+        .logo-container img:hover { transform: scale(1.05); }
+
+        .header-actions {
+            display: flex; align-items: center; gap: 15px;
         }
 
-        .side-menu {
-            background: var(--bg-menu) !important;
-            color: var(--text-main);
-        }
-        
-        .side-menu a {
-            color: var(--text-main) !important;
-        }
-
-        /* Inputs en modo oscuro */
-        input {
-            background-color: var(--input-bg) !important;
-            color: var(--text-main) !important;
-            border: 1px solid var(--border-color) !important;
-        }
-
-        /* Títulos y textos */
-        h2, h3, label { color: var(--text-main) !important; }
-        p { color: var(--text-sec) !important; }
-
-        /* Botón de Tema */
-        .theme-toggle {
+        /* Botones Circulares del Header (Tema y Notis) */
+        .btn-icon-header {
             background: transparent;
-            border: 2px solid var(--icon-color);
-            color: var(--icon-color);
-            width: 35px; height: 35px;
+            border: 2px solid var(--primary); /* Borde original */
+            color: var(--primary);
+            width: 42px; height: 42px;
             border-radius: 50%;
-            cursor: pointer;
             display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; cursor: pointer;
             transition: 0.3s;
-            margin-right: 15px;
+            position: relative;
         }
-        .theme-toggle:hover { transform: scale(1.1); }
-        .rotate-anim { animation: spin 0.5s ease-in-out; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* Icono del menú */
-        .menu-toggle { color: var(--icon-color) !important; }
-
-        /* --- RESPONSIVIDAD (MÓVIL) --- */
-        @media (max-width: 768px) {
-            .login-card {
-                width: 90% !important; /* Más ancho en celular */
-                padding: 20px !important;
-            }
-            .header {
-                padding: 10px 15px !important;
-            }
-            .logo Img {
-                height: 50px !important; /* Ajuste para que no rompa el header */
-            }
+        .btn-icon-header:hover {
+            background: var(--primary-soft);
+            transform: rotate(15deg);
+            box-shadow: 0 0 15px var(--primary-soft);
         }
-        /* Color del texto del footer */
-.footer-logo h3 {
-    color: #6A0DAD !important; /* Cambia este código por el color que quieras (ej: white, black, red) */
+
+        /* Botón Volver (Estilo Píldora - AZUL como en login original) */
+        .btn-logout-header {
+            background: var(--info); color: white; border: none;
+            padding: 0 25px; height: 42px; border-radius: 50px;
+            font-weight: 600; font-size: 0.95rem; cursor: pointer;
+            display: flex; align-items: center; gap: 8px;
+            transition: 0.3s;
+            box-shadow: 0 4px 10px rgba(2, 136, 209, 0.25);
+        }
+        .btn-logout-header:hover {
+            background: #026aa7; transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(2, 136, 209, 0.35);
+        }
+
+        /* Menú Hamburguesa */
+        .menu-toggle {
+            background: none; border: none; font-size: 1.8rem;
+            color: var(--primary); cursor: pointer;
+            width: 45px; height: 45px; display: flex; align-items: center; justify-content: center;
+            transition: transform 0.2s;
+        }
+        .menu-toggle:active { transform: scale(0.9); }
+
+        /* ==========================================================================
+           5. MENÚ LATERAL (SIDEBAR)
+           ========================================================================== */
+        .side-menu {
+            position: fixed; top: 0; right: -320px;
+            width: 300px; height: 100vh;
+            background: var(--bg-sidebar);
+            box-shadow: -5px 0 30px rgba(0,0,0,0.3);
+            z-index: var(--z-sidebar);
+            transition: right 0.4s cubic-bezier(0.77, 0, 0.175, 1);
+            padding: 25px; display: flex; flex-direction: column;
+            border-left: 1px solid var(--border-color);
+        }
+        .side-menu.active { right: 0; }
+
+        .side-menu-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 20px; margin-bottom: 20px;
+        }
+        .side-menu-header h3 { color: var(--primary); font-size: 1.3rem; margin: 0; font-weight: 700; }
+        
+        /* BOTÓN CERRAR MENÚ (Estilo Mejorado) */
+        .close-menu {
+            background: transparent; border: none; font-size: 1.8rem;
+            color: var(--text-sec); cursor: pointer;
+            width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; transition: all 0.3s var(--transition-bounce);
+        }
+        .close-menu:hover {
+            color: var(--error); background: rgba(211, 47, 47, 0.1);
+            transform: rotate(90deg);
+        }
+
+        .menu-list { list-style: none; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+        .menu-btn {
+            width: 100%; text-align: left; background: transparent; border: none;
+            padding: 15px 20px; font-size: 1rem; color: var(--text-main);
+            border-radius: 12px; cursor: pointer;
+            display: flex; align-items: center; gap: 15px; transition: 0.3s;
+            font-weight: 500;
+        }
+        .menu-btn:hover { background: var(--primary-soft); color: var(--primary); transform: translateX(5px); }
+        .menu-btn.active { background: var(--primary-soft); color: var(--primary); border-left: 4px solid var(--primary); }
+        .menu-btn i { width: 25px; text-align: center; color: var(--primary); font-size: 1.2rem; }
+
+        .overlay-bg {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+            z-index: var(--z-overlay); display: none; opacity: 0; transition: opacity 0.3s;
+        }
+        .overlay-bg.active { display: block; opacity: 1; }
+
+        /* ==========================================================================
+           6. CONTENIDO PRINCIPAL - PANTALLA DE LOGIN (MÁS COMPACTO)
+           ========================================================================== */
+        .login-container {
+            display: flex; justify-content: center; align-items: center;
+            flex: 1; padding: 30px 20px; width: 100%;
+            min-height: calc(100vh - var(--header-height));
+        }
+
+        .login-card {
+            background: var(--bg-card); border-radius: var(--border-radius);
+            padding: 35px 30px; box-shadow: var(--shadow-soft);
+            border: 1px solid var(--border-color);
+            width: 100%; max-width: 440px;
+            text-align: center;
+            position: relative; overflow: hidden;
+            animation: fadeInUp 0.6s ease-out;
+            margin: 0 auto;
+        }
+        .login-card::before {
+            content: ''; position: absolute; top: -40px; right: -40px;
+            width: 150px; height: 150px; background: var(--primary);
+            border-radius: 50%; opacity: 0.05; z-index: 0;
+        }
+
+        .login-icon-container {
+            margin-bottom: 20px; z-index: 1; position: relative;
+        }
+        .login-icon-container i {
+            font-size: 3rem; color: var(--primary); 
+            background: var(--primary-soft);
+            padding: 18px; border-radius: 50%;
+            border: 2px solid var(--primary);
+            display: inline-block;
+            transition: transform 0.3s var(--transition-bounce);
+        }
+        .login-icon-container:hover i {
+            transform: scale(1.1) rotate(8deg);
+            box-shadow: 0 8px 20px rgba(106, 13, 173, 0.2);
+        }
+
+        .login-card h2 {
+            font-size: 1.6rem; margin-bottom: 10px; color: var(--primary); font-weight: 700;
+            position: relative; z-index: 1;
+        }
+        .login-card p {
+            color: var(--text-sec); margin-bottom: 25px; font-size: 0.95rem;
+            position: relative; z-index: 1;
+        }
+
+        .form-group {
+            margin-bottom: 20px; text-align: left;
+            position: relative; z-index: 1;
+        }
+        .form-group label {
+            display: block; margin-bottom: 8px; font-weight: 600; 
+            font-size: 0.9rem; color: var(--text-main);
+        }
+        .form-control {
+            width: 100%; padding: 14px 16px; 
+            border: 1px solid var(--border-color); border-radius: 10px; 
+            background: var(--input-bg); color: var(--text-main); 
+            font-size: 0.95rem; transition: 0.3s;
+        }
+        .form-control:focus {
+            border-color: var(--primary); 
+            box-shadow: 0 0 0 4px rgba(106,13,173,0.1);
+        }
+
+        .error-box {
+            background: rgba(211, 47, 47, 0.1);
+            border: 1px solid rgba(211, 47, 47, 0.3);
+            border-radius: 10px;
+            padding: 12px 15px;
+            margin-bottom: 20px;
+            text-align: left;
+            display: none;
+            color: var(--error);
+            position: relative; z-index: 1;
+            font-size: 0.9rem;
+        }
+        .error-box i { margin-right: 8px; }
+
+        .btn-submit {
+            width: 100%; padding: 14px; 
+            background: var(--primary); color: white; border: none; 
+            border-radius: 10px; font-weight: 600; cursor: pointer; 
+            font-size: 1rem; transition: 0.3s;
+            position: relative; z-index: 1;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .btn-submit:hover {
+            background: var(--primary-dark); transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(106, 13, 173, 0.25);
+        }
+        .btn-submit:disabled {
+            background: var(--text-muted); cursor: not-allowed;
+            transform: none; box-shadow: none;
+        }
+
+        .forgot-pass {
+            display: block; margin-top: 20px; 
+            color: var(--text-sec); font-size: 0.85rem; 
+            text-decoration: none; cursor: pointer;
+            transition: 0.3s; position: relative; z-index: 1;
+        }
+        .forgot-pass:hover {
+            color: var(--primary); text-decoration: underline;
+        }
+
+/* ==========================================================================
+   7. MODALES (CORREGIDO - FUNCIONA 100%)
+   ========================================================================== */
+.modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85); backdrop-filter: blur(10px);
+    z-index: var(--z-modal); 
+    display: none; 
+    justify-content: center; 
+    align-items: center;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.modal-overlay.active {
+    display: flex !important; /* FORZAR display cuando está activo */
+    animation: fadeIn 0.3s forwards;
+}
+
+.modal-card {
+    background: var(--bg-card); 
+    width: 100%; 
+    max-width: 380px; /* Más compacto */
+    border-radius: 16px; 
+    padding: 25px 20px;
+    position: relative; 
+    box-shadow: 0 25px 70px rgba(0,0,0,0.5);
+    border-top: 4px solid var(--primary); 
+    text-align: center;
+    animation: popIn 0.4s ease-out;
+    margin: auto;
+    max-height: 85vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-card h3 {
+    margin-bottom: 10px; 
+    color: var(--primary); 
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.modal-card p {
+    color: var(--text-sec); 
+    font-size: 0.9rem; 
+    margin-bottom: 20px;
+    line-height: 1.4;
+}
+
+/* Botón de cerrar en modales */
+.modal-close-btn {
+    position: absolute; 
+    top: 12px; 
+    right: 12px; 
+    border: none; 
+    background: none; 
+    font-size: 1.8rem; 
+    cursor: pointer; 
+    color: var(--text-sec);
+    width: 36px; 
+    height: 36px;
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.3s;
+    z-index: 2;
+}
+.modal-close-btn:hover {
+    background: var(--input-bg);
+    color: var(--error);
+    transform: rotate(90deg);
+}
+
+/* Formulario de recuperación */
+#formRecuperar {
+    text-align: left;
+}
+
+/* Textarea específico */
+#formRecuperar textarea {
+    min-height: 90px;
+    max-height: 120px;
+    resize: vertical;
+    width: 100%;
+    padding: 12px 14px !important;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--input-bg);
+    color: var(--text-main);
+    font-size: 0.9rem;
+    line-height: 1.4;
+    box-sizing: border-box;
+    margin-top: 5px;
+}
+
+.contact-info {
+    display: flex; 
+    flex-direction: column; 
+    gap: 15px; 
+    font-size: 1rem; 
+    color: var(--text-main); 
+    margin: 25px 0;
+}
+.contact-info div {
+    display: flex; 
+    align-items: center; 
+    gap: 15px;
+    justify-content: flex-start; 
+    padding: 12px 15px;
+    background: var(--input-bg); 
+    border-radius: 10px;
+}
+.contact-info i { 
+    color: var(--secondary); 
+    font-size: 1.3rem; 
+    width: 30px; 
+    text-align: center;
+}
+
+/* Botón secundario para modales */
+.btn-secondary {
+    background: transparent; 
+    color: var(--text-sec); 
+    border: 1px solid var(--border-color);
+    padding: 12px; 
+    border-radius: 8px; 
+    font-weight: 600; 
+    cursor: pointer;
+    transition: 0.3s; 
+    width: 100%; 
+    margin-top: 8px;
+}
+.btn-secondary:hover {
+    background: var(--input-bg); 
+    border-color: var(--primary); 
+    color: var(--primary);
+}
+        /* ==========================================================================
+           8. FOOTER (MISMO ESTILO QUE PERFIL.HTML)
+           ========================================================================== */
+        footer {
+            background: #1a1a1a; color: white; padding: 30px 20px;
+            text-align: center; margin-top: auto; border-top: 4px solid var(--primary);
+        }
+        .footer-logo Img { height: 60px; margin-bottom: 10px; }
+        .footer-social { margin: 20px 0; }
+        .footer-social a { 
+            display: inline-flex; width: 40px; height: 40px; 
+            background: #333; color: white; border-radius: 50%; 
+            align-items: center; justify-content: center; margin: 0 8px; 
+            text-decoration: none; transition: 0.3s;
+        }
+        .footer-social a:hover { background: var(--primary); transform: translateY(-3px); }
+        .footer-links a { color: #aaa; text-decoration: none; margin: 0 10px; }
+        .footer-links a:hover { color: var(--primary); }
+        .copyright { font-size: 0.85rem; color: #888; border-top: 1px solid #333; padding-top: 15px; }
+
+        /* ==========================================================================
+           9. ANIMACIONES
+           ========================================================================== */
+        @keyframes fadeIn {
+            from { opacity: 0; } to { opacity: 1; }
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+/* ==========================================================================
+   10. RESPONSIVE PARA MÓVILES - MEJORADO PARA MODALES
+   ========================================================================== */
+@media (max-width: 768px) {
+    /* Header móvil */
+    .main-header { 
+        height: var(--header-height-mobile); 
+        padding: 0 12px; 
+    }
+    .header-actions { 
+        gap: 6px; 
+    }
+    
+    .logo-container img { 
+        height: 40px;
+        max-width: 120px;
+    }
+    
+    .btn-icon-header {
+        width: 36px; 
+        height: 36px;
+        font-size: 1rem;
+    }
+    
+    .btn-logout-header {
+        padding: 0 12px; 
+        height: 36px;
+        font-size: 0.85rem;
+    }
+    
+    .btn-logout-header span { 
+        display: none; 
+    }
+    
+    .menu-toggle {
+        width: 36px; 
+        height: 36px;
+        font-size: 1.4rem;
+    }
+
+    /* Login card */
+    .login-container { 
+        padding: 15px 10px; 
+    }
+    
+    .login-card { 
+        padding: 25px 20px; 
+        max-width: 100%;
+        border-radius: 12px;
+        margin: 10px;
+    }
+    
+    .login-icon-container i {
+        font-size: 2.5rem;
+        padding: 14px;
+    }
+    
+    .login-card h2 {
+        font-size: 1.4rem;
+    }
+    
+    .login-card p {
+        font-size: 0.9rem;
+        margin-bottom: 20px;
+    }
+    
+    /* MODALES EN MÓVILES - ARREGLADO 100% */
+    .modal-overlay {
+        padding: 10px;
+        align-items: flex-start;
+        overflow-y: auto;
+    }
+    
+    .modal-card {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 22px 18px !important;
+        border-radius: 14px;
+        max-height: 85vh;
+        margin: 10px 0;
+    }
+    
+    .modal-card h3 {
+        font-size: 1.2rem;
+        margin-bottom: 8px;
+    }
+    
+    .modal-card p {
+        font-size: 0.85rem;
+        margin-bottom: 15px;
+    }
+    
+    #formRecuperar textarea {
+        min-height: 80px !important;
+        max-height: 100px;
+        font-size: 0.85rem !important;
+        padding: 10px 12px !important;
+    }
+    
+    .modal-close-btn {
+        top: 10px;
+        right: 10px;
+        font-size: 1.6rem;
+        width: 32px;
+        height: 32px;
+    }
+    
+    .contact-info div {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+    }
+    
+    .btn-submit, .btn-secondary {
+        padding: 12px;
+        font-size: 0.9rem;
+    }
+    
+    /* Footer móvil */
+    footer {
+        padding: 20px 10px;
+    }
+    
+    .footer-logo img {
+        height: 45px;
+    }
+    
+    .footer-content h3 {
+        font-size: 1rem;
+    }
+    
+    .footer-social a {
+        width: 36px;
+        height: 36px;
+        font-size: 0.85rem;
+        margin: 0 4px;
+    }
+    
+    .footer-links a {
+        font-size: 0.85rem;
+        margin: 0 5px;
+    }
+    
+    .copyright {
+        font-size: 0.75rem;
+        padding-top: 12px;
+    }
+}
+/* ==========================================================================
+   11. PARA PANTALLAS MUY PEQUEÑAS (iPhone SE, Galaxy Fold, etc.)
+   ========================================================================== */
+@media (max-width: 480px) {
+    .main-header {
+        padding: 0 8px;
+    }
+    
+    .header-actions {
+        gap: 4px;
+    }
+    
+    .logo-container img {
+        height: 36px;
+        max-width: 100px;
+    }
+    
+    .btn-icon-header,
+    .btn-logout-header,
+    .menu-toggle {
+        width: 34px;
+        height: 34px;
+        font-size: 0.9rem;
+    }
+    
+    .btn-logout-header {
+        padding: 0 10px;
+    }
+    
+    .login-card {
+        padding: 20px 16px;
+        margin: 5px;
+    }
+    
+    .login-icon-container i {
+        font-size: 2.2rem;
+        padding: 12px;
+    }
+    
+    .login-card h2 {
+        font-size: 1.3rem;
+    }
+    
+    .form-control {
+        padding: 11px 13px;
+        font-size: 0.85rem;
+    }
+    
+    .btn-submit {
+        padding: 12px;
+        font-size: 0.85rem;
+    }
+    
+    /* Modal más compacto para pantallas muy pequeñas */
+    .modal-card {
+        padding: 20px 16px;
+        border-radius: 14px;
+        max-height: 80vh;
+    }
+    
+    .modal-card h3 {
+        font-size: 1.2rem;
+    }
+    
+    .modal-card p {
+        font-size: 0.85rem;
+    }
+    
+    .contact-info div {
+        font-size: 0.85rem;
+        padding: 8px 10px;
+    }
+    
+    .footer-social a {
+        width: 34px;
+        height: 34px;
+        margin: 0 3px;
+    }
+    
+    .footer-logo img {
+        height: 40px;
+    }
+    
+    .footer-content h3 {
+        font-size: 0.95rem;
+    }
+}
+
+/* ==========================================================================
+   12. PARA TABLETS PEQUEÑAS
+   ========================================================================== */
+@media (min-width: 481px) and (max-width: 768px) {
+    .login-card {
+        max-width: 90%;
+    }
+    
+    .modal-card {
+        max-width: 90%;
+    }
+}
+
+/* ==========================================================================
+   13. PREVENIR DESBORDAMIENTO GLOBAL
+   ========================================================================== */
+* {
+    max-width: 100%; /* Previene que cualquier elemento se salga */
+}
+
+body {
+    overflow-x: hidden; /* Oculta scroll horizontal */
+}
+
+/* Asegurar que los textos largos se rompan */
+h1, h2, h3, h4, p, span, a, button, label {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+/* Asegurar que los inputs no se salgan */
+input, textarea, select {
+    max-width: 100%;
+    box-sizing: border-box;
 }
     </style>
 </head>
-<body>
-    
-    <header class="header" style="display: flex; justify-content: space-between; align-items: center;">
-    <div class="logo">
-        <a href="index.html"><Img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo"></a>
-    </div>
-    
-    <div class="header-right" style="display: flex; align-items: center; gap: 15px;">
-        <button onclick="toggleTheme()" class="theme-toggle" id="themeBtn" title="Cambiar Tema">
-            <i class="fas fa-moon"></i>
-        </button>
-        
-        <button onclick="window.location.href='index.html'" class="btn-login-header">Salir</button>
-        
-        <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
-    </div>
-</header>
-    
-    <div class="overlay" id="overlay"></div>
+
+<body class="login-page">
+
+    <header class="main-header">
+        <div class="logo-container">
+            <a href="index.html">
+                <img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
+            </a>
+        </div>
+        <div class="header-actions">
+            <button onclick="toggleTheme()" class="btn-icon-header" id="themeBtn" title="Cambiar Tema">
+                <i class="fas fa-moon"></i>
+            </button>
+
+            <button onclick="window.location.href='index.html'" class="btn-logout-header" title="Volver al Inicio">
+                <i class="fas fa-arrow-left"></i> <span>Volver</span>
+            </button>
+
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </header>
+
+    <div class="overlay-bg" id="overlayMenu"></div>
     <div class="side-menu" id="sideMenu">
-        <button class="close-menu" id="closeMenu" style="color: var(--text-main);">&times;</button>
-        <h3>Menú</h3>
-        <ul>
-            <li><a href="index.html"><i class="fas fa-home"></i> Inicio</a></li>
-            <li><a href="biblioteca.html" style="color:#6A0DAD; font-weight:bold;"><i class="fas fa-sign-in-alt"></i> Iniciar Sesión</a></li>
+        <div class="side-menu-header">
+            <h3><i class="fas fa-bars"></i> Menú</h3>
+            <button class="close-menu" id="closeMenu" title="Cerrar Menú">&times;</button>
+        </div>
+        <ul class="menu-list">
+            <li><button class="menu-btn" onclick="window.location.href='index.html'"><i class="fas fa-home"></i> Inicio</button></li>
+            <li><button class="menu-btn active" onclick="location.reload()"><i class="fas fa-sign-in-alt"></i> Iniciar Sesión</button></li>
+            <li><button class="menu-btn" onclick="window.open('https://uepdespertar.edu.ec/nosotros/', '_blank')"><i class="fas fa-school"></i> Sobre el Colegio</button></li>
+            <li style="margin-top:auto; border-top:1px solid var(--border-color); padding-top:20px;">
+                <button class="menu-btn" onclick="abrirSoporte()">
+                    <i class="fas fa-headset"></i> Soporte Técnico
+                </button>
+            </li>
         </ul>
     </div>
-    
-    <div class="login-container" style="display: flex; justify-content: center; align-items: center; min-height: 80vh; padding: 20px;">
-        <div class="login-card" style="padding: 40px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-width: 400px; width: 100%; text-align: center;">
-            <div class="login-icon"><i class="fas fa-user-graduate" style="font-size: 3rem; color: #6A0DAD; margin-bottom: 20px;"></i></div>
-            <h2 style="color: #6A0DAD; margin-bottom: 10px;">Acceso al Portafolio</h2>
-            <p style="color: #666; margin-bottom: 30px;">Ingresa tus credenciales institucionales.</p>
+
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-icon-container">
+                <i class="fas fa-user-graduate"></i>
+            </div>
+            
+            <h2>Acceso al Portafolio</h2>
+            <p>Ingresa tus credenciales institucionales.</p>
+            
+            <!-- MENSAJE DE ERROR AHORA ESTÁ AQUÍ (más visible) -->
+            <div id="errorMessage" class="error-box">
+                <i class="fas fa-exclamation-circle"></i> 
+                <span id="errorText">Credenciales incorrectas.</span>
+            </div>
             
             <form id="loginForm">
-                <div class="form-group" style="text-align: left; margin-bottom: 15px;">
-                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">Número de Cédula:</label>
-                    <input type="text" id="cedula" name="cedula" placeholder="Ej: 1234567890 " required style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
+                <div class="form-group">
+                    <label>Número de Cédula:</label>
+                    <input type="text" id="cedula" name="cedula" class="form-control" placeholder="Ej: 1234567890" required>
                 </div>
                 
-                <div class="form-group" style="text-align: left; margin-bottom: 20px;">
-                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">Contraseña:</label>
-                    <input type="password" id="contrasena" name="contrasena" placeholder="Tu clave secreta" required style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
+                <div class="form-group">
+                    <label>Contraseña:</label>
+                    <input type="password" id="contrasena" name="contrasena" class="form-control" placeholder="Tu clave secreta" required>
                 </div>
                 
-                <button type="submit" class="btn-submit" id="loginBtn" style="width: 100%; padding: 12px; background: #6A0DAD; color: white; border: none; border-radius: 25px; font-weight: bold; cursor: pointer; transition: 0.3s;">
-                    Ingresar
+                <button type="submit" class="btn-submit" id="loginBtn">
+                    Ingresar <i class="fas fa-sign-in-alt"></i>
                 </button>
-            </form>
 
-            <div id="errorMessage" class="error-box" style="margin-top: 15px; display: none; color: #d32f2f; background: #ffebee; padding: 10px; border-radius: 5px; border: 1px solid #ffcdd2;">
-                <i class="fas fa-exclamation-circle"></i> 
-                <strong>Error:</strong> Credenciales incorrectas o problema de conexión.
-            </div>
+                <a onclick="abrirRecuperar()" class="forgot-pass">¿Olvidaste tu contraseña?</a>
+            </form>
         </div>
     </div>
-    
+
+            <div class="modal-overlay" id="modalRecuperar">
+        <div class="modal-card">
+            <button onclick="cerrarRecuperar()" class="modal-close-btn" title="Cerrar">&times;</button>
+            <i class="fas fa-key" style="font-size: 2.5rem; color: var(--primary); margin-bottom: 12px;"></i>
+            <h3>Recuperar Acceso</h3>
+            <p>Envía una solicitud al administrador. Te responderemos a tu correo de contacto.</p>
+            
+            <form id="formRecuperar">
+                <div class="form-group">
+                    <label style="font-size: 0.9rem; font-weight: 600;">Tu Cédula:</label>
+                    <input type="text" name="cedula" class="form-control" required placeholder="Ej: 1234567890">
+                </div>
+                <div class="form-group">
+                    <label style="font-size: 0.9rem; font-weight: 600;">Correo de Contacto:</label>
+                    <input type="email" name="email" class="form-control" required placeholder="ejemplo@gmail.com">
+                </div>
+                <div class="form-group">
+                    <label style="font-size: 0.9rem; font-weight: 600;">Mensaje (Opcional):</label>
+                    <textarea name="mensaje" class="form-control" placeholder="Describe brevemente tu problema..."></textarea>
+                </div>
+                <button type="submit" class="btn-submit" id="btnEnviarRecup" style="margin-top: 5px;">
+                    Enviar Solicitud
+                </button>
+                <button type="button" class="btn-secondary" onclick="cerrarRecuperar()" style="margin-top: 8px;">
+                    Cancelar
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalSoporte">
+        <div class="modal-card">
+            <button onclick="cerrarSoporte()" class="modal-close-btn" title="Cerrar">&times;</button>
+            <i class="fas fa-headset" style="font-size: 2.5rem; color: var(--secondary); margin-bottom: 15px;"></i>
+            <h3>Contacto de Soporte</h3>
+            
+            <div class="contact-info">
+                <div><i class="fab fa-whatsapp"></i> <strong>098 608 9754</strong></div>
+                <div><i class="fas fa-phone-alt"></i> <strong>022 046 055</strong></div>
+                <div><i class="fas fa-envelope"></i> <a href="mailto:akuamtam@hotmail.com" style="color:var(--primary); text-decoration:none;">akuamtam@hotmail.com</a></div>
+            </div>
+
+            <button class="btn-submit" onclick="cerrarSoporte()" style="margin-top: 10px;">Cerrar</button>
+        </div>
+    </div>
+
     <footer>
         <div class="footer-content">
             <div class="footer-logo">
-                <Img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
+                <img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
                 <h3>Unidad Educativa Particular Despertar</h3>
+            </div>
+            <div class="footer-links" style="margin-bottom:20px;">
+                <a href="https://uepdespertar.edu.ec/nosotros/" target="_blank">Sobre Nosotros</a>
             </div>
             <div class="footer-social">
                 <a href="https://www.facebook.com/uepdespertar"><i class="fab fa-facebook-f"></i></a>
@@ -202,108 +951,115 @@
                 <a href="https://www.instagram.com/skas_despertar"><i class="fab fa-instagram"></i></a>
             </div>
             <div class="copyright">
-                <p>© 2025 Plataforma Educativa - Unidad Educativa Particular Despertar. Todos los derechos reservados.</p>
+                <p>© 2025 Plataforma Educativa - Unidad Educativa Particular Despertar.</p>
             </div>
         </div>
     </footer>
 
     <script>
-        // --- LÓGICA DE TEMA (MODO OSCURO) ---
+        const API_URL = "http://localhost:8000";
+
+        // --- INICIALIZACIÓN ---
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                initTheme();
+                document.getElementById('menuToggle').onclick = toggleMenu;
+                document.getElementById('closeMenu').onclick = toggleMenu;
+                document.getElementById('overlayMenu').onclick = toggleMenu;
+            } catch (error) { console.error("Error init:", error); }
+        });
+
+        // --- TEMA Y MENÚ ---
         function toggleTheme() {
-            const body = document.body;
-            const btn = document.getElementById('themeBtn');
-            const icon = btn.querySelector('i');
-
-            // Animación
-            icon.classList.add('rotate-anim');
-            setTimeout(() => icon.classList.remove('rotate-anim'), 500);
-
-            body.classList.toggle('dark-mode');
-
-            if (body.classList.contains('dark-mode')) {
-                icon.classList.remove('fa-moon');
-                icon.classList.add('fa-sun');
-                localStorage.setItem('global_theme', 'dark');
-            } else {
-                icon.classList.remove('fa-sun');
-                icon.classList.add('fa-moon');
-                localStorage.setItem('global_theme', 'light');
-            }
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('global_theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+            initTheme();
         }
-
-        // Cargar tema guardado
-        window.onload = function() {
-            const savedTheme = localStorage.getItem('global_theme');
-            if (savedTheme === 'dark') {
-                document.body.classList.add('dark-mode');
-                const icon = document.querySelector('#themeBtn i');
-                if(icon) icon.classList.replace('fa-moon', 'fa-sun');
-            }
-        };
-
-        // --- MENÚ LATERAL ---
-        const menu = document.getElementById('sideMenu');
-        const overlay = document.getElementById('overlay');
-        const menuToggle = document.getElementById('menuToggle');
-        const closeMenu = document.getElementById('closeMenu');
-
-        function toggleMenu() {
-            if(menu) menu.classList.toggle('active');
-            if(overlay) overlay.classList.toggle('active');
-        }
-
-        if(menuToggle) menuToggle.addEventListener('click', toggleMenu);
-        if(closeMenu) closeMenu.addEventListener('click', toggleMenu);
-        if(overlay) overlay.addEventListener('click', toggleMenu);
         
-        // --- LÓGICA DE LOGIN ---
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
-            e.preventDefault(); 
-            
-            const errorBox = document.getElementById('errorMessage');
-            const btn = document.getElementById('loginBtn');
+        function initTheme() {
+            const saved = localStorage.getItem('global_theme');
+            const icon = document.querySelector('#themeBtn i');
+            if(saved === 'dark') { 
+                document.body.classList.add('dark-mode'); 
+                icon.className = 'fas fa-sun'; 
+            } else { 
+                document.body.classList.remove('dark-mode'); 
+                icon.className = 'fas fa-moon'; 
+            }
+        }
+        
+        function toggleMenu() { 
+            document.getElementById('sideMenu').classList.toggle('active'); 
+            document.getElementById('overlayMenu').classList.toggle('active'); 
+        }
+
+                // --- MODALES ---
+        function abrirSoporte() { 
+            toggleMenu(); // Cierra el menú lateral primero
+            setTimeout(() => {
+                document.getElementById('modalSoporte').classList.add('active');
+                document.body.style.overflow = 'hidden'; // Previene scroll en body
+            }, 300);
+        }
+        
+        function cerrarSoporte() { 
+            document.getElementById('modalSoporte').classList.remove('active');
+            document.body.style.overflow = ''; // Restaura scroll
+        }
+        
+        function abrirRecuperar() { 
+            document.getElementById('modalRecuperar').classList.add('active');
+            document.body.style.overflow = 'hidden'; // Previene scroll en body
+        }
+        
+        function cerrarRecuperar() { 
+            document.getElementById('modalRecuperar').classList.remove('active');
+            document.body.style.overflow = ''; // Restaura scroll
+        }
+
+        // Cerrar modales al hacer clic fuera o con ESC
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal-overlay')) {
+                event.target.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        }
+        
+        // Cerrar modales con tecla ESC
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                document.querySelectorAll('.modal-overlay.active').forEach(modal => {
+                    modal.classList.remove('active');
+                    document.body.style.overflow = '';
+                });
+            }
+        });
+
+        // --- LÓGICA DE RECUPERACIÓN ---
+        document.getElementById('formRecuperar').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnEnviarRecup');
             const originalText = btn.innerHTML;
-            
-            errorBox.style.display = 'none';
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+            btn.innerText = "Enviando..."; 
             btn.disabled = true;
 
             const datos = new FormData(this);
-            const baseUrl = "https://proyecto-de-grado-oficial-production.up.railway.app";
 
             try {
-                const res = await fetch(`${baseUrl}/iniciar_sesion?t=${Date.now()}`, {
-                    method: "POST",
-                    body: datos
-                });
-
+                const res = await fetch(`${API_URL}/solicitar_recuperacion`, { method: "POST", body: datos });
                 const data = await res.json();
-
-                if (data.encontrado) {
-                    localStorage.setItem('usuario_cedula', datos.get('cedula'));
-                    localStorage.setItem('usuario_contrasena', datos.get('contrasena'));
-                    localStorage.setItem('usuario_tipo', data.datos.tipo);
-                    
-                    if (data.datos.tipo === 0) {
-                        window.location.href = "perfiladmin.html";
-                    } else {
-                        window.location.href = "perfil.html";
-                    }
+                
+                if (data.status === 'ok') {
+                    alert("✅ Solicitud enviada.\n\nEl administrador revisará tu caso y te contactará al correo proporcionado.");
+                    cerrarRecuperar();
+                    this.reset();
                 } else {
-                    if (data.mensaje === "Cuenta desactivada") {
-                        errorBox.innerHTML = '<i class="fas fa-user-lock"></i> <strong>Acceso Denegado:</strong><br>Su usuario está desactivado. Comuníquese con el administrador.';
-                    } else {
-                        errorBox.innerHTML = '<i class="fas fa-user-times"></i> Usuario o contraseña incorrectos.';
-                    }
-                    errorBox.style.display = 'block';
+                    alert("❌ Error: " + data.mensaje);
                 }
-
             } catch (error) {
-                console.error(error);
-                errorBox.innerHTML = '<i class="fas fa-wifi"></i> Error de conexión. Revisa el servidor.';
-                errorBox.style.display = 'block';
+                alert("Error de conexión. Intenta más tarde.");
             } finally {
-                btn.innerHTML = originalText;
+                btn.innerHTML = originalText; 
                 btn.disabled = false;
             }
         });
