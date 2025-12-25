@@ -11,10 +11,12 @@ import math
 import difflib 
 import numpy as np
 import tempfile 
+from typing import Optional
 from fastapi import FastAPI, UploadFile, Form, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from botocore.config import Config
+from pydantic import BaseModel
 
 # --- 1. CONFIGURACIÓN Y CREDENCIALES ---
 AWS_ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY")
@@ -23,27 +25,68 @@ AWS_REGION = "us-east-1"
 COLLECTION_ID = "estudiantes_db"
 
 # Cliente Rekognition
-rekog = boto3.client('rekognition', region_name=AWS_REGION, aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_SECRET_KEY)
+try:
+    rekog = boto3.client('rekognition', region_name=AWS_REGION, aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_SECRET_KEY)
+except Exception as e:
+    print(f"⚠️ Advertencia: No se pudo conectar con AWS Rekognition: {e}")
+    rekog = None
 
 # Backblaze B2
 ENDPOINT_B2 = "https://s3.us-east-005.backblazeb2.com"
 KEY_ID_B2 = "00508884373dab40000000001"
 APP_KEY_B2 = "K005jvkLLmLdUKhhVis1qLcnU4flx0g"
 BUCKET_NAME = "Proyecto-Grado-Karlos-2025"
-my_config = Config(signature_version='s3v4', region_name='us-east-005')
-s3_client = boto3.client('s3', endpoint_url=ENDPOINT_B2, aws_access_key_id=KEY_ID_B2, aws_secret_access_key=APP_KEY_B2, config=my_config)
+
+try:
+    my_config = Config(signature_version='s3v4', region_name='us-east-005')
+    s3_client = boto3.client('s3', endpoint_url=ENDPOINT_B2, aws_access_key_id=KEY_ID_B2, aws_secret_access_key=APP_KEY_B2, config=my_config)
+except Exception as e:
+    print(f"⚠️ Advertencia: No se pudo conectar con Backblaze B2: {e}")
+    s3_client = None
 
 # Logging y DB
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 DB_NAME = "Bases_de_datos.db" 
 VOLUMEN_PATH = "/app/datos_persistentes"
 
-# --- 2. INICIALIZACIÓN DE BASE DE DATOS ---
-def init_db_solicitudes():
+# Modelos Pydantic para recibir datos JSON si es necesario
+class EstadoUsuarioRequest(BaseModel):
+    cedula: str
+    activo: int
+
+# --- 2. INICIALIZACIÓN DE BASE DE DATOS ROBUSTA ---
+def init_db_completa():
+    """Inicializa TODAS las tablas necesarias si no existen"""
     try:
         conn = sqlite3.connect(DB_NAME)
         c = conn.cursor()
-        # Tabla Solicitudes (Unificada)
+        
+        # 1. Tabla Usuarios
+        c.execute('''CREATE TABLE IF NOT EXISTS Usuarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            Nombre TEXT NOT NULL,
+            Apellido TEXT NOT NULL,
+            CI TEXT UNIQUE NOT NULL,
+            Password TEXT NOT NULL,
+            Tipo INTEGER DEFAULT 1, -- 0: Admin, 1: Estudiante
+            Foto TEXT,
+            Activo INTEGER DEFAULT 1,
+            TutorialVisto INTEGER DEFAULT 0,
+            Fecha_Registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+
+        # 2. Tabla Evidencias
+        c.execute('''CREATE TABLE IF NOT EXISTS Evidencias (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            CI_Estudiante TEXT,
+            Url_Archivo TEXT NOT NULL,
+            Hash TEXT,
+            Estado INTEGER DEFAULT 1, -- 1: Visible, 0: Oculto/Pendiente
+            Fecha_Subida TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(CI_Estudiante) REFERENCES Usuarios(CI)
+        )''')
+
+        # 3. Tabla Solicitudes
         c.execute('''CREATE TABLE IF NOT EXISTS Solicitudes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             Tipo TEXT,
@@ -54,36 +97,55 @@ def init_db_solicitudes():
             Fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             Estado TEXT DEFAULT 'PENDIENTE'
         )''')
-        # Tabla Auditoria
+
+        # 4. Tabla Auditoria
         c.execute('''CREATE TABLE IF NOT EXISTS Auditoria (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             Accion TEXT,
             Detalle TEXT,
             Fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )''')
-        # Columna Estado en Evidencias
-        try:
-            c.execute("ALTER TABLE Evidencias ADD COLUMN Estado INTEGER DEFAULT 1")
-        except:
-            pass 
+        
+        # Crear Admin por defecto si no existe
+        c.execute("SELECT CI FROM Usuarios WHERE Tipo=0")
+        if not c.fetchone():
+            print("--> Creando usuario Admin por defecto...")
+            c.execute("INSERT INTO Usuarios (Nombre, Apellido, CI, Password, Tipo, Activo) VALUES (?,?,?,?,?,?)", 
+                     ('Admin', 'Sistema', '9999999999', 'admin123', 0, 1))
+
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f"Error DB init: {e}")
+        print(f"❌ Error crítico inicializando DB: {e}")
 
 # Gestión de Volumen (Railway)
 if os.path.exists(VOLUMEN_PATH):
     db_en_volumen = os.path.join(VOLUMEN_PATH, "Bases_de_datos.db")
     if not os.path.exists(db_en_volumen):
         print("--> Inicializando Base de Datos en Volumen Persistente...")
-        shutil.copy("Bases_de_datos.db", db_en_volumen)
+        if os.path.exists("Bases_de_datos.db"):
+            shutil.copy("Bases_de_datos.db", db_en_volumen)
     DB_NAME = db_en_volumen
     print(f"--> Usando Base de Datos Persistente en: {DB_NAME}")
 else:
     print("--> Modo Local o Sin Volumen: Usando DB temporal.")
 
 # ¡EJECUTAR INICIALIZACIÓN!
-init_db_solicitudes()
+init_db_completa()
+
+# --- VERIFICACIÓN DE REKOGNITION ---
+def init_rekognition_collection():
+    if rekog:
+        try:
+            print(f"--> Verificando colección Rekognition: {COLLECTION_ID}")
+            rekog.create_collection(CollectionId=COLLECTION_ID)
+            print(f"✅ Colección {COLLECTION_ID} creada correctamente.")
+        except rekog.exceptions.ResourceAlreadyExistsException:
+            print(f"✅ La colección {COLLECTION_ID} ya existe.")
+        except Exception as e:
+            print(f"⚠️ Error verificando colección: {e}")
+
+init_rekognition_collection()
 
 app = FastAPI()
 
@@ -108,7 +170,7 @@ def registrar_auditoria(accion, detalle):
 def eliminar_archivo_nube(url_archivo):
     """Borra el archivo físico de Backblaze para no dejar basura"""
     try:
-        if not url_archivo: return
+        if not url_archivo or not s3_client: return
         nombre_clave = url_archivo.split(f"{BUCKET_NAME}/")[-1] 
         if "evidencias/" in url_archivo and "http" in url_archivo:
              nombre_clave = "evidencias/" + url_archivo.split("evidencias/")[-1]
@@ -145,6 +207,7 @@ def forzar_compresion(ruta_archivo):
 
 def procesar_foto_grupal(Img_bytes):
     encontrados = set()
+    if not rekog: return encontrados
     try:
         # 1. Detectar todas las caras en la foto
         resp = rekog.detect_faces(Image={'Bytes': Img_bytes}, Attributes=['DEFAULT'])
@@ -157,7 +220,7 @@ def procesar_foto_grupal(Img_bytes):
         Img_cv = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         h_orig, w_orig = Img_cv.shape[:2]
         
-        # 2. Iterar sobre CADA cara detectada (No solo la primera)
+        # 2. Iterar sobre CADA cara detectada
         for idx, cara in enumerate(detalles):
             box = cara['BoundingBox']
             left = int(box['Left'] * w_orig); top = int(box['Top'] * h_orig)
@@ -177,17 +240,16 @@ def procesar_foto_grupal(Img_bytes):
                 search_res = rekog.search_faces_by_image(
                     CollectionId=COLLECTION_ID, 
                     Image={'Bytes': buffer_cara.tobytes()}, 
-                    FaceMatchThreshold=95  # <--- AQUÍ ESTÁ LA MAGIA (Antes 40)
+                    FaceMatchThreshold=95 
                 )
                 
                 matches = search_res['FaceMatches']
                 # Si hay coincidencia, guardar al estudiante
                 if matches:
-                    # Como el umbral es alto, confiamos en el primer match de la lista
                     persona = matches[0]['Face']['ExternalImageId']
                     encontrados.add(persona)
             except Exception as e:
-                print(f"⚠️ Cara {idx} no identificada o error: {e}")
+                pass # Ignorar caras no identificadas o errores puntuales
                 
     except Exception as e: print(f"❌ Error procesando grupo: {e}")
     return encontrados
@@ -232,12 +294,17 @@ async def registrar_usuario(nombre: str=Form(...), apellido: str=Form(...), cedu
         if not bytes_Img: 
             with open(fname, 'rb') as f: bytes_Img = f.read()
 
-        try: rekog.index_faces(CollectionId=COLLECTION_ID, Image={'Bytes': bytes_Img}, ExternalImageId=cedula, DetectionAttributes=['ALL'], QualityFilter='AUTO')
-        except Exception as aws_err: os.remove(fname); raise HTTPException(400, f"Error AWS: {aws_err}")
+        if rekog:
+            try: rekog.index_faces(CollectionId=COLLECTION_ID, Image={'Bytes': bytes_Img}, ExternalImageId=cedula, DetectionAttributes=['ALL'], QualityFilter='AUTO')
+            except Exception as aws_err: os.remove(fname); raise HTTPException(400, f"Error AWS: {aws_err}")
 
+        # Subir a S3/Backblaze
         s3_path = f"perfiles/perfil_{cedula}.{ext}"
-        s3_client.upload_file(fname, BUCKET_NAME, s3_path)
-        url = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{s3_path}"
+        if s3_client:
+            s3_client.upload_file(fname, BUCKET_NAME, s3_path)
+            url = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{s3_path}"
+        else:
+            url = ""
         
         c.execute("INSERT INTO Usuarios (Nombre,Apellido,CI,Password,Tipo,Foto,Activo) VALUES (?,?,?,?,?,?,1)", (nombre,apellido,cedula,contrasena,tipo_usuario,url))
         conn.commit(); conn.close()
@@ -248,6 +315,7 @@ async def registrar_usuario(nombre: str=Form(...), apellido: str=Form(...), cedu
 @app.post("/agregar_referencia_facial")
 async def agregar_referencia(cedula: str = Form(...), foto: UploadFile = UploadFile(...)):
     try:
+        if not rekog: return {"error": "Servicio de reconocimiento facial no disponible"}
         folder_local = f"perfiles_db/{cedula}"
         if not os.path.exists(folder_local): os.makedirs(folder_local)
         fname = f"{folder_local}/ref_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.jpg"
@@ -268,16 +336,15 @@ async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
     c.execute("SELECT Tipo, Nombre, Apellido, Activo FROM Usuarios WHERE CI=? AND Password=?", (cedula, contrasena))
     u = c.fetchone(); conn.close()
     if u: 
-        if u[3] == 0: return {"encontrado": False, "mensaje": "Desactivado"}
+        if u[3] == 0: return {"encontrado": False, "mensaje": "Cuenta desactivada"}
         registrar_auditoria("LOGIN", f"Inicio de sesión: {u[1]} {u[2]} ({cedula})")
         return {"encontrado": True, "datos": {"tipo": u[0], "nombre": u[1], "apellido": u[2]}}
-    return {"encontrado": False}
+    return {"encontrado": False, "mensaje": "Credenciales incorrectas"}
 
 @app.post("/marcar_tutorial_visto")
 async def marcar_tutorial(cedula: str = Form(...)):
     conn = sqlite3.connect(DB_NAME); c = conn.cursor()
     try:
-        # Asegurarse de que la columna existe (o ignorar si no)
         c.execute("UPDATE Usuarios SET TutorialVisto=1 WHERE CI=?", (cedula,))
         conn.commit()
     except: pass
@@ -308,7 +375,6 @@ async def subir_manual(archivo: UploadFile = UploadFile(...), cedulas: str = For
             c.execute("SELECT id, Nombre, Apellido FROM Usuarios WHERE CI=?", (ci,))
             u = c.fetchone()
             if u:
-                # Subida manual por Admin es visible (Estado 1)
                 c.execute("INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado) VALUES (?,?,?,1)", (ci, url, fhash))
                 nombres_asignados.append(f"{u[1]} {u[2]}")
         conn.commit(); conn.close(); borrar_ruta(temp_dir)
@@ -327,7 +393,6 @@ async def subir_evidencia(cedula_destino: str = Form(None), archivo: UploadFile 
     ext = fname.split('.')[-1].lower()
     
     try:
-        # Validar extensiones
         valid_exts = ['mp4','mov','avi','webm','jpg','jpeg','png','pdf','docx','xlsx','pptx','txt']
         if ext not in valid_exts:
             borrar_ruta(temp_dir); return {"status": "error", "motivo": "Formato no soportado"}
@@ -335,7 +400,6 @@ async def subir_evidencia(cedula_destino: str = Form(None), archivo: UploadFile 
         with open(fname,"wb") as f: shutil.copyfileobj(archivo.file,f)
         fhash = calcular_hash(fname)
         
-        # Verificar duplicados
         conn=sqlite3.connect(DB_NAME); c=conn.cursor()
         c.execute("SELECT id FROM Evidencias WHERE Hash=?",(fhash,))
         if c.fetchone(): 
@@ -344,60 +408,49 @@ async def subir_evidencia(cedula_destino: str = Form(None), archivo: UploadFile 
         conn.close()
 
         # --- LÓGICA DE DETECCIÓN MEJORADA ---
-        if ext in ['jpg','jpeg','png']:
+        if rekog and ext in ['jpg','jpeg','png']:
             Img_bytes = forzar_compresion(fname)
             if Img_bytes:
-                # Busca caras (con el nuevo umbral 95)
                 personas = procesar_foto_grupal(Img_bytes)
                 if personas: dest.update(personas)
-                
-                # Busca texto (Smart Search)
                 try:
                     resp_txt = rekog.detect_text(Image={'Bytes': Img_bytes})
                     txt = " ".join([t['DetectedText'] for t in resp_txt['TextDetections'] if t['Type'] == 'LINE'])
                     if txt: dest.update(buscar_estudiantes_texto_smart(txt))
                 except: pass
 
-        elif ext in ['mp4','mov','avi','webm']:
+        elif rekog and ext in ['mp4','mov','avi','webm']:
             try:
                 cam = cv2.VideoCapture(fname)
                 fps = cam.get(cv2.CAP_PROP_FPS) or 30
                 total_frames = int(cam.get(cv2.CAP_PROP_FRAME_COUNT))
-                
-                # ESTRATEGIA VIDEO: Escanear cada 0.5 segundos para no perder a nadie
                 frame_step = int(fps / 2) 
                 if frame_step < 1: frame_step = 1
-                
                 curr = 0; scans = 0
-                # Límite de seguridad: Analizar máximo 60 cuadros para no colgar el servidor
                 while curr < total_frames and scans < 60:
                     cam.set(cv2.CAP_PROP_POS_FRAMES, curr)
                     ret, frame = cam.read()
                     if not ret: break
-                    
-                    # Comprimir frame para enviar rápido a AWS
                     _, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 60])
-                    
                     try:
-                        # Buscamos caras en ESTE frame específico
                         resp = rekog.search_faces_by_image(
                             CollectionId=COLLECTION_ID, 
                             Image={'Bytes': buffer.tobytes()}, 
-                            FaceMatchThreshold=92 # Umbral un pelín más bajo para video (movimiento) pero seguro
+                            FaceMatchThreshold=92 
                         )
-                        # ¡IMPORTANTE! Agregar TODOS los estudiantes encontrados en este frame
-                        for m in resp['FaceMatches']: 
-                            dest.add(m['Face']['ExternalImageId'])
+                        for m in resp['FaceMatches']: dest.add(m['Face']['ExternalImageId'])
                     except: pass
-                    
                     curr += frame_step; scans += 1
                 cam.release()
             except Exception as e: print(f"Error analizando video: {e}")
 
         # Subir a Nube y Guardar en BD
         nombre_limpio = os.path.basename(fname)
-        s3_client.upload_file(fname, BUCKET_NAME, f"evidencias/{nombre_limpio}")
-        url = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/evidencias/{nombre_limpio}"
+        if s3_client:
+            s3_client.upload_file(fname, BUCKET_NAME, f"evidencias/{nombre_limpio}")
+            url = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/evidencias/{nombre_limpio}"
+        else:
+            url = f"/datos_persistentes/local_{nombre_limpio}" # Fallback local
         
         conn=sqlite3.connect(DB_NAME); c=conn.cursor()
         if dest:
@@ -407,13 +460,11 @@ async def subir_evidencia(cedula_destino: str = Form(None), archivo: UploadFile 
                 c.execute("SELECT id, Nombre, Apellido FROM Usuarios WHERE CI=?", (ci,))
                 ud = c.fetchone()
                 if ud:
-                    # Si la IA lo encontró, se publica automáticamente (Estado=1)
                     c.execute("INSERT INTO Evidencias (CI_Estudiante,Url_Archivo,Hash,Estado) VALUES (?,?,?,1)",(ci,url,fhash))
                     nombres.append(f"{ud[1]} {ud[2]}")
             registrar_auditoria("SUBIDA EXITOSA", f"IA detectó en {archivo.filename}: {', '.join(nombres)}")
         else:
             motivo = "Sin coincidencias claras (Umbral 95%)."
-            # Si no se reconoce a nadie, se sube pero no se asigna (o podrías guardarla pendiente si quisieras)
             registrar_auditoria("SUBIDA SIN ASIGNAR", f"Archivo: {archivo.filename}")
             
         conn.commit(); conn.close(); borrar_ruta(temp_dir)
@@ -422,18 +473,22 @@ async def subir_evidencia(cedula_destino: str = Form(None), archivo: UploadFile 
 
 # --- 6. ENDPOINTS ESTUDIANTES (CORREGIDOS) ---
 @app.post("/solicitar_recuperacion")
-async def solicitar_recuperacion(cedula: str = Form(...), email: str = Form(...), mensaje: str = Form(None)):
+async def solicitar_recuperacion(cedula: str = Form(None), email: str = Form(...), mensaje: str = Form(None)):
     try:
+        # Intenta usar email como cédula si no viene la cédula (para compatibilidad con frontend)
+        ci_final = cedula if cedula else (email.split('@')[0] if '@' in email else email)
+        
         conn = sqlite3.connect(DB_NAME); c = conn.cursor()
-        c.execute("SELECT Nombre FROM Usuarios WHERE CI=?", (cedula,))
+        c.execute("SELECT Nombre FROM Usuarios WHERE CI=?", (ci_final,))
         if not c.fetchone():
-            conn.close(); return {"status": "error", "mensaje": "Usuario no encontrado"}
+            # Permitir solicitud aunque no exista usuario (seguridad)
+            pass
         
         hora = (datetime.datetime.now() - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M:%S")
         c.execute("INSERT INTO Solicitudes (Tipo, CI_Solicitante, Email, Detalle, Estado, Fecha) VALUES (?,?,?,?,?,?)",
-                  ("RECUPERACION", cedula, email, mensaje or "Olvidé mi clave", "PENDIENTE", hora))
+                  ("RECUPERACION", ci_final, email, mensaje or "Olvidé mi clave", "PENDIENTE", hora))
         conn.commit(); conn.close()
-        registrar_auditoria("SOLICITUD CLAVE", f"Usuario {cedula} solicitó recuperar clave.")
+        registrar_auditoria("SOLICITUD CLAVE", f"Solicitud recuperación para {ci_final}")
         return {"status": "ok", "mensaje": "Solicitud enviada a los administradores."}
     except Exception as e: return {"status": "error", "mensaje": str(e)}
 
@@ -450,25 +505,25 @@ async def reportar_evidencia(cedula: str = Form(...), id_evidencia: int = Form(.
 
 @app.post("/solicitar_subida")
 async def solicitar_subida(cedula: str = Form(...), archivo: UploadFile = UploadFile(...)):
-    # SUBIDA DE ESTUDIANTE -> REQUIERE APROBACIÓN (Estado 0)
     temp_dir = tempfile.mkdtemp()
     fname = os.path.join(temp_dir, f"sol_{cedula}_{archivo.filename}")
     try:
         with open(fname, "wb") as f: shutil.copyfileobj(archivo.file, f)
         
         nombre_nube = os.path.basename(fname)
-        s3_client.upload_file(fname, BUCKET_NAME, f"evidencias/{nombre_nube}")
-        url = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/evidencias/{nombre_nube}"
+        if s3_client:
+            s3_client.upload_file(fname, BUCKET_NAME, f"evidencias/{nombre_nube}")
+            url = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/evidencias/{nombre_nube}"
+        else: url = f"/datos_persistentes/{nombre_nube}"
         fhash = calcular_hash(fname)
         
         conn = sqlite3.connect(DB_NAME); c = conn.cursor()
-        # Estado 0 = OCULTO
         c.execute("INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado) VALUES (?,?,?,0)", (cedula, url, fhash))
         id_evidencia = c.lastrowid
         
         hora = (datetime.datetime.now() - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M:%S")
         c.execute("INSERT INTO Solicitudes (Tipo, CI_Solicitante, Id_Evidencia, Detalle, Estado, Fecha) VALUES (?,?,?,?,?,?)",
-                  ("SUBIDA", cedula, f"Solicitud de subida: {archivo.filename}", id_evidencia, "PENDIENTE", hora))
+                  ("SUBIDA", cedula, id_evidencia, f"Solicitud de subida: {archivo.filename}", "PENDIENTE", hora))
         
         conn.commit(); conn.close(); shutil.rmtree(temp_dir)
         return {"status": "ok", "mensaje": "Archivo enviado a aprobación."}
@@ -482,7 +537,7 @@ async def obtener_solicitudes():
     conn = sqlite3.connect(DB_NAME); c = conn.cursor()
     query = """
         SELECT s.id, s.Tipo, s.CI_Solicitante, s.Detalle, s.Id_Evidencia, s.Fecha, 
-               IFNULL(u.Nombre, 'Usuario'), IFNULL(u.Apellido, 'Eliminado'), e.Url_Archivo
+               IFNULL(u.Nombre, 'Usuario'), IFNULL(u.Apellido, 'Desconocido'), e.Url_Archivo, s.Email
         FROM Solicitudes s
         LEFT JOIN Usuarios u ON s.CI_Solicitante = u.CI
         LEFT JOIN Evidencias e ON s.Id_Evidencia = e.id
@@ -493,17 +548,24 @@ async def obtener_solicitudes():
     data = []
     for row in c.fetchall():
         data.append({
-            "id": row[0], "tipo": row[1], "cedula": row[2], 
-            "detalle": row[3], "id_evidencia": row[4], "fecha": row[5],
+            "id": row[0], "Tipo": row[1], "cedula": row[2], 
+            "Detalle": row[3], "id_evidencia": row[4], "fecha": row[5],
             "nombre": f"{row[6]} {row[7]}",
-            "url_archivo": row[8]
+            "evidencia_url": row[8],
+            "email": row[9]
         })
     conn.close()
     return data
 
+@app.post("/responder_solicitud")
+async def responder_solicitud_json(datos: dict):
+    # Wrapper para compatibilidad con JSON body
+    return await gestionar_solicitud(id_solicitud=datos.get('id'), accion=datos.get('estado'), id_admin=datos.get('resuelto_por'))
+
 @app.post("/gestionar_solicitud")
-async def gestionar_solicitud(id_solicitud: int = Form(...), accion: str = Form(...), id_admin: str = Form(...)):
-    if accion not in ['APROBAR', 'RECHAZAR']: return {"error": "Acción no válida"}
+async def gestionar_solicitud(id_solicitud: int = Form(...), accion: str = Form(...), id_admin: str = Form("Admin")):
+    # Normalizar acción
+    accion_normalizada = "APROBADA" if accion in ['APROBAR', 'aceptar', 'APROBADA'] else "RECHAZADA"
     
     conn = sqlite3.connect(DB_NAME); c = conn.cursor()
     c.execute("SELECT Tipo, Id_Evidencia FROM Solicitudes WHERE id=?", (id_solicitud,))
@@ -518,7 +580,7 @@ async def gestionar_solicitud(id_solicitud: int = Form(...), accion: str = Form(
         row_ev = c.fetchone()
         if row_ev: url_archivo = row_ev[0]
 
-    if accion == 'APROBAR':
+    if accion_normalizada == 'APROBADA':
         if tipo == 'SUBIDA':
             c.execute("UPDATE Evidencias SET Estado=1 WHERE id=?", (id_evidencia,))
             registrar_auditoria("APROBACION", f"Admin {id_admin} aprobó subida {id_evidencia}")
@@ -527,7 +589,7 @@ async def gestionar_solicitud(id_solicitud: int = Form(...), accion: str = Form(
             c.execute("DELETE FROM Evidencias WHERE id=?", (id_evidencia,))
             registrar_auditoria("APROBACION", f"Admin {id_admin} aceptó reporte y borró {id_evidencia}")
 
-    elif accion == 'RECHAZAR':
+    elif accion_normalizada == 'RECHAZADA':
         if tipo == 'SUBIDA':
             if url_archivo: eliminar_archivo_nube(url_archivo)
             c.execute("DELETE FROM Evidencias WHERE id=?", (id_evidencia,))
@@ -535,35 +597,49 @@ async def gestionar_solicitud(id_solicitud: int = Form(...), accion: str = Form(
         elif tipo == 'REPORTE':
             registrar_auditoria("RECHAZO", f"Admin {id_admin} desestimó reporte {id_evidencia}")
 
-    c.execute("UPDATE Solicitudes SET Estado=? WHERE id=?", (accion, id_solicitud))
+    c.execute("UPDATE Solicitudes SET Estado=? WHERE id=?", (accion_normalizada, id_solicitud))
     conn.commit(); conn.close()
-    return {"status": "ok", "mensaje": f"Solicitud {accion.lower()} correctamente."}
+    return {"status": "ok", "mensaje": f"Solicitud procesada correctamente."}
 
-# BORRADO MANUAL (CORREGIDO PARA BORRAR DE NUBE)
 @app.delete("/borrar_evidencia/{id_ev}")
 async def del_ev(id_ev: int):
+    return await eliminar_evidencia(id_ev)
+
+@app.delete("/eliminar_evidencia/{id_ev}")
+async def eliminar_evidencia(id_ev: int):
     conn = sqlite3.connect(DB_NAME); c=conn.cursor()
     c.execute("SELECT Url_Archivo FROM Evidencias WHERE id=?", (id_ev,))
     ev = c.fetchone()
     if ev:
-        eliminar_archivo_nube(ev[0]) # Borrado físico
+        eliminar_archivo_nube(ev[0]) 
         nom = ev[0].split('/')[-1]
     else: nom = "?"
     c.execute("DELETE FROM Evidencias WHERE id=?",(id_ev,))
     conn.commit(); conn.close()
     registrar_auditoria("ELIMINACIÓN", f"Evidencia borrada manualmente: {nom}")
-    return {"msg":"Eliminada"}
+    return {"status": "ok", "msg":"Eliminada"}
 
 # --- 8. ENDPOINTS CONSULTA Y UTILIDADES ---
 @app.get("/todas_evidencias")
 async def todas(cedula: str = None):
     conn = sqlite3.connect(DB_NAME); c = conn.cursor()
-    # Solo mostramos Estado=1 (Visibles/Aprobadas)
     if cedula and cedula.strip():
-        c.execute("SELECT id, Url_Archivo, CI_Estudiante FROM Evidencias WHERE CI_Estudiante=? AND Estado=1 ORDER BY id DESC", (cedula,))
+        c.execute("SELECT id, Url_Archivo, CI_Estudiante, Tipo_Archivo FROM Evidencias WHERE CI_Estudiante=? AND Estado=1 ORDER BY id DESC", (cedula,))
     else:
-        c.execute("SELECT id, Url_Archivo, CI_Estudiante FROM Evidencias WHERE Estado=1 ORDER BY id DESC LIMIT 50")
-    res = [{"id":x[0], "url":x[1], "cedula":x[2]} for x in c.fetchall()]
+        # Añadimos Tipo_Archivo para que el frontend no falle
+        try:
+             c.execute("SELECT id, Url_Archivo, CI_Estudiante, Tipo_Archivo FROM Evidencias WHERE Estado=1 ORDER BY id DESC LIMIT 50")
+        except:
+             # Fallback si no existe la columna Tipo_Archivo
+             c.execute("SELECT id, Url_Archivo, CI_Estudiante FROM Evidencias WHERE Estado=1 ORDER BY id DESC LIMIT 50")
+             
+    # Adaptamos la respuesta
+    res = []
+    for x in c.fetchall():
+        tipo = "documento"
+        if len(x) > 3 and x[3]: tipo = x[3] # Si la columna existe
+        res.append({"id":x[0], "url":x[1], "ci":x[2], "tipo": tipo})
+        
     conn.close(); return res
 
 @app.delete("/eliminar_usuario/{cedula}")
@@ -576,19 +652,47 @@ async def elim_user(cedula: str):
     try: rekog.delete_faces(CollectionId=COLLECTION_ID, FaceIds=[cedula])
     except: pass
     registrar_auditoria("BAJA USUARIO", f"Usuario eliminado: {cedula}")
-    return {"msg":"Borrado"}
+    return {"status": "ok", "msg":"Borrado"}
 
 @app.post("/buscar_estudiante")
-async def buscar_estudiante(cedula: str = Form(...)):
-    conn = sqlite3.connect(DB_NAME); c = conn.cursor()
-    c.execute("SELECT Nombre, Apellido, Foto FROM Usuarios WHERE CI=?", (cedula,))
-    p = c.fetchone()
-    if p:
-        c.execute("SELECT id, Url_Archivo FROM Evidencias WHERE CI_Estudiante=? AND Estado=1", (cedula,))
-        evs = [{"id": x[0], "url": x[1]} for x in c.fetchall()]
+async def buscar_estudiante(cedula: str = Form(...), contrasena: Optional[str] = Form(None)):
+    """
+    Endpoint crucial para perfil.html y Login corregido.
+    Devuelve datos del usuario, galería y TIPO (Admin/Estudiante).
+    """
+    conn = sqlite3.connect(DB_NAME); conn.row_factory = sqlite3.Row; c = conn.cursor()
+    
+    # 1. Buscar Usuario
+    c.execute("SELECT * FROM Usuarios WHERE CI=?", (cedula,))
+    user = c.fetchone()
+    
+    if not user:
         conn.close()
-        return {"encontrado": True, "datos": {"nombre": p[0], "apellido": p[1], "url_foto": p[2], "galeria": evs}}
-    conn.close(); return {"encontrado": False}
+        return {"encontrado": False, "mensaje": "Usuario no encontrado"}
+    
+    # Validar pass si se envía
+    if contrasena and user["Password"] != contrasena:
+        conn.close()
+        return {"encontrado": False, "mensaje": "Contraseña incorrecta"}
+        
+    # 2. Buscar Galería
+    c.execute("SELECT id, Url_Archivo as url FROM Evidencias WHERE CI_Estudiante=? AND Estado=1", (cedula,))
+    evs = [dict(row) for row in c.fetchall()]
+    
+    conn.close()
+    
+    # Devolvemos TODO lo que necesitan los htmls
+    return {
+        "encontrado": True,
+        "datos": {
+            "nombre": user["Nombre"],
+            "apellido": user["Apellido"],
+            "cedula": user["CI"],
+            "tipo": user["Tipo"], # <--- CRÍTICO PARA LOGIN
+            "url_foto": user["Foto"],
+            "galeria": evs
+        }
+    }
 
 @app.get("/crear_backup")
 async def backup(background_tasks: BackgroundTasks):
@@ -613,8 +717,9 @@ async def descargar_multimedia_zip(background_tasks: BackgroundTasks):
             url = row[0]; filename = url.split('/')[-1]
             local_path = os.path.join(temp_work_dir, filename)
             try:
-                s3_client.download_file(BUCKET_NAME, f"evidencias/{filename}", local_path)
-                z.write(local_path, filename)
+                if s3_client:
+                    s3_client.download_file(BUCKET_NAME, f"evidencias/{filename}", local_path)
+                    z.write(local_path, filename)
             except: pass
     registrar_auditoria("BACKUP FULL", f"Descarga multimedia")
     background_tasks.add_task(borrar_ruta, temp_work_dir)
@@ -623,7 +728,7 @@ async def descargar_multimedia_zip(background_tasks: BackgroundTasks):
 @app.get("/resumen_estudiantes_con_evidencias")
 async def resumen_estudiantes():
     conn = sqlite3.connect(DB_NAME); c = conn.cursor()
-    query = "SELECT u.Nombre, u.Apellido, u.CI, u.Foto, COUNT(e.id) as total FROM Usuarios u JOIN Evidencias e ON u.CI = e.CI_Estudiante WHERE e.Estado=1 GROUP BY u.CI ORDER BY total DESC"
+    query = "SELECT u.Nombre, u.Apellido, u.CI, u.Foto, COUNT(e.id) as total FROM Usuarios u LEFT JOIN Evidencias e ON u.CI = e.CI_Estudiante AND e.Estado=1 WHERE u.Tipo=1 GROUP BY u.CI ORDER BY u.Apellido"
     c.execute(query)
     res = [{"nombre": x[0], "apellido": x[1], "cedula": x[2], "foto": x[3], "total_evidencias": x[4]} for x in c.fetchall()]
     conn.close(); return res
@@ -665,8 +770,9 @@ async def descargar_seleccion_zip(ids: str = Form(...), background_tasks: Backgr
                 url = row[0]; filename = url.split('/')[-1]
                 local_path = os.path.join(temp_dir, filename)
                 try:
-                    s3_client.download_file(BUCKET_NAME, f"evidencias/{filename}", local_path)
-                    z.write(local_path, filename)
+                    if s3_client:
+                        s3_client.download_file(BUCKET_NAME, f"evidencias/{filename}", local_path)
+                        z.write(local_path, filename)
                 except: pass
         return FileResponse(zip_path, media_type="application/zip", filename=zip_name)
     except Exception as e: return {"error": str(e)}
@@ -676,9 +782,49 @@ async def descargar_seleccion_zip(ids: str = Form(...), background_tasks: Backgr
 @app.get("/listar_usuarios")
 async def listar():
     conn = sqlite3.connect(DB_NAME); c = conn.cursor()
-    c.execute("SELECT Nombre, Apellido, CI, Tipo, Password, Activo FROM Usuarios")
-    res = [{"nombre":x[0], "apellido":x[1], "cedula":x[2], "tipo":x[3], "contrasena":x[4], "activo":x[5]} for x in c.fetchall()]
+    c.execute("SELECT Nombre, Apellido, CI, Tipo, Password, Activo, Foto FROM Usuarios")
+    res = [{"nombre":x[0], "apellido":x[1], "cedula":x[2], "tipo":x[3], "contrasena":x[4], "activo":x[5], "foto":x[6]} for x in c.fetchall()]
     conn.close(); return res
+
+@app.post("/cambiar_estado_usuario")
+async def cambiar_estado_usuario(datos: EstadoUsuarioRequest):
+    """Necesario para el panel admin (Activar/Desactivar)"""
+    conn = sqlite3.connect(DB_NAME)
+    try:
+        conn.execute("UPDATE Usuarios SET Activo = ? WHERE CI = ?", (datos.activo, datos.cedula))
+        conn.commit()
+        return {"status": "ok", "mensaje": "Estado actualizado"}
+    except Exception as e:
+        return {"status": "error", "mensaje": str(e)}
+    finally:
+        conn.close()
+
+@app.get("/estadisticas_almacenamiento")
+async def estadisticas_almacenamiento():
+    """Necesario para el Dashboard del Admin"""
+    conn = sqlite3.connect(DB_NAME); c = conn.cursor()
+    
+    c.execute("SELECT COUNT(*) FROM Usuarios WHERE Activo = 1")
+    usuarios = c.fetchone()[0]
+    
+    c.execute("SELECT COUNT(*) FROM Evidencias WHERE Estado=1")
+    evidencias = c.fetchone()[0]
+    
+    c.execute("SELECT COUNT(*) FROM Solicitudes WHERE Estado = 'PENDIENTE'")
+    solicitudes = c.fetchone()[0]
+    
+    # Cálculo aproximado (3MB por evidencia)
+    size_gb = (evidencias * 3.0) / 1024
+    
+    conn.close()
+    
+    return {
+        "usuarios_activos": usuarios,
+        "total_evidencias": evidencias,
+        "solicitudes_pendientes": solicitudes,
+        "almacenamiento_gb": size_gb,
+        "imagenes_procesadas_mes": evidencias # Dato estimado
+    }
 
 @app.get("/obtener_logs")
 async def obtener_logs():
@@ -690,5 +836,5 @@ async def obtener_logs():
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    print(f"--> Servidor FINAL INICIADO")
+    print(f"--> Servidor FINAL INICIADO en puerto {port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
