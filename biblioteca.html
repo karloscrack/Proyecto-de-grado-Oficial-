@@ -957,86 +957,76 @@ input, textarea, select {
     </footer>
 
     <script>
-        const API_URL = "https://proyecto-de-grado-oficial-production.up.railway.app";
+    // 1. CONFIGURACIÓN DEL SERVIDOR (Tu URL de Railway con HTTPS)
+    const API_URL = "https://proyecto-de-grado-oficial-production.up.railway.app";
 
-        // --- INICIALIZACIÓN ---
-        document.addEventListener('DOMContentLoaded', () => {
+    console.log("Sistema iniciado. Conectando a:", API_URL);
+
+    // 2. LÓGICA DE INICIO DE SESIÓN (LOGIN)
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async function(e) {
+            e.preventDefault(); 
+            console.log("Intentando iniciar sesión...");
+
+            const errorBox = document.getElementById('errorMessage');
+            const errorText = document.getElementById('errorText');
+            const btn = document.getElementById('loginBtn');
+            const originalText = btn.innerHTML;
+            
+            // UI Loading
+            if(errorBox) errorBox.style.display = 'none';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+            btn.disabled = true;
+
+            const datos = new FormData(this);
+
             try {
-                initTheme();
-                document.getElementById('menuToggle').onclick = toggleMenu;
-                document.getElementById('closeMenu').onclick = toggleMenu;
-                document.getElementById('overlayMenu').onclick = toggleMenu;
-            } catch (error) { console.error("Error init:", error); }
-        });
-
-        // --- TEMA Y MENÚ ---
-        function toggleTheme() {
-            document.body.classList.toggle('dark-mode');
-            localStorage.setItem('global_theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
-            initTheme();
-        }
-        
-        function initTheme() {
-            const saved = localStorage.getItem('global_theme');
-            const icon = document.querySelector('#themeBtn i');
-            if(saved === 'dark') { 
-                document.body.classList.add('dark-mode'); 
-                icon.className = 'fas fa-sun'; 
-            } else { 
-                document.body.classList.remove('dark-mode'); 
-                icon.className = 'fas fa-moon'; 
-            }
-        }
-        
-        function toggleMenu() { 
-            document.getElementById('sideMenu').classList.toggle('active'); 
-            document.getElementById('overlayMenu').classList.toggle('active'); 
-        }
-
-                // --- MODALES ---
-        function abrirSoporte() { 
-            toggleMenu(); // Cierra el menú lateral primero
-            setTimeout(() => {
-                document.getElementById('modalSoporte').classList.add('active');
-                document.body.style.overflow = 'hidden'; // Previene scroll en body
-            }, 300);
-        }
-        
-        function cerrarSoporte() { 
-            document.getElementById('modalSoporte').classList.remove('active');
-            document.body.style.overflow = ''; // Restaura scroll
-        }
-        
-        function abrirRecuperar() { 
-            document.getElementById('modalRecuperar').classList.add('active');
-            document.body.style.overflow = 'hidden'; // Previene scroll en body
-        }
-        
-        function cerrarRecuperar() { 
-            document.getElementById('modalRecuperar').classList.remove('active');
-            document.body.style.overflow = ''; // Restaura scroll
-        }
-
-        // Cerrar modales al hacer clic fuera o con ESC
-        window.onclick = function(event) {
-            if (event.target.classList.contains('modal-overlay')) {
-                event.target.classList.remove('active');
-                document.body.style.overflow = '';
-            }
-        }
-        
-        // Cerrar modales con tecla ESC
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
-                document.querySelectorAll('.modal-overlay.active').forEach(modal => {
-                    modal.classList.remove('active');
-                    document.body.style.overflow = '';
+                // Petición al Backend
+                const res = await fetch(`${API_URL}/buscar_estudiante`, { 
+                    method: "POST", 
+                    body: datos 
                 });
+                
+                // Si el servidor responde error (ej. 404 o 500)
+                if (!res.ok) throw new Error(`Error del servidor: ${res.status}`);
+
+                const data = await res.json();
+                console.log("Respuesta del servidor:", data);
+
+                if (data.encontrado) {
+                    // Guardar datos en el navegador
+                    localStorage.setItem('usuario_cedula', datos.get('cedula'));
+                    localStorage.setItem('usuario_nombre', data.datos.nombre);
+                    localStorage.setItem('usuario_tipo', data.datos.tipo); // 0=Admin, 1=Estudiante
+                    
+                    // Redirección según tipo de usuario
+                    if (data.datos.tipo === 0) {
+                        window.location.href = "perfiladmin.html";
+                    } else {
+                        window.location.href = "perfil.html";
+                    }
+                } else {
+                    if(errorText) errorText.innerHTML = data.mensaje || 'Usuario o contraseña incorrectos.';
+                    if(errorBox) errorBox.style.display = 'block';
+                }
+            } catch (error) {
+                console.error("Error crítico:", error);
+                if(errorText) errorText.innerHTML = 'No se pudo conectar con el servidor. Revisa tu internet.';
+                if(errorBox) errorBox.style.display = 'block';
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
             }
         });
+    } else {
+        console.error("Error: No se encontró el formulario con id 'loginForm'");
+    }
 
-        // --- LÓGICA DE RECUPERACIÓN ---
-        document.getElementById('formRecuperar').addEventListener('submit', async function(e) {
+    // 3. LÓGICA DE RECUPERACIÓN DE CONTRASEÑA
+    const formRecuperar = document.getElementById('formRecuperar');
+    if (formRecuperar) {
+        formRecuperar.addEventListener('submit', async function(e) {
             e.preventDefault();
             const btn = document.getElementById('btnEnviarRecup');
             const originalText = btn.innerHTML;
@@ -1050,19 +1040,60 @@ input, textarea, select {
                 const data = await res.json();
                 
                 if (data.status === 'ok') {
-                    alert("✅ Solicitud enviada.\n\nEl administrador revisará tu caso y te contactará al correo proporcionado.");
+                    alert("✅ Solicitud enviada.\n\nEl administrador revisará tu caso.");
                     cerrarRecuperar();
                     this.reset();
                 } else {
-                    alert("❌ Error: " + data.mensaje);
+                    alert("❌ Error: " + (data.mensaje || "Desconocido"));
                 }
             } catch (error) {
-                alert("Error de conexión. Intenta más tarde.");
+                console.error(error);
+                alert("Error de conexión con Railway.");
             } finally {
                 btn.innerHTML = originalText; 
                 btn.disabled = false;
             }
         });
-    </script>
+    }
+
+    // 4. FUNCIONES VISUALES (Modales y Password)
+    function togglePassword() {
+        const input = document.getElementById('passwordInput');
+        const icon = document.querySelector('.toggle-password i');
+        if (input.type === "password") {
+            input.type = "text";
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            input.type = "password";
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+
+    function abrirRecuperar() {
+        const modal = document.getElementById('modalRecuperar');
+        if(modal) {
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function cerrarRecuperar() {
+        const modal = document.getElementById('modalRecuperar');
+        if(modal) {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    }
+
+    // Cerrar modal con ESC o clic fuera
+    window.onclick = function(event) {
+        if (event.target.classList.contains('modal-overlay')) {
+            event.target.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    }
+</script>
 </body>
 </html>
