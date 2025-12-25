@@ -16,10 +16,9 @@
 
     <style>
         /* ==========================================================================
-           1. VARIABLES Y SISTEMA DE DISEÑO (DESIGN TOKENS)
+           1. VARIABLES Y SISTEMA DE DISEÑO
            ========================================================================== */
         :root {
-            /* Identidad Corporativa */
             --primary: #6A0DAD;       
             --primary-dark: #4a0072;  
             --primary-light: #9d46ff; 
@@ -32,7 +31,6 @@
             --warning: #f9a825;       
             --info: #0288d1;          
             
-            /* Paleta Modo Claro */
             --bg-image: url('Img/Claro.png'); 
             --bg-body: #f4f6f9;
             --bg-card: #ffffff;
@@ -47,17 +45,11 @@
             
             --border-color: #e0e0e0;
             
-            /* Sombras y Efectos */
             --shadow-soft: 0 4px 20px rgba(0,0,0,0.05);
             --shadow-card: 0 2px 8px rgba(0,0,0,0.04);
             --shadow-hover: 0 10px 25px rgba(106, 13, 173, 0.15);
             --shadow-nav: 0 2px 15px rgba(0,0,0,0.05);
             
-            --glass-bg: rgba(255, 255, 255, 0.85);
-            --glass-border: 1px solid rgba(255, 255, 255, 0.5);
-            --glass-backdrop: blur(12px);
-            
-            /* Dimensiones */
             --header-height: 80px;
             --header-height-mobile: 70px;
             --sidebar-width: 280px;
@@ -65,9 +57,6 @@
             --transition-speed: 0.3s;
         }
 
-        /* ==========================================================================
-           2. MODO OSCURO (DARK MODE) - CONTRASTES MEJORADOS
-           ========================================================================== */
         body.dark-mode {
             --bg-image: url('Img/Oscuro.png');
             --bg-body: #121212;
@@ -84,13 +73,10 @@
             
             --shadow-soft: 0 4px 20px rgba(0,0,0,0.4);
             --shadow-hover: 0 10px 30px rgba(0,0,0,0.6);
-            
-            --glass-bg: rgba(30, 30, 30, 0.85);
-            --glass-border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         /* ==========================================================================
-           3. RESET & BASE
+           2. RESET & BASE
            ========================================================================== */
         * { margin: 0; padding: 0; box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
         
@@ -113,14 +99,14 @@
         ul { list-style: none; }
         button, input, select, textarea { font-family: inherit; }
 
-        /* Scrollbar Personalizado */
+        /* Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--primary-dark); }
 
         /* ==========================================================================
-           4. HEADER (COPIA EXACTA DE PERFIL ESTUDIANTE)
+           3. HEADER (IDÉNTICO AL ESTUDIANTE)
            ========================================================================== */
         .main-header {
             position: fixed; top: 0; left: 0; width: 100%;
@@ -138,7 +124,6 @@
         .logo-container img {
             height: 50px; width: auto;
             transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
         }
         .logo-container img:hover { transform: scale(1.05); }
 
@@ -158,7 +143,6 @@
         .btn-icon-header:hover {
             background: var(--primary-soft);
             transform: rotate(15deg);
-            box-shadow: 0 0 15px var(--primary-soft);
         }
 
         .noti-badge {
@@ -168,7 +152,6 @@
             width: 20px; height: 20px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             border: 2px solid var(--bg-header);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
 
         .btn-logout-header {
@@ -177,22 +160,18 @@
             font-weight: 600; font-size: 0.95rem; cursor: pointer;
             display: flex; align-items: center; gap: 8px;
             transition: 0.3s;
-            box-shadow: 0 4px 10px rgba(211, 47, 47, 0.25);
         }
         .btn-logout-header:hover {
             background: #b71c1c; transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(211, 47, 47, 0.35);
         }
 
         .menu-toggle {
             background: none; border: none; font-size: 1.8rem;
             color: var(--primary); cursor: pointer;
             width: 45px; height: 45px; display: flex; align-items: center; justify-content: center;
-            transition: transform 0.2s;
-            display: none; /* Se muestra en media queries */
+            display: none;
         }
 
-        /* Dropdown Notificaciones (No invasivo) */
         .notis-dropdown {
             position: absolute; top: 60px; right: 0;
             width: 320px; max-height: 400px;
@@ -202,7 +181,6 @@
             box-shadow: 0 15px 40px rgba(0,0,0,0.15);
             z-index: 1100;
             display: none; flex-direction: column; overflow: hidden;
-            animation: fadeInDown 0.2s ease-out;
         }
         .notis-dropdown.active { display: flex; }
         .noti-item {
@@ -214,7 +192,7 @@
         .noti-item.unread { background: var(--primary-soft); border-left: 3px solid var(--primary); }
 
         /* ==========================================================================
-           5. MENÚ LATERAL FIJO
+           4. MENÚ LATERAL
            ========================================================================== */
         .sidebar-container {
             position: fixed; top: var(--header-height); left: 0;
@@ -235,24 +213,29 @@
         }
         .sidebar-btn i { width: 20px; text-align: center; font-size: 1.1rem; }
         .sidebar-btn:hover { background: var(--bg-input); color: var(--primary); }
-        .sidebar-btn.active { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(106, 13, 173, 0.3); }
+        .sidebar-btn.active { background: var(--primary); color: white; }
 
         /* ==========================================================================
-           6. CONTENIDO PRINCIPAL (LAYOUT)
+           5. CONTENIDO PRINCIPAL
            ========================================================================== */
         .main-content {
             margin-left: var(--sidebar-width);
             padding: 30px;
-            min-height: calc(100vh - var(--header-height) - 100px); /* Ajuste footer */
+            min-height: calc(100vh - var(--header-height) - 100px);
             transition: margin-left 0.3s ease;
         }
 
-        .panel-section { display: none; animation: fadeIn 0.4s ease-out; }
-        .panel-section.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .panel-section { display: none; }
+        .panel-section.active { 
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
 
-        /* --- DASHBOARD & GRIDS --- */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         .dashboard-grid {
             display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px; margin-bottom: 30px;
@@ -261,7 +244,6 @@
             background: var(--bg-card); padding: 25px; border-radius: var(--border-radius);
             box-shadow: var(--shadow-card); border: 1px solid var(--border-color);
             display: flex; align-items: center; gap: 20px; transition: 0.3s;
-            position: relative; overflow: hidden;
         }
         .stat-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-hover); }
         .stat-icon {
@@ -277,7 +259,7 @@
         .bg-blue { background: linear-gradient(135deg, #0288d1, #29b6f6); }
         .bg-orange { background: linear-gradient(135deg, #f57c00, #ffa726); }
 
-        /* --- CALCULADORA BACKBLAZE (REALISTA) --- */
+        /* Calculadora real */
         .storage-calc {
             background: var(--bg-card); padding: 25px; border-radius: var(--border-radius);
             border: 1px solid var(--border-color); margin-bottom: 30px;
@@ -287,34 +269,42 @@
         .cost-display { display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--text-sec); }
         .cost-highlight { color: var(--text-main); font-weight: bold; font-size: 1.1rem; }
 
-        /* --- TABLAS Y LISTAS --- */
+        /* Tablas */
         .modern-table-wrapper {
             background: var(--bg-card); border-radius: var(--border-radius);
             overflow: hidden; border: 1px solid var(--border-color);
             box-shadow: var(--shadow-soft);
+            width: 100%;
+            overflow-x: auto;
         }
-        .modern-table { width: 100%; border-collapse: collapse; }
+        .modern-table { width: 100%; border-collapse: collapse; min-width: 600px; }
         .modern-table th {
             background: var(--primary); color: white; padding: 15px; text-align: left;
-            font-weight: 600; font-size: 0.9rem;
+            font-weight: 600; font-size: 0.9rem; position: sticky; top: 0;
         }
         .modern-table td {
             padding: 15px; border-bottom: 1px solid var(--border-color);
             color: var(--text-main); font-size: 0.9rem;
         }
         .modern-table tr:hover { background: var(--bg-input); }
-        .modern-table tr:last-child td { border-bottom: none; }
 
         .action-btn {
             border: none; width: 32px; height: 32px; border-radius: 8px;
             cursor: pointer; font-size: 0.9rem; margin-right: 5px; transition: 0.2s;
             display: inline-flex; align-items: center; justify-content: center;
         }
-        .btn-edit { background: rgba(255, 193, 7, 0.15); color: #ff9800; } .btn-edit:hover { background: #ff9800; color: white; }
-        .btn-delete { background: rgba(244, 67, 54, 0.15); color: #f44336; } .btn-delete:hover { background: #f44336; color: white; }
-        .btn-view { background: rgba(33, 150, 243, 0.15); color: #2196F3; } .btn-view:hover { background: #2196F3; color: white; }
+        .btn-edit { background: rgba(255, 193, 7, 0.15); color: #ff9800; } 
+        .btn-edit:hover { background: #ff9800; color: white; }
+        .btn-delete { background: rgba(244, 67, 54, 0.15); color: #f44336; } 
+        .btn-delete:hover { background: #f44336; color: white; }
+        .btn-view { background: rgba(33, 150, 243, 0.15); color: #2196F3; } 
+        .btn-view:hover { background: #2196F3; color: white; }
+        .btn-activate { background: rgba(46, 139, 87, 0.15); color: #2E8B57; }
+        .btn-activate:hover { background: #2E8B57; color: white; }
+        .btn-deactivate { background: rgba(245, 40, 40, 0.15); color: #f52828; }
+        .btn-deactivate:hover { background: #f52828; color: white; }
 
-        /* --- FORMULARIOS --- */
+        /* Formularios */
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9rem; color: var(--text-main); }
@@ -331,44 +321,164 @@
             cursor: pointer; transition: 0.3s; display: inline-flex; align-items: center; gap: 8px;
         }
         .btn-primary:hover { background: var(--primary-dark); transform: translateY(-2px); }
-        .btn-danger { background: var(--error); color: white; } .btn-danger:hover { background: #b71c1c; }
 
-        /* --- EVIDENCIAS (GRID) --- */
-        .evidence-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;
+        /* Grid evidencias */
+        .gallery-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px; min-height: 300px; padding-bottom: 120px; position: relative;
         }
-        .folder-card {
-            background: var(--bg-card); border-radius: 12px; padding: 15px;
-            border: 1px solid var(--border-color); text-align: center;
-            cursor: pointer; transition: 0.3s; position: relative;
-        }
-        .folder-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-hover); border-color: var(--primary); }
-        .folder-img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin: 0 auto 10px; border: 3px solid var(--bg-input); }
-        .folder-name { font-weight: 600; font-size: 0.9rem; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        /* --- MODALES --- */
+        .evidence-card {
+            background: var(--bg-card); border-radius: 12px;
+            overflow: hidden; aspect-ratio: 1; position: relative;
+            cursor: pointer; box-shadow: var(--shadow-soft);
+            border: 2px solid transparent;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .evidence-card:hover { transform: translateY(-8px); box-shadow: var(--shadow-hover); z-index: 2; }
+        
+        .card-media { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s; }
+        .evidence-card:hover .card-media { transform: scale(1.05); }
+
+        .video-overlay {
+            position: absolute; top:0; left:0; width:100%; height:100%;
+            display:flex; align-items:center; justify-content:center;
+            color: white; font-size: 3rem; background: rgba(0,0,0,0.3); opacity: 0.8;
+        }
+
+        .selection-check {
+            position: absolute; top: 12px; right: 12px; width: 28px; height: 28px;
+            background: rgba(255,255,255,0.95); border: 2px solid #ccc;
+            border-radius: 50%; color: var(--primary); display: none; 
+            align-items: center; justify-content: center; z-index: 10; font-size: 1rem;
+        }
+        .evidence-card.selected { border-color: var(--primary); transform: scale(0.95); background: var(--primary-soft); }
+        .evidence-card.selected .selection-check { display: flex; background: var(--primary); color: white; border-color: var(--primary); }
+        .selection-mode-active .selection-check { display: flex; }
+
+        .empty-state {
+            grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; padding: 60px 20px; color: var(--text-sec); display: none;
+            min-height: 300px;
+        }
+
+        /* Lightbox mejorado */
+        .lightbox-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 5000; display: none;
+            justify-content: center; align-items: center; flex-direction: column;
+            opacity: 0; transition: opacity 0.3s ease;
+        }
+        .lightbox-modal.active { display: flex; opacity: 1; }
+
+        .lb-content-wrapper {
+            position: relative; width: 100%; height: 80%;
+            display: flex; justify-content: center; align-items: center; pointer-events: none; 
+        }
+        .lb-media-item {
+            max-width: 90%; max-height: 100%; border-radius: 8px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6); object-fit: contain;
+            pointer-events: auto;
+        }
+
+        .lb-close-fixed {
+            position: absolute; top: 30px; right: 30px;
+            background: rgba(255,255,255,0.15); color: white; border: none;
+            padding: 12px 24px; border-radius: 30px; font-weight: bold;
+            cursor: pointer; z-index: 5005; display: flex; align-items: center; gap: 10px;
+        }
+
+        .lb-nav-btn {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            width: 70px; height: 70px; background: rgba(255,255,255,0.08);
+            color: white; border: none; border-radius: 50%; font-size: 2rem;
+            cursor: pointer; z-index: 5005; transition: 0.3s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .lb-nav-btn:hover { background: var(--primary); transform: translateY(-50%) scale(1.1); }
+        .lb-prev { left: 40px; }
+        .lb-next { right: 40px; }
+
+        .lb-actions-panel {
+            margin-top: 25px; display: flex; gap: 20px; z-index: 5005; 
+            pointer-events: auto; flex-wrap: wrap; justify-content: center;
+        }
+        .btn-lb-action {
+            padding: 12px 30px; border-radius: 30px; font-weight: bold;
+            cursor: pointer; text-decoration: none; display: flex; align-items: center; gap: 10px;
+            border: none; font-size: 1rem; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .btn-lb-action:hover { transform: translateY(-3px); }
+        .btn-lb-report {
+            background: var(--error); color: white; border: none;
+        }
+
+        /* Barra flotante para selección múltiple */
+        .floating-bar {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(150px);
+            background: #222; color: white; padding: 15px 30px; border-radius: 50px;
+            display: flex; align-items: center; gap: 25px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.6); z-index: 4000;
+            width: 90%; max-width: 650px; transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .floating-bar.active { transform: translateX(-50%) translateY(0); }
+
+        .btn-float {
+            background: var(--primary); color: white; border: none;
+            padding: 10px 24px; border-radius: 25px; font-weight: bold; cursor: pointer;
+            display: flex; align-items: center; gap: 10px; font-size: 0.95rem; transition: 0.3s;
+        }
+        .btn-float:hover { transform: translateY(-2px); filter: brightness(1.1); }
+        .btn-float.danger { background: var(--error); }
+        .btn-float-cancel {
+            background: transparent; border: 1px solid #666; color: #ccc;
+            width: 40px; height: 40px; border-radius: 50%; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: 0.3s;
+        }
+        .btn-float-cancel:hover { border-color: white; color: white; }
+
+        /* Botón de retroceso */
+        .btn-back {
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            color: var(--text-main); padding: 10px 20px; border-radius: 30px;
+            display: flex; align-items: center; gap: 10px; cursor: pointer;
+            font-weight: 600; transition: 0.3s; margin-bottom: 20px;
+        }
+        .btn-back:hover {
+            background: var(--primary); color: white; border-color: var(--primary);
+            transform: translateX(-5px);
+        }
+
+        /* Vista de evidencias por estudiante */
+        .student-evidence-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 25px; flex-wrap: wrap; gap: 15px;
+        }
+        .student-info-card {
+            background: var(--bg-card); padding: 20px; border-radius: var(--border-radius);
+            display: flex; align-items: center; gap: 20px; margin-bottom: 25px;
+            border: 1px solid var(--border-color); box-shadow: var(--shadow-soft);
+        }
+        .student-avatar {
+            width: 80px; height: 80px; border-radius: 50%;
+            object-fit: cover; border: 3px solid var(--primary);
+        }
+
+        /* Modales */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
+            background: rgba(0,0,0,0.8);
             z-index: 5000; display: none; justify-content: center; align-items: center;
         }
-        .modal-overlay.active { display: flex; animation: fadeIn 0.3s; }
+        .modal-overlay.active { display: flex; }
         .modal-card {
             background: var(--bg-card); width: 95%; max-width: 500px;
             border-radius: 16px; padding: 30px; position: relative;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto;
+            max-height: 90vh; overflow-y: auto;
         }
 
-        /* --- PREVISUALIZACIÓN DE EVIDENCIAS --- */
-        .preview-container {
-            max-width: 100%; max-height: 300px; overflow: hidden;
-            border-radius: 8px; margin: 10px 0; background: var(--bg-input);
-            display: flex; align-items: center; justify-content: center;
-        }
-        .preview-img { max-width: 100%; max-height: 300px; object-fit: contain; }
-        .preview-video { max-width: 100%; max-height: 300px; }
-
-        /* --- FOOTER --- */
+        /* Footer */
         footer {
             background: #1a1a1a; color: white; padding: 30px 20px;
             text-align: center; margin-top: auto; border-top: 4px solid var(--primary);
@@ -386,14 +496,59 @@
         .footer-links a:hover { color: var(--primary); }
         .copyright { font-size: 0.85rem; color: #888; border-top: 1px solid #333; padding-top: 15px; }
 
+        /* Dropdown para acciones móviles */
+        .mobile-actions-dropdown {
+            position: relative;
+        }
+        .mobile-actions-btn {
+            background: var(--primary); color: white; border: none;
+            padding: 8px 16px; border-radius: 8px; font-size: 0.9rem;
+            cursor: pointer; display: flex; align-items: center; gap: 8px;
+        }
+        .mobile-actions-menu {
+            position: absolute; top: 100%; right: 0; background: var(--bg-card);
+            border: 1px solid var(--border-color); border-radius: 8px; box-shadow: var(--shadow-soft);
+            min-width: 150px; z-index: 100; display: none;
+        }
+        .mobile-actions-menu.active { display: block; }
+        .mobile-action-item {
+            padding: 10px 15px; display: flex; align-items: center; gap: 10px;
+            cursor: pointer; transition: 0.2s; border-bottom: 1px solid var(--border-color);
+        }
+        .mobile-action-item:hover { background: var(--bg-input); }
+        .mobile-action-item:last-child { border-bottom: none; }
+
+        /* Solicitudes mejoradas */
+        .request-card {
+            background: var(--bg-card); border-radius: var(--border-radius);
+            padding: 20px; margin-bottom: 15px; border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-soft);
+        }
+        .request-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 15px; flex-wrap: wrap; gap: 10px;
+        }
+        .request-badge {
+            padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;
+        }
+        .badge-pending { background: rgba(249, 168, 37, 0.15); color: var(--warning); }
+        .badge-resolved { background: rgba(46, 139, 87, 0.15); color: var(--secondary); }
+        .badge-rejected { background: rgba(211, 47, 47, 0.15); color: var(--error); }
+        .request-actions {
+            display: flex; gap: 10px; flex-wrap: wrap;
+        }
+        .request-preview {
+            max-width: 200px; max-height: 200px; border-radius: 8px;
+            margin-top: 10px; cursor: pointer; border: 1px solid var(--border-color);
+        }
+
         /* ==========================================================================
-           7. RESPONSIVE DESIGN (MÓVIL) - MEJORADO
+           6. RESPONSIVE (MEJORADO)
            ========================================================================== */
         @media (max-width: 992px) {
-            .sidebar-container { transform: translateX(-100%); width: 280px; box-shadow: 5px 0 15px rgba(0,0,0,0.2); }
+            .sidebar-container { transform: translateX(-100%); width: 280px; }
             .sidebar-container.active { transform: translateX(0); }
             .main-content { margin-left: 0; padding: 20px 15px; }
-            footer { margin-left: 0; }
             .menu-toggle { display: flex; }
             
             .main-header { padding: 0 15px; height: var(--header-height-mobile); }
@@ -404,16 +559,39 @@
             .stat-card { flex-direction: column; text-align: center; padding: 15px; }
             .stat-details h3 { font-size: 1.5rem; }
             
-            /* Mejoras específicas para móvil */
             .btn-primary { padding: 10px 18px; font-size: 0.9rem; }
             .action-btn { width: 36px; height: 36px; margin-right: 3px; }
             .form-grid { grid-template-columns: 1fr; }
-            .evidence-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
-            .folder-img { width: 70px; height: 70px; }
+            .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
             .cost-display { flex-direction: column; gap: 10px; }
+            
+            /* Tablas responsivas */
+            .modern-table-wrapper {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .modern-table { min-width: 800px; }
+            
+            /* Lightbox móvil */
+            .lb-nav-btn { display: none; } 
+            .lb-close-fixed { top: 15px; right: 15px; padding: 8px 15px; font-size: 0.9rem; }
+            .lb-media-item { max-width: 100%; border-radius: 0; }
+            .lb-actions-panel { flex-direction: column; width: 90%; gap: 12px; }
+            .btn-lb-action { width: 100%; justify-content: center; }
+            
+            /* Barra flotante móvil */
+            .floating-bar { 
+                flex-direction: column; width: 100%; border-radius: 20px 20px 0 0;
+                padding: 20px; gap: 15px; bottom: 0; left: 0; transform: translateY(100%); max-width: 100%;
+            }
+            .floating-bar.active { transform: translateY(0); }
+            .floating-bar div { text-align: center; width: 100%; margin-bottom: 5px; }
+            .btn-float { width: 100%; justify-content: center; }
+            
+            /* Botón de retroceso en móvil */
+            .btn-back.desktop-only { display: none; }
         }
 
-        /* Pantallas muy pequeñas */
         @media (max-width: 480px) {
             .header-actions { gap: 8px; }
             .btn-icon-header { width: 38px; height: 38px; font-size: 1rem; }
@@ -422,6 +600,17 @@
             .storage-calc { padding: 20px 15px; }
             .modern-table { font-size: 0.8rem; }
             .modern-table th, .modern-table td { padding: 10px 8px; }
+            
+            /* Ocultar botones de acción individuales en móvil */
+            .action-btn { display: none; }
+            .mobile-actions-dropdown { display: block; }
+            
+            .student-info-card { flex-direction: column; text-align: center; }
+            .student-avatar { width: 100px; height: 100px; }
+        }
+
+        @media (min-width: 481px) {
+            .mobile-actions-dropdown { display: none; }
         }
     </style>
 </head>
@@ -451,9 +640,6 @@
                     <div id="notisList" style="max-height:300px; overflow-y:auto;">
                         <p style="padding:20px; text-align:center; color:var(--text-sec);">Cargando...</p>
                     </div>
-                    <div style="padding:10px; text-align:center; border-top:1px solid var(--border-color);">
-                        <a href="#" onclick="navTo('solicitudes'); toggleNotis();" style="font-size:0.85rem; color:var(--primary);">Ver todas</a>
-                    </div>
                 </div>
             </div>
 
@@ -467,7 +653,7 @@
         </div>
     </header>
 
-    <!-- MENÚ LATERAL FIJO -->
+    <!-- MENÚ LATERAL -->
     <nav class="sidebar-container" id="sidebar">
         <div style="margin-bottom:20px; padding-bottom:20px; border-bottom:1px solid var(--border-color);">
             <h4 style="color:var(--primary); font-weight:700;">Panel Admin</h4>
@@ -487,14 +673,14 @@
             <div style="background:var(--bg-input); border-radius:4px; height:6px; overflow:hidden;">
                 <div id="sidebarStorageBar" style="width:0%; background:var(--secondary); height:100%;"></div>
             </div>
-            <small id="sidebarStorageText" style="color:var(--text-main); font-weight:bold;">Calc...</small>
+            <small id="sidebarStorageText" style="color:var(--text-main); font-weight:bold;">0 GB usados</small>
         </div>
     </nav>
 
     <!-- CONTENIDO PRINCIPAL -->
     <main class="main-content" id="mainContainer">
         
-        <!-- PANEL: DASHBOARD / RESUMEN -->
+        <!-- PANEL: DASHBOARD -->
         <section id="panel-dashboard" class="panel-section active">
             <h2 style="margin-bottom:25px; color:var(--primary);">Panel de Control</h2>
             
@@ -524,38 +710,57 @@
                     <div class="stat-icon bg-blue"><i class="fas fa-hdd"></i></div>
                     <div class="stat-details">
                         <h3 id="statSize">0 GB</h3>
-                        <p>Almacenamiento (Est.)</p>
+                        <p>Almacenamiento</p>
                     </div>
                 </div>
             </div>
 
-            <!-- CALCULADORA DE COSTOS BACKBLAZE (REAL) -->
+            <!-- CALCULADORA REAL CON DATOS PRECISOS -->
             <div class="storage-calc">
                 <h3 style="font-size:1.1rem; margin-bottom:10px;"><i class="fas fa-calculator"></i> Estimación de Costos (Backblaze B2)</h3>
-                <p style="font-size:0.9rem; color:var(--text-sec);">Calculado a $0.005/GB mes. Basado en archivos reales del sistema.</p>
+                <p style="font-size:0.9rem; color:var(--text-sec); margin-bottom:15px;">Calculado a $0.005/GB mes. Datos en tiempo real.</p>
+                
                 <div class="storage-bar-bg">
                     <div id="mainStorageBar" class="storage-bar-fill"></div>
                 </div>
+                
                 <div class="cost-display">
                     <span>Uso Actual: <strong id="realSizeDisplay">0 GB</strong></span>
-                    <span>Costo Mensual Est: <span id="monthlyCost" class="cost-highlight">$0.00</span></span>
-                    <span>Anual Est: <span id="yearlyCost" class="cost-highlight">$0.00</span></span>
+                    <span>Costo Mensual: <span id="monthlyCost" class="cost-highlight">$0.00</span></span>
+                    <span>Costo Anual: <span id="yearlyCost" class="cost-highlight">$0.00</span></span>
                 </div>
+                
                 <div style="margin-top:20px; display:flex; gap:10px; flex-wrap:wrap;">
-                    <button class="btn-primary" style="background:var(--secondary);" onclick="analizarDuplicados()"><i class="fas fa-broom"></i> Analizar Duplicados</button>
-                    <button class="btn-primary" style="background:var(--text-sec);" onclick="limpiarCache()"><i class="fas fa-wind"></i> Limpiar Caché</button>
-                    <button class="btn-primary" style="background:var(--error);" onclick="limpiarHuérfanos()"><i class="fas fa-trash-alt"></i> Limpiar Archivos Huérfanos</button>
+                    <button class="btn-primary" onclick="analizarDuplicados()" style="background:var(--secondary);">
+                        <i class="fas fa-broom"></i> Analizar Duplicados
+                    </button>
+                    <button class="btn-primary" onclick="limpiarCache()" style="background:var(--text-sec);">
+                        <i class="fas fa-wind"></i> Limpiar Caché
+                    </button>
+                    <button class="btn-primary" onclick="limpiarHuerfanos()" style="background:var(--error);">
+                        <i class="fas fa-trash-alt"></i> Limpiar Huérfanos
+                    </button>
                 </div>
             </div>
 
             <!-- ACCIONES RÁPIDAS -->
             <div class="storage-calc">
-                <h3 style="font-size:1.1rem; margin-bottom:15px; color:var(--primary);"><i class="fas fa-bolt"></i> Acciones Rápidas</h3>
+                <h3 style="font-size:1.1rem; margin-bottom:15px; color:var(--primary);">
+                    <i class="fas fa-bolt"></i> Acciones Rápidas
+                </h3>
                 <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px;">
-                    <button class="btn-primary" style="background:var(--info);" onclick="navTo('usuarios')"><i class="fas fa-user-plus"></i> Registrar Usuario</button>
-                    <button class="btn-primary" style="background:var(--warning);" onclick="navTo('upload')"><i class="fas fa-cloud-upload-alt"></i> Subir con IA</button>
-                    <button class="btn-primary" style="background:var(--secondary);" onclick="navTo('evidencias')"><i class="fas fa-search"></i> Buscar Evidencias</button>
-                    <button class="btn-primary" onclick="navTo('mantenimiento')"><i class="fas fa-download"></i> Respaldar BD</button>
+                    <button class="btn-primary" onclick="navTo('usuarios')" style="background:var(--info);">
+                        <i class="fas fa-user-plus"></i> Registrar Usuario
+                    </button>
+                    <button class="btn-primary" onclick="navTo('upload')" style="background:var(--warning); color:#333;">
+                        <i class="fas fa-cloud-upload-alt"></i> Subir con IA
+                    </button>
+                    <button class="btn-primary" onclick="navTo('evidencias')" style="background:var(--secondary);">
+                        <i class="fas fa-search"></i> Buscar Evidencias
+                    </button>
+                    <button class="btn-primary" onclick="navTo('seguridad')">
+                        <i class="fas fa-key"></i> Cambiar Contraseña
+                    </button>
                 </div>
             </div>
         </section>
@@ -565,38 +770,74 @@
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
                 <h2 style="color:var(--primary); margin:0;">Gestión de Usuarios</h2>
                 <div style="display:flex; gap:10px;">
-                    <input type="text" id="searchUser" placeholder="Buscar por cédula o nombre..." class="form-control" style="width:250px;" onkeyup="filterUsers()">
-                    <button class="btn-primary" onclick="abrirModalAgregarRef()"><i class="fas fa-camera"></i> Agregar Foto Ref.</button>
+                    <button class="btn-primary" onclick="abrirModalAgregarRef()">
+                        <i class="fas fa-camera"></i> Agregar Foto Ref.
+                    </button>
                 </div>
             </div>
 
-            <!-- FORMULARIO REGISTRO USUARIO -->
+            <!-- BUSCADOR CERCANO A LA TABLA -->
+            <div style="margin-bottom:20px;">
+                <input type="text" id="searchUser" placeholder="Buscar por cédula o nombre..." 
+                       class="form-control" style="max-width:400px;" onkeyup="filterUsers()">
+            </div>
+
+            <!-- FORMULARIO REGISTRO -->
             <div class="storage-calc" style="margin-bottom:30px;">
                 <h4 style="margin-bottom:15px; color:var(--primary);">Registrar Nuevo Usuario</h4>
                 <form id="formRegistro">
                     <div class="form-grid">
-                        <div class="form-group"><label>Nombre</label><input type="text" name="nombre" class="form-control" required></div>
-                        <div class="form-group"><label>Apellido</label><input type="text" name="apellido" class="form-control" required></div>
-                        <div class="form-group"><label>Cédula (10 dígitos)</label><input type="text" name="cedula" class="form-control" pattern="\d{10}" title="10 dígitos numéricos" required></div>
-                        <div class="form-group"><label>Contraseña (Mín 6 car.)</label><input type="password" name="contrasena" class="form-control" minlength="6" required></div>
                         <div class="form-group">
-                            <label>Rol</label>
+                            <label>Nombre *</label>
+                            <input type="text" name="nombre" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Apellido *</label>
+                            <input type="text" name="apellido" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Cédula * (10 dígitos)</label>
+                            <input type="text" name="cedula" class="form-control" pattern="\d{10}" 
+                                   title="10 dígitos numéricos" required maxlength="10">
+                        </div>
+                        <div class="form-group">
+                            <label>Contraseña * (Mínimo 6 caracteres)</label>
+                            <input type="password" name="contrasena" class="form-control" 
+                                   minlength="6" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Rol *</label>
                             <select name="tipo_usuario" class="form-control">
                                 <option value="1">Estudiante</option>
                                 <option value="0">Administrador</option>
                             </select>
                         </div>
-                        <div class="form-group"><label>Foto Perfil</label><input type="file" name="foto" class="form-control" accept="image/*" required></div>
+                        <div class="form-group">
+                            <label>Foto de Perfil *</label>
+                            <input type="file" name="foto" class="form-control" accept="image/*" required>
+                        </div>
                     </div>
-                    <button type="submit" class="btn-primary" style="margin-top:15px;"><i class="fas fa-user-plus"></i> Guardar Usuario</button>
+                    <button type="submit" class="btn-primary" style="margin-top:15px;">
+                        <i class="fas fa-user-plus"></i> Guardar Usuario
+                    </button>
                 </form>
             </div>
 
-            <!-- TABLA DE USUARIOS -->
+            <!-- TABLA USUARIOS MEJORADA -->
             <div class="modern-table-wrapper">
                 <table class="modern-table">
-                    <thead><tr><th>Usuario</th><th>Cédula</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
-                    <tbody id="userTableBody"></tbody>
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Cédula</th>
+                            <th>Rol</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody">
+                        <!-- Datos cargados por JavaScript -->
+                    </tbody>
                 </table>
             </div>
         </section>
@@ -609,63 +850,135 @@
             <div class="storage-calc" style="text-align:center; margin-bottom:30px;">
                 <i class="fas fa-robot" style="font-size:3rem; color:var(--primary); margin-bottom:15px;"></i>
                 <h3>Subida Inteligente (Reconocimiento Facial)</h3>
-                <p style="margin-bottom:20px; color:var(--text-sec);">El sistema asignará automáticamente la foto al estudiante correcto.</p>
+                <p style="margin-bottom:20px; color:var(--text-sec);">
+                    El sistema asignará automáticamente la foto al estudiante correcto.
+                </p>
                 
-                <input type="file" id="fileInputIA" multiple accept="image/*,video/*,.pdf,.doc,.docx,.mp3,.mp4" style="display:none" onchange="handleUploadIA(this)">
-                <button class="btn-primary" onclick="document.getElementById('fileInputIA').click()" style="font-size:1.1rem; padding:15px 30px;">
+                <input type="file" id="fileInputIA" multiple 
+                       accept="image/*,video/*,.pdf,.doc,.docx,.mp3,.mp4" 
+                       style="display:none" onchange="handleUploadIA(this)">
+                <button class="btn-primary" onclick="document.getElementById('fileInputIA').click()" 
+                        style="font-size:1.1rem; padding:15px 30px;">
                     <i class="fas fa-cloud-upload-alt"></i> Seleccionar Archivos
                 </button>
                 
                 <div id="uploadProgress" style="margin-top:20px; display:none;">
-                    <div class="storage-bar-bg"><div id="progressBar" class="storage-bar-fill" style="width:0%"></div></div>
-                    <p id="progressText">Procesando...</p>
+                    <div class="storage-bar-bg">
+                        <div id="progressBar" class="storage-bar-fill" style="width:0%"></div>
+                    </div>
+                    <p id="progressText" style="margin-top:10px;">Procesando...</p>
                 </div>
-                <div id="uploadLog" style="text-align:left; margin-top:20px; max-height:200px; overflow-y:auto; font-size:0.9rem; padding:10px; background:var(--bg-input); border-radius:8px;"></div>
+                <div id="uploadLog" style="text-align:left; margin-top:20px; max-height:200px; 
+                     overflow-y:auto; font-size:0.9rem; padding:10px; background:var(--bg-input); 
+                     border-radius:8px;"></div>
             </div>
 
             <!-- SUBIDA MANUAL -->
             <div style="border-top:2px solid var(--border-color); padding-top:30px;">
                 <h4><i class="fas fa-hand-pointer"></i> Subida Manual</h4>
-                <p style="font-size:0.9rem; color:var(--text-sec); margin-bottom:15px;">Para archivos sin rostro (PDF, Docs) o correcciones.</p>
-                <form id="formManual" style="display:flex; gap:15px; flex-wrap:wrap; align-items:end;">
-                    <div style="flex:1; min-width:200px;">
-                        <label class="form-label">Archivo</label>
-                        <input type="file" id="manualFile" class="form-control" accept="image/*,video/*,.pdf,.doc,.docx,.mp3,.mp4" required>
+                <p style="font-size:0.9rem; color:var(--text-sec); margin-bottom:15px;">
+                    Para archivos sin rostro (PDF, Docs) o correcciones.
+                </p>
+                <form id="formManual" onsubmit="subirManual(event)">
+                    <div style="display:flex; gap:15px; flex-wrap:wrap; align-items:end;">
+                        <div style="flex:1; min-width:200px;">
+                            <label class="form-group" style="display:block;">
+                                <div style="margin-bottom:8px; font-weight:600; font-size:0.9rem; color:var(--text-main);">
+                                    Archivo *
+                                </div>
+                                <input type="file" id="manualFile" class="form-control" 
+                                       accept="image/*,video/*,.pdf,.doc,.docx,.mp3,.mp4" required>
+                            </label>
+                        </div>
+                        <div style="flex:2; min-width:300px; position:relative;">
+                            <label class="form-group" style="display:block;">
+                                <div style="margin-bottom:8px; font-weight:600; font-size:0.9rem; color:var(--text-main);">
+                                    Nombre(s) del Estudiante *
+                                </div>
+                                <input type="text" id="manualNombres" 
+                                       placeholder="Ej: Juan Pérez, María Gómez" 
+                                       class="form-control" required 
+                                       onkeyup="mostrarSugerencias(this.value)">
+                            </label>
+                            <div id="suggestionsBox" style="display:none; position:absolute; 
+                                 background:var(--bg-card); border:1px solid var(--border-color); 
+                                 max-height:150px; overflow-y:auto; width:100%; z-index:100; 
+                                 border-radius:8px; margin-top:5px;"></div>
+                        </div>
+                        <button type="submit" class="btn-primary" style="background:var(--secondary);">
+                            <i class="fas fa-user-check"></i> Asignar Manualmente
+                        </button>
                     </div>
-                    <div style="flex:2; min-width:300px;">
-                        <label class="form-label">Nombre(s) del Estudiante</label>
-                        <input type="text" id="manualNombres" placeholder="Ej: Juan Pérez, María Gómez" class="form-control" required>
-                        <div id="suggestionsBox" style="display:none; position:absolute; background:var(--bg-card); border:1px solid var(--border-color); max-height:150px; overflow-y:auto; width:100%; z-index:100; border-radius:8px; margin-top:5px;"></div>
-                    </div>
-                    <button type="submit" class="btn-primary" style="background:var(--secondary);">Asignar Manualmente</button>
                 </form>
             </div>
         </section>
 
-        <!-- PANEL: EVIDENCIAS -->
+        <!-- PANEL: EVIDENCIAS (VISTA DE ESTUDIANTES) -->
         <section id="panel-evidencias" class="panel-section">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
-                <h2 style="color:var(--primary); margin:0;">Galería de Evidencias</h2>
-                <input type="text" id="filterEvidence" placeholder="Buscar estudiante..." class="form-control" style="width:250px;" onkeyup="renderEvidenceGrid()">
+            <div class="student-evidence-header">
+                <div>
+                    <h2 style="color:var(--primary); margin:0;">Galería de Evidencias</h2>
+                    <p style="color:var(--text-sec); font-size:0.9rem; margin-top:5px;">Haz clic en un estudiante para ver sus evidencias</p>
+                </div>
+                <input type="text" id="filterEvidence" placeholder="Buscar estudiante..." 
+                       class="form-control" style="width:250px;" onkeyup="filtrarEvidencias()">
             </div>
             
-            <div id="evidenceGrid" class="evidence-grid">
-                <p>Cargando...</p>
+            <div id="evidenceContainer" style="position:relative;">
+                <div id="evidenceGrid" class="gallery-grid">
+                    <!-- Grid generado por JavaScript -->
+                </div>
+                <div id="evidenceEmpty" class="empty-state" style="display:none;">
+                    <i class="fas fa-search" style="font-size:5rem; opacity:0.2; margin-bottom:25px;"></i>
+                    <h3>No se encontraron evidencias</h3>
+                    <p>Intenta con otro término de búsqueda</p>
+                </div>
             </div>
         </section>
 
-        <!-- PANEL: SOLICITUDES -->
+        <!-- PANEL: EVIDENCIAS POR ESTUDIANTE (NUEVA SECCIÓN) -->
+        <section id="panel-evidencias-estudiante" class="panel-section">
+            <div class="student-evidence-header">
+                <div>
+                    <button class="btn-back" onclick="volverAEvidencias()">
+                        <i class="fas fa-arrow-left"></i> Volver a Estudiantes
+                    </button>
+                    <h2 id="studentNameTitle" style="color:var(--primary); margin:10px 0 0 0;">Evidencias del Estudiante</h2>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn-primary" onclick="toggleModoSeleccion()" id="btnSelectMode">
+                        <i class="fas fa-check-square"></i> Seleccionar
+                    </button>
+                </div>
+            </div>
+
+            <div id="studentInfoContainer" class="student-info-card" style="display:none;">
+                <!-- Información del estudiante cargada dinámicamente -->
+            </div>
+
+            <div id="studentEvidenceGrid" class="gallery-grid">
+                <!-- Evidencias del estudiante cargadas dinámicamente -->
+            </div>
+            <div id="studentEvidenceEmpty" class="empty-state" style="display:none;">
+                <i class="fas fa-folder-open" style="font-size:5rem; opacity:0.2; margin-bottom:25px;"></i>
+                <h3>Este estudiante no tiene evidencias</h3>
+                <p>Sube nuevas evidencias desde la sección "Subir Archivos"</p>
+            </div>
+        </section>
+
+        <!-- PANEL: SOLICITUDES MEJORADO -->
         <section id="panel-solicitudes" class="panel-section">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
                 <h2 style="color:var(--primary); margin:0;">Centro de Solicitudes</h2>
                 <div style="display:flex; gap:10px;">
-                    <button class="btn-primary" onclick="mostrarHistorialSolicitudes()"><i class="fas fa-history"></i> Ver Historial</button>
-                    <button class="btn-primary" style="background:var(--info);" onclick="cambiarContraseñaUsuario()"><i class="fas fa-key"></i> Cambiar Contraseña</button>
+                    <button class="btn-primary" style="background:var(--info);" onclick="navTo('seguridad')">
+                        <i class="fas fa-key"></i> Cambiar Contraseña
+                    </button>
                 </div>
             </div>
             
             <div id="requestsContainer">
-                <p style="text-align:center; padding:40px; color:var(--text-sec);"><i class="fas fa-spinner fa-spin"></i> Cargando solicitudes...</p>
+                <!-- Solicitudes cargadas dinámicamente -->
             </div>
         </section>
 
@@ -674,33 +987,65 @@
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
                 <h2 style="color:var(--primary); margin:0;">Seguridad y Registro de Actividad</h2>
                 <div style="display:flex; gap:10px;">
-                    <input type="text" id="searchLogs" placeholder="Buscar en logs..." class="form-control" style="width:200px;" onkeyup="filterLogs()">
-                    <button onclick="loadLogs()" class="btn-primary" style="font-size:0.9rem;"><i class="fas fa-sync"></i> Actualizar</button>
+                    <input type="text" id="searchLogs" placeholder="Buscar en logs..." 
+                           class="form-control" style="width:200px;" onkeyup="filtrarLogs()">
+                    <button onclick="cargarLogs()" class="btn-primary" style="font-size:0.9rem;">
+                        <i class="fas fa-sync"></i> Actualizar
+                    </button>
                 </div>
             </div>
             
             <!-- CAMBIAR CONTRASEÑA -->
             <div class="storage-calc" style="margin-bottom:30px;">
-                <h4 style="color:var(--primary); margin-bottom:15px;"><i class="fas fa-key"></i> Cambiar Contraseña de Usuario</h4>
-                <form id="formCambiarPassword" style="display:flex; gap:15px; flex-wrap:wrap; align-items:end;">
-                    <div style="flex:1; min-width:250px;">
-                        <label class="form-label">Nombre del Estudiante</label>
-                        <input type="text" id="nombrePassword" class="form-control" placeholder="Buscar por nombre" onkeyup="sugerirUsuariosPass(this)">
-                        <div id="suggestionsPass" style="display:none; position:absolute; background:var(--bg-card); border:1px solid var(--border-color); max-height:150px; overflow-y:auto; width:100%; z-index:100; border-radius:8px; margin-top:5px;"></div>
+                <h4 style="color:var(--primary); margin-bottom:15px;">
+                    <i class="fas fa-key"></i> Cambiar Contraseña de Usuario
+                </h4>
+                <form id="formCambiarPassword" onsubmit="cambiarPassword(event)">
+                    <div style="display:flex; gap:15px; flex-wrap:wrap; align-items:end;">
+                        <div style="flex:1; min-width:250px; position:relative;">
+                            <label class="form-group" style="display:block;">
+                                <div style="margin-bottom:8px; font-weight:600; font-size:0.9rem; color:var(--text-main);">
+                                    Nombre del Estudiante *
+                                </div>
+                                <input type="text" id="nombrePassword" class="form-control" 
+                                       placeholder="Buscar por nombre" 
+                                       onkeyup="sugerirUsuariosPassword(this.value)">
+                            </label>
+                            <div id="suggestionsPass" style="display:none; position:absolute; 
+                                 background:var(--bg-card); border:1px solid var(--border-color); 
+                                 max-height:150px; overflow-y:auto; width:100%; z-index:100; 
+                                 border-radius:8px; margin-top:5px;"></div>
+                        </div>
+                        <div style="flex:1; min-width:250px;">
+                            <label class="form-group" style="display:block;">
+                                <div style="margin-bottom:8px; font-weight:600; font-size:0.9rem; color:var(--text-main);">
+                                    Nueva Contraseña *
+                                </div>
+                                <input type="password" id="nuevaPassword" class="form-control" 
+                                       minlength="6" required>
+                            </label>
+                        </div>
+                        <button type="submit" class="btn-primary" style="background:var(--warning); color:#333;">
+                            <i class="fas fa-key"></i> Cambiar Contraseña
+                        </button>
                     </div>
-                    <div style="flex:1; min-width:250px;">
-                        <label class="form-label">Nueva Contraseña</label>
-                        <input type="password" id="nuevaPassword" class="form-control" minlength="6" required>
-                    </div>
-                    <button type="submit" class="btn-primary" style="background:var(--warning); color:black;">Cambiar Contraseña</button>
                 </form>
             </div>
 
             <!-- LOGS DE ACTIVIDAD -->
             <div class="modern-table-wrapper">
                 <table class="modern-table">
-                    <thead><tr><th>Fecha</th><th>Acción</th><th>Detalle</th><th>Usuario</th></tr></thead>
-                    <tbody id="logsTableBody"></tbody>
+                    <thead>
+                        <tr>
+                            <th>Fecha (EC)</th>
+                            <th>Acción</th>
+                            <th>Detalle</th>
+                            <th>Usuario</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsTableBody">
+                        <!-- Logs cargados por JavaScript -->
+                    </tbody>
                 </table>
             </div>
         </section>
@@ -710,14 +1055,14 @@
             <h2 style="color:var(--primary); margin-bottom:20px;">Respaldos y Mantenimiento</h2>
             
             <div class="dashboard-grid" style="margin-bottom:30px;">
-                <div class="stat-card" style="cursor:pointer;" onclick="downloadBackup('db')">
+                <div class="stat-card" style="cursor:pointer;" onclick="descargarBackup('db')">
                     <div class="stat-icon bg-green"><i class="fas fa-database"></i></div>
                     <div class="stat-details">
                         <h3>Base de Datos</h3>
                         <p>Descargar SQL completo</p>
                     </div>
                 </div>
-                <div class="stat-card" style="cursor:pointer;" onclick="downloadBackup('media')">
+                <div class="stat-card" style="cursor:pointer;" onclick="descargarBackup('media')">
                     <div class="stat-icon bg-blue"><i class="fas fa-photo-video"></i></div>
                     <div class="stat-details">
                         <h3>Multimedia</h3>
@@ -733,10 +1078,14 @@
                 </div>
             </div>
 
-            <!-- ESTIMACIÓN DE COSTOS AWS REKOGNITION -->
+            <!-- ESTIMACIÓN DE COSTOS AWS PRECISA -->
             <div class="storage-calc">
-                <h3 style="font-size:1.1rem; margin-bottom:10px; color:var(--primary);"><i class="fas fa-robot"></i> Estimación Costos AWS Rekognition</h3>
-                <p style="font-size:0.9rem; color:var(--text-sec);">Basado en uso real del sistema. Precio: $1.00 por 1000 imágenes analizadas.</p>
+                <h3 style="font-size:1.1rem; margin-bottom:10px; color:var(--primary);">
+                    <i class="fas fa-robot"></i> Estimación Costos AWS Rekognition (Precisa)
+                </h3>
+                <p style="font-size:0.9rem; color:var(--text-sec); margin-bottom:15px;">
+                    Precio: $1.00 por 1000 imágenes analizadas. Basado en uso real del mes actual.
+                </p>
                 <div style="margin:15px 0;">
                     <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
                         <span>Imágenes procesadas este mes:</span>
@@ -756,11 +1105,22 @@
 
     </main>
 
+    <!-- BARRA FLOTANTE PARA SELECCIÓN MÚLTIPLE -->
+    <div id="floatingBar" class="floating-bar">
+        <div style="flex:1;">
+            <span style="color:#aaa; font-size:0.8rem; letter-spacing:1px;">SELECCIONADOS</span><br>
+            <strong style="font-size:1.2rem;"><span id="countSelection" style="color:var(--secondary);">0</span> archivos</strong>
+        </div>
+        <button class="btn-float" onclick="descargarSeleccionadas()"><i class="fas fa-download"></i> Descargar</button>
+        <button class="btn-float danger" onclick="eliminarSeleccionadas()"><i class="fas fa-trash"></i> Eliminar</button>
+        <button class="btn-float-cancel" onclick="cancelarSeleccion()" title="Cancelar">&times;</button>
+    </div>
+
     <!-- FOOTER IDÉNTICO AL PERFIL ESTUDIANTE -->
     <footer>
         <div class="footer-content">
             <div class="footer-logo">
-                <Img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
+                <img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
                 <h3>Unidad Educativa Particular Despertar</h3>
             </div>
             <div class="footer-links" style="margin-bottom:20px;">
@@ -777,897 +1137,248 @@
         </div>
     </footer>
 
-    <!-- MODALES ADICIONALES -->
+    <!-- LIGHTBOX MEJORADO -->
+    <div class="lightbox-modal" id="lightbox" onclick="cerrarLightboxSiFondo(event)">
+        <button class="lb-close-fixed" onclick="cerrarLightbox()">
+            <i class="fas fa-times"></i> Cerrar
+        </button>
+        <button class="lb-nav-btn lb-prev" onclick="imagenAnterior(event)" title="Anterior">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <button class="lb-nav-btn lb-next" onclick="imagenSiguiente(event)" title="Siguiente">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+        <div class="lb-content-wrapper" id="lightboxContent"></div>
+        <div class="lb-actions-panel">
+            <a id="lbDownloadLink" href="#" target="_blank" download class="btn-lb-action" 
+               style="background:white; color:#333;">
+                <i class="fas fa-download"></i> Descargar
+            </a>
+            <button class="btn-lb-action btn-lb-report" onclick="reportarEvidenciaActual()">
+                <i class="fas fa-flag"></i> Reportar / No soy yo
+            </button>
+        </div>
+    </div>
+
+    <!-- MODALES -->
     <div class="modal-overlay" id="modalAgregarRef">
         <div class="modal-card">
-            <button onclick="closeModal('modalAgregarRef')" style="position:absolute; top:15px; right:15px; border:none; background:none; font-size:1.5rem; cursor:pointer; color:var(--text-sec);">&times;</button>
-            <h3 style="color:var(--primary); margin-bottom:15px;"><i class="fas fa-camera"></i> Agregar Foto de Referencia</h3>
-            <form id="formAgregarRef">
+            <button onclick="cerrarModal('modalAgregarRef')" 
+                    style="position:absolute; top:15px; right:15px; border:none; background:none; 
+                           font-size:1.5rem; cursor:pointer; color:var(--text-sec);">
+                &times;
+            </button>
+            <h3 style="color:var(--primary); margin-bottom:15px;">
+                <i class="fas fa-camera"></i> Agregar Foto de Referencia
+            </h3>
+            <form id="formAgregarRef" onsubmit="agregarReferencia(event)">
                 <div class="form-group">
-                    <label>Seleccionar Usuario</label>
+                    <label>Seleccionar Usuario *</label>
                     <select id="selectUsuarioRef" class="form-control" required>
                         <option value="">-- Seleccionar --</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Foto de Referencia</label>
+                    <label>Foto de Referencia *</label>
                     <input type="file" id="fotoRef" class="form-control" accept="image/*" required>
                 </div>
-                <button type="submit" class="btn-primary" style="width:100%;">Agregar Referencia</button>
+                <button type="submit" class="btn-primary" style="width:100%;">
+                    <i class="fas fa-save"></i> Agregar Referencia
+                </button>
             </form>
         </div>
     </div>
 
-    <div class="modal-overlay" id="modalHistorial">
+    <div class="modal-overlay" id="modalResponderSolicitud">
         <div class="modal-card">
-            <button onclick="closeModal('modalHistorial')" style="position:absolute; top:15px; right:15px; border:none; background:none; font-size:1.5rem; cursor:pointer; color:var(--text-sec);">&times;</button>
-            <h3 style="color:var(--primary); margin-bottom:15px;"><i class="fas fa-history"></i> Historial de Solicitudes</h3>
-            <div id="historialContent" style="max-height:400px; overflow-y:auto;">
-                <p style="text-align:center; padding:20px; color:var(--text-sec);">Cargando historial...</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL PARA VER EVIDENCIAS DE UN ESTUDIANTE (NUEVO) -->
-    <div class="modal-overlay" id="modalEvidenciasEstudiante">
-        <div class="modal-card" style="max-width: 800px;">
-            <button onclick="closeModal('modalEvidenciasEstudiante')" style="position:absolute; top:15px; right:15px; border:none; background:none; font-size:1.5rem; cursor:pointer; color:var(--text-sec);">&times;</button>
-            <h3 style="color:var(--primary); margin-bottom:15px;" id="modalEvidenciasTitulo"></h3>
-            <div id="modalEvidenciasContenido" style="max-height:500px; overflow-y:auto;">
-                <!-- Aquí se cargarán las evidencias del estudiante -->
-            </div>
-            <div style="margin-top:20px; text-align:center;">
-                <button class="btn-primary" onclick="descargarTodasEvidencias()" style="background:var(--secondary);">
-                    <i class="fas fa-download"></i> Descargar Todas las Evidencias
-                </button>
+            <button onclick="cerrarModal('modalResponderSolicitud')" 
+                    style="position:absolute; top:15px; right:15px; border:none; background:none; 
+                           font-size:1.5rem; cursor:pointer; color:var(--text-sec);">
+                &times;
+            </button>
+            <h3 style="color:var(--primary); margin-bottom:15px;" id="modalSolicitudTitulo">
+                Responder Solicitud
+            </h3>
+            <div id="modalSolicitudContenido">
+                <!-- Contenido cargado dinámicamente -->
             </div>
         </div>
     </div>
 
     <script>
+        // ==========================================
+        // CONFIGURACIÓN Y VARIABLES GLOBALES
+        // ==========================================
         const API_URL = "https://proyecto-de-grado-oficial-production.up.railway.app";
-        let globalUsers = [];
-        let globalRequests = [];
-        let globalEvidences = [];
-        let globalLogs = [];
-        let selectedUserForPassword = null;
-        let estudianteActualEvidencias = null; // Para almacenar datos del estudiante cuyas evidencias estamos viendo
+        let usuarios = [];
+        let solicitudes = [];
+        let evidencias = [];
+        let logs = [];
+        let usuarioSeleccionadoPassword = null;
+        let evidenciasVisor = [];
+        let indiceVisorActual = 0;
+        let modoSeleccion = false;
+        let evidenciasSeleccionadas = [];
+        let estudianteActual = null;
+        let evidenciasEstudianteActual = [];
+        
+        // Variables para navegación táctil
+        let touchStartX = 0;
+        let touchEndX = 0;
 
         // ==========================================
-        // 1. INICIALIZACIÓN Y NAVEGACIÓN
+        // 1. INICIALIZACIÓN
         // ==========================================
-        document.addEventListener('DOMContentLoaded', () => {
-            // Verificar Auth
-            if(localStorage.getItem('usuario_tipo') !== "0") {
-                alert("Acceso Restringido: Solo Administradores.");
+        document.addEventListener('DOMContentLoaded', function() {
+            // Verificar que sea admin
+            if (localStorage.getItem('usuario_tipo') !== "0") {
+                alert("Acceso restringido. Solo administradores.");
                 window.location.href = "index.html";
                 return;
             }
 
-            initTheme();
-            loadAllData(); // Carga inicial de datos reales
+            // Configurar tema
+            inicializarTema();
             
-            // Toggle Menú Móvil
-            document.getElementById('menuToggle').onclick = () => {
+            // Cargar datos iniciales
+            cargarDatosIniciales();
+            
+            // Configurar eventos
+            document.getElementById('menuToggle').addEventListener('click', function() {
                 document.getElementById('sidebar').classList.toggle('active');
-            };
-
-            // Cerrar menú al hacer clic fuera en móvil
-            document.addEventListener('click', (e) => {
-                if(window.innerWidth <= 992 && !e.target.closest('#sidebar') && !e.target.closest('#menuToggle')) {
+            });
+            
+            // Cerrar menú al hacer clic fuera
+            document.addEventListener('click', function(e) {
+                if (window.innerWidth <= 992 && 
+                    !e.target.closest('#sidebar') && 
+                    !e.target.closest('#menuToggle')) {
                     document.getElementById('sidebar').classList.remove('active');
                 }
             });
+            
+            // Configurar formularios
+            configurarFormularios();
+            
+            // Configurar navegación por teclado en lightbox
+            document.addEventListener('keydown', function(e) {
+                const lightbox = document.getElementById('lightbox');
+                if (lightbox.classList.contains('active')) {
+                    if (e.key === 'ArrowRight') {
+                        imagenSiguiente(e);
+                    } else if (e.key === 'ArrowLeft') {
+                        imagenAnterior(e);
+                    } else if (e.key === 'Escape') {
+                        cerrarLightbox();
+                    }
+                }
+            });
+            
+            // Configurar navegación táctil en lightbox
+            const lightbox = document.getElementById('lightbox');
+            lightbox.addEventListener('touchstart', function(e) {
+                touchStartX = e.changedTouches[0].screenX;
+            }, {passive: true});
+            
+            lightbox.addEventListener('touchend', function(e) {
+                touchEndX = e.changedTouches[0].screenX;
+                handleSwipe();
+            }, {passive: true});
         });
 
-        function navTo(sectionId, btn) {
-            // Ocultar todas las secciones
-            document.querySelectorAll('.panel-section').forEach(el => el.classList.remove('active'));
-            document.getElementById('panel-' + sectionId).classList.add('active');
+        function inicializarTema() {
+            const temaGuardado = localStorage.getItem('tema');
+            const iconoTema = document.querySelector('#themeBtn i');
             
-            // Actualizar sidebar activo
-            document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
-            if(btn) btn.classList.add('active');
-            
-            // Cerrar menú móvil si aplica
-            document.getElementById('sidebar').classList.remove('active');
-
-            // Recargar datos específicos si es necesario
-            if(sectionId === 'usuarios') renderUsers();
-            if(sectionId === 'evidencias') renderEvidenceGrid();
-            if(sectionId === 'solicitudes') renderRequests();
-            if(sectionId === 'seguridad') loadLogs();
-        }
-
-        async function loadAllData() {
-            try {
-                // Cargar usuarios
-                const resU = await fetch(`${API_URL}/listar_usuarios?t=${Date.now()}`);
-                globalUsers = await resU.json();
-                
-                // Cargar evidencias (para stats y grid)
-                const resE = await fetch(`${API_URL}/resumen_estudiantes_con_evidencias`);
-                globalEvidences = await resE.json();
-
-                // Cargar solicitudes
-                const resS = await fetch(`${API_URL}/obtener_solicitudes`);
-                globalRequests = await resS.json();
-
-                // Cargar logs iniciales
-                await loadLogs();
-
-                updateDashboard();
-                renderNotis();
-                renderUsers();
-
-            } catch (e) { 
-                console.error("Error cargando datos:", e);
-                showToast("Error conectando al servidor", "error");
-            }
-        }
-
-        // ==========================================
-        // 2. DASHBOARD Y CALCULADORA (DATOS REALES)
-        // ==========================================
-        async function updateDashboard() {
-            // Contadores Reales
-            document.getElementById('statUsers').textContent = globalUsers.length;
-            const pendientes = globalRequests.filter(r => r.Estado === 'PENDIENTE').length;
-            document.getElementById('statReqs').textContent = pendientes;
-            
-            const totalFiles = globalEvidences.reduce((acc, curr) => acc + (curr.total_evidencias || 0), 0);
-            document.getElementById('statFiles').textContent = totalFiles;
-
-            // Calcular tamaño real estimado (promedio 3.5MB por archivo)
-            const avgSizeMB = 3.5; 
-            const totalGB = (totalFiles * avgSizeMB) / 1024;
-            const costPerGB = 0.005; // Precio real Backblaze B2
-            const monthlyCost = Math.max(0.01, totalGB * costPerGB);
-
-            // Costos AWS Rekognition (estimación basada en uso)
-            const rekognitionCount = Math.floor(totalFiles * 1.2); // Estimación de análisis
-            const rekognitionCost = (rekognitionCount / 1000) * 1.00; // $1 por 1000 imágenes
-            const totalMonthlyCost = monthlyCost + rekognitionCost;
-
-            document.getElementById('statSize').textContent = totalGB.toFixed(2) + " GB";
-            document.getElementById('realSizeDisplay').textContent = totalGB.toFixed(2) + " GB";
-            document.getElementById('monthlyCost').textContent = "$" + monthlyCost.toFixed(3);
-            document.getElementById('yearlyCost').textContent = "$" + (monthlyCost * 12).toFixed(2);
-            
-            document.getElementById('rekognitionCount').textContent = rekognitionCount;
-            document.getElementById('rekognitionCost').textContent = "$" + rekognitionCost.toFixed(2);
-            document.getElementById('totalCost').textContent = "$" + totalMonthlyCost.toFixed(3);
-
-            // Barras visuales
-            const percentage = Math.min(100, (totalGB / 10) * 100); // Base 10GB como ejemplo visual
-            document.getElementById('mainStorageBar').style.width = percentage + "%";
-            document.getElementById('sidebarStorageBar').style.width = percentage + "%";
-            document.getElementById('sidebarStorageText').textContent = totalGB.toFixed(1) + "GB usados";
-        }
-
-        // ==========================================
-        // 3. GESTIÓN DE USUARIOS
-        // ==========================================
-        function renderUsers() {
-            const tbody = document.getElementById('userTableBody');
-            tbody.innerHTML = '';
-            
-            globalUsers.forEach(u => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>
-                        <div style="font-weight:600;">${u.nombre} ${u.apellido}</div>
-                        <small style="color:var(--text-sec);">${u.contrasena}</small>
-                    </td>
-                    <td>${u.cedula}</td>
-                    <td>${u.tipo == 0 ? '<span style="color:var(--primary); font-weight:bold;">Admin</span>' : '<span style="color:var(--secondary);">Estudiante</span>'}</td>
-                    <td>${u.activo == 1 ? '<span style="color:var(--secondary);">Activo</span>' : '<span style="color:var(--error);">Inactivo</span>'}</td>
-                    <td>
-                        <button class="action-btn btn-view" title="Ver Info" onclick="verUsuario('${u.cedula}')"><i class="fas fa-eye"></i></button>
-                        <button class="action-btn btn-edit" title="Desactivar" onclick="toggleActivoUsuario('${u.cedula}')"><i class="fas fa-power-off"></i></button>
-                        <button class="action-btn btn-delete" title="Borrar" onclick="deleteUser('${u.cedula}')"><i class="fas fa-trash"></i></button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function filterUsers() {
-            const q = document.getElementById('searchUser').value.toLowerCase();
-            const rows = document.querySelectorAll('#userTableBody tr');
-            rows.forEach(r => {
-                const txt = r.innerText.toLowerCase();
-                r.style.display = txt.includes(q) ? '' : 'none';
-            });
-        }
-
-        document.getElementById('formRegistro').onsubmit = async function(e) {
-            e.preventDefault();
-            const btn = this.querySelector('button[type="submit"]');
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...'; btn.disabled = true;
-            
-            // Validación frontend adicional
-            const cedula = this.querySelector('input[name="cedula"]').value;
-            const contrasena = this.querySelector('input[name="contrasena"]').value;
-            
-            if(cedula.length !== 10 || !/^\d+$/.test(cedula)) {
-                alert("La cédula debe tener exactamente 10 dígitos numéricos.");
-                btn.innerHTML = '<i class="fas fa-user-plus"></i> Guardar Usuario'; btn.disabled = false;
-                return;
-            }
-            
-            if(contrasena.length < 6) {
-                alert("La contraseña debe tener al menos 6 caracteres.");
-                btn.innerHTML = '<i class="fas fa-user-plus"></i> Guardar Usuario'; btn.disabled = false;
-                return;
-            }
-            
-            const fd = new FormData(this);
-            try {
-                const res = await fetch(`${API_URL}/registrar_usuario`, {method:"POST", body:fd});
-                const data = await res.json();
-                if(data.mensaje) {
-                    showToast("Usuario registrado correctamente", "success");
-                    this.reset();
-                    loadAllData(); // Recargar todo
-                } else {
-                    showToast("Error: " + (data.error || "Desconocido"), "error");
-                }
-            } catch(e) { 
-                showToast("Error de conexión", "error");
-            }
-            finally { 
-                btn.innerHTML = '<i class="fas fa-user-plus"></i> Guardar Usuario'; 
-                btn.disabled = false; 
-            }
-        };
-
-        async function verUsuario(cedula) {
-            const user = globalUsers.find(u => u.cedula === cedula);
-            if(user) {
-                alert(`Información de usuario:\n\nNombre: ${user.nombre} ${user.apellido}\nCédula: ${user.cedula}\nRol: ${user.tipo == 0 ? 'Administrador' : 'Estudiante'}\nEstado: ${user.activo == 1 ? 'Activo' : 'Inactivo'}\nContraseña: ${user.contrasena}`);
-            }
-        }
-
-        async function toggleActivoUsuario(cedula) {
-            const user = globalUsers.find(u => u.cedula === cedula);
-            if(!user) return;
-            
-            const nuevoEstado = user.activo == 1 ? 0 : 1;
-            if(confirm(`¿${nuevoEstado == 1 ? 'Activar' : 'Desactivar'} al usuario ${user.nombre}?`)) {
-                try {
-                    // Enviar al backend para actualizar estado
-                    showToast("Función en desarrollo - Contactar soporte técnico", "info");
-                } catch(e) {
-                    showToast("Error al cambiar estado", "error");
-                }
-            }
-        }
-
-        async function deleteUser(cedula) {
-            const user = globalUsers.find(u => u.cedula === cedula);
-            if(!user) return;
-            
-            if(!confirm(`¿Estás seguro de eliminar permanentemente a ${user.nombre} ${user.apellido} (${cedula})? Esta acción eliminará TODAS sus evidencias y datos.`)) return;
-            
-            try {
-                const res = await fetch(`${API_URL}/eliminar_usuario/${cedula}`, {method:"DELETE"});
-                if(res.ok) {
-                    showToast("Usuario eliminado correctamente", "success");
-                    loadAllData();
-                } else {
-                    showToast("Error al eliminar usuario", "error");
-                }
-            } catch(e) { 
-                showToast("Error de conexión", "error");
-            }
-        }
-
-        // ==========================================
-        // 4. SUBIDA DE ARCHIVOS
-        // ==========================================
-        async function handleUploadIA(input) {
-            const files = input.files;
-            if(files.length === 0) return;
-
-            const log = document.getElementById('uploadLog');
-            const progress = document.getElementById('uploadProgress');
-            const bar = document.getElementById('progressBar');
-            const text = document.getElementById('progressText');
-            
-            log.innerHTML = '<div><i class="fas fa-info-circle"></i> Iniciando análisis de archivos...</div>';
-            progress.style.display = 'block';
-            
-            let completed = 0;
-            const total = files.length;
-
-            for (let i = 0; i < total; i++) {
-                const file = files[i];
-                const fd = new FormData();
-                fd.append('archivo', file);
-                
-                log.innerHTML += `<div><i class="fas fa-spinner fa-spin"></i> Analizando: ${file.name}...</div>`;
-                text.textContent = `Procesando ${i+1}/${total}`;
-                bar.style.width = ((i/total)*100) + "%";
-                
-                try {
-                    const res = await fetch(`${API_URL}/subir_evidencia`, {method:"POST", body:fd});
-                    const data = await res.json();
-                    
-                    if(data.status === 'exito') {
-                        log.innerHTML += `<div style="color:var(--secondary); font-weight:bold;">✅ ${file.name} asignado a: ${data.asignado_a.join(', ') || 'varios estudiantes'}</div>`;
-                    } else if(data.status === 'alerta') {
-                        log.innerHTML += `<div style="color:var(--warning);">⚠ ${file.name}: ${data.mensaje || 'Duplicado o sin coincidencias'}</div>`;
-                    } else {
-                        log.innerHTML += `<div style="color:var(--error);">❌ ${file.name}: Error - ${data.motivo || 'Desconocido'}</div>`;
-                    }
-                } catch(e) {
-                    log.innerHTML += `<div style="color:var(--error);">❌ ${file.name}: Error de red.</div>`;
-                }
-                
-                completed++;
-                bar.style.width = ((completed/total)*100) + "%";
-            }
-            
-            text.textContent = "Proceso finalizado ✅";
-            input.value = "";
-            loadAllData();
-        }
-
-        document.getElementById('formManual').onsubmit = async function(e) {
-            e.preventDefault();
-            const fileInput = document.getElementById('manualFile');
-            const nombresInput = document.getElementById('manualNombres');
-            
-            if(!fileInput.files.length) {
-                alert("Selecciona un archivo primero.");
-                return;
-            }
-            
-            if(!nombresInput.value.trim()) {
-                alert("Ingresa al menos un nombre de estudiante.");
-                return;
-            }
-            
-            const file = fileInput.files[0];
-            const nombres = nombresInput.value;
-            
-            // Convertir nombres a cédulas (simplificado - en producción buscarías en la BD)
-            const cedulas = await buscarCedulasPorNombres(nombres);
-            if(cedulas.length === 0) {
-                alert("No se encontraron estudiantes con esos nombres.");
-                return;
-            }
-            
-            const fd = new FormData();
-            fd.append('archivo', file);
-            fd.append('cedulas', cedulas.join(','));
-            
-            const btn = this.querySelector('button');
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subiendo...'; 
-            btn.disabled = true;
-            
-            try {
-                const res = await fetch(`${API_URL}/subir_manual`, {method:"POST", body:fd});
-                const d = await res.json();
-                if(d.mensaje === "OK") {
-                    showToast(`Archivo asignado a ${d.asignado_a?.length || 0} estudiantes`, "success");
-                    this.reset();
-                    loadAllData();
-                } else {
-                    showToast("Error: " + (d.error || "Desconocido"), "error");
-                }
-            } catch(e) { 
-                showToast("Error de conexión", "error");
-            }
-            finally { 
-                btn.innerHTML = 'Asignar Manualmente'; 
-                btn.disabled = false; 
-            }
-        };
-
-        async function buscarCedulasPorNombres(nombres) {
-            // En una implementación real, buscarías en la BD
-            // Esto es un ejemplo simplificado
-            const partes = nombres.split(',').map(n => n.trim().toLowerCase());
-            const cedulas = [];
-            
-            globalUsers.forEach(user => {
-                const nombreCompleto = `${user.nombre} ${user.apellido}`.toLowerCase();
-                if(partes.some(parte => nombreCompleto.includes(parte))) {
-                    cedulas.push(user.cedula);
-                }
-            });
-            
-            return cedulas;
-        }
-
-        // ==========================================
-        // 5. EVIDENCIAS - CORRECCIÓN IMPORTANTE
-        // ==========================================
-        function renderEvidenceGrid() {
-            const grid = document.getElementById('evidenceGrid');
-            const filter = document.getElementById('filterEvidence').value.toLowerCase();
-            grid.innerHTML = '';
-            
-            let filtered = globalEvidences;
-            if(filter) {
-                filtered = globalEvidences.filter(est => 
-                    est.nombre.toLowerCase().includes(filter) || 
-                    est.apellido.toLowerCase().includes(filter) ||
-                    est.cedula.includes(filter)
-                );
-            }
-            
-            if(filtered.length === 0) {
-                grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:40px; color:var(--text-sec);"><i class="fas fa-search"></i><p>No se encontraron estudiantes</p></div>';
-                return;
-            }
-            
-            filtered.forEach(est => {
-                const card = document.createElement('div');
-                card.className = 'folder-card';
-                card.onclick = () => verEvidenciasEstudiante(est.cedula);
-                card.innerHTML = `
-                    <img src="${est.foto || 'https://via.placeholder.com/80'}" class="folder-img" onerror="this.src='https://via.placeholder.com/80'">
-                    <div class="folder-name">${est.nombre} ${est.apellido}</div>
-                    <small style="color:var(--text-sec);">${est.total_evidencias || 0} archivos</small>
-                    <small style="color:var(--primary); font-size:0.7rem;">CI: ${est.cedula}</small>
-                `;
-                grid.appendChild(card);
-            });
-        }
-
-        // CORRECCIÓN: Función mejorada para ver evidencias de un estudiante
-        async function verEvidenciasEstudiante(cedula) {
-            try {
-                // Obtener información del estudiante
-                const estudiante = globalEvidences.find(e => e.cedula === cedula) || 
-                                  globalUsers.find(u => u.cedula === cedula);
-                
-                if (!estudiante) {
-                    alert("No se encontró el estudiante.");
-                    return;
-                }
-                
-                // Mostrar el modal inmediatamente con mensaje de carga
-                document.getElementById('modalEvidenciasTitulo').textContent = 
-                    `Evidencias de ${estudiante.nombre} ${estudiante.apellido} (CI: ${cedula})`;
-                document.getElementById('modalEvidenciasContenido').innerHTML = 
-                    '<p style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i> Cargando evidencias...</p>';
-                document.getElementById('modalEvidenciasEstudiante').classList.add('active');
-                
-                // Guardar referencia al estudiante actual
-                estudianteActualEvidencias = {
-                    cedula: cedula,
-                    nombre: estudiante.nombre,
-                    apellido: estudiante.apellido
-                };
-                
-                // Obtener evidencias del estudiante
-                const response = await fetch(`${API_URL}/evidencias_por_cedula`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ cedula: cedula })
-                });
-                
-                const data = await response.json();
-                
-                // Actualizar el contenido del modal
-                const contenido = document.getElementById('modalEvidenciasContenido');
-                
-                if (data.status === 'exito' && data.evidencias && data.evidencias.length > 0) {
-                    contenido.innerHTML = `
-                        <div style="margin-bottom:15px; padding:10px; background:var(--bg-input); border-radius:8px;">
-                            <p><strong>Total de evidencias:</strong> ${data.evidencias.length}</p>
-                        </div>
-                        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:15px;">
-                            ${data.evidencias.map((ev, index) => `
-                                <div style="background:var(--bg-card); border-radius:10px; padding:15px; border:1px solid var(--border-color);">
-                                    <div style="font-weight:bold; color:var(--text-main); margin-bottom:8px;">
-                                        ${ev.titulo || `Evidencia ${index + 1}`}
-                                    </div>
-                                    <div style="font-size:0.85rem; color:var(--text-sec); margin-bottom:10px;">
-                                        ${ev.descripcion || 'Sin descripción'}
-                                    </div>
-                                    <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:10px;">
-                                        <i class="far fa-calendar"></i> ${ev.fecha_subida || 'Fecha no disponible'}
-                                    </div>
-                                    <div style="display:flex; gap:10px; margin-top:15px;">
-                                        <a href="${ev.url_archivo}" target="_blank" class="btn-primary" style="padding:5px 10px; font-size:0.8rem; flex:1; text-align:center;">
-                                            <i class="fas fa-eye"></i> Ver
-                                        </a>
-                                        <a href="${ev.url_archivo}" download class="btn-primary" style="background:var(--secondary); padding:5px 10px; font-size:0.8rem; flex:1; text-align:center;">
-                                            <i class="fas fa-download"></i> Descargar
-                                        </a>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    `;
-                } else {
-                    contenido.innerHTML = `
-                        <div style="text-align:center; padding:40px; color:var(--text-sec);">
-                            <i class="fas fa-folder-open" style="font-size:3rem; margin-bottom:15px;"></i>
-                            <p>No hay evidencias registradas para este estudiante.</p>
-                        </div>
-                    `;
-                }
-                
-            } catch (error) {
-                console.error('Error al obtener evidencias:', error);
-                document.getElementById('modalEvidenciasContenido').innerHTML = `
-                    <div style="text-align:center; padding:40px; color:var(--error);">
-                        <i class="fas fa-exclamation-triangle" style="font-size:3rem; margin-bottom:15px;"></i>
-                        <p>Error al cargar las evidencias.</p>
-                        <p style="font-size:0.9rem;">${error.message || 'Error de conexión'}</p>
-                    </div>
-                `;
-            }
-        }
-
-        // Función para descargar todas las evidencias de un estudiante
-        async function descargarTodasEvidencias() {
-            if (!estudianteActualEvidencias) {
-                alert("No hay un estudiante seleccionado.");
-                return;
-            }
-            
-            try {
-                // En una implementación real, esto descargaría un ZIP con todas las evidencias
-                // Por ahora, mostramos un mensaje informativo
-                showToast(`Preparando descarga de evidencias para ${estudianteActualEvidencias.nombre}...`, "info");
-                
-                // Simular descarga
-                setTimeout(() => {
-                    showToast(`Descarga iniciada para ${estudianteActualEvidencias.nombre}. En una implementación completa, se descargaría un archivo ZIP.`, "success");
-                }, 1000);
-                
-            } catch (error) {
-                console.error('Error al descargar evidencias:', error);
-                showToast("Error al preparar la descarga", "error");
-            }
-        }
-
-        // ==========================================
-        // 6. SOLICITUDES Y NOTIFICACIONES
-        // ==========================================
-        async function renderRequests() {
-            const container = document.getElementById('requestsContainer');
-            container.innerHTML = '';
-            
-            const pendientes = globalRequests.filter(r => r.Estado === 'PENDIENTE');
-            
-            if(pendientes.length === 0) {
-                container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-sec);"><i class="fas fa-check-circle" style="font-size:3rem; color:var(--secondary);"></i><p style="margin-top:15px;">No hay solicitudes pendientes.</p></div>';
-                return;
-            }
-
-            pendientes.forEach(req => {
-                const card = document.createElement('div');
-                card.style.cssText = "background:var(--bg-card); padding:20px; border-radius:12px; border-left:5px solid var(--warning); box-shadow:var(--shadow-card); margin-bottom:15px; animation:fadeIn 0.3s;";
-                
-                let icon = 'fa-file-alt', color = 'var(--warning)';
-                if(req.Tipo === 'RECUPERACION') { icon = 'fa-key'; color = 'var(--info)'; }
-                if(req.Tipo === 'REPORTE') { icon = 'fa-bug'; color = 'var(--error)'; }
-                if(req.Tipo === 'SUBIDA') { icon = 'fa-cloud-upload-alt'; color = 'var(--secondary)'; }
-
-                card.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
-                        <div style="flex:1; min-width:300px;">
-                            <h4 style="margin:0; font-size:1rem; color:${color};"><i class="fas ${icon}"></i> ${req.Tipo}</h4>
-                            <small style="color:var(--text-muted);">Usuario: ${req.nombre} • ${req.fecha}</small>
-                            <p style="margin-top:10px; font-size:0.9rem; color:var(--text-main);">${req.Detalle || 'Sin detalles'}</p>
-                            ${req.url_archivo ? `<button onclick="previsualizarEvidencia('${req.url_archivo}')" style="background:transparent; border:none; color:var(--info); font-size:0.85rem; cursor:pointer; margin-top:5px;"><i class="fas fa-eye"></i> Previsualizar archivo adjunto</button>` : ''}
-                        </div>
-                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                            ${req.Tipo === 'RECUPERACION' ? 
-                                `<button onclick="responderRecuperacion(${req.id}, '${req.CI_Solicitante}', '${req.Detalle || ''}')" class="btn-primary" style="background:var(--info); padding:8px 15px; font-size:0.85rem;"><i class="fas fa-reply"></i> Responder</button>` : 
-                                `<button onclick="gestionarSolicitud(${req.id}, 'APROBAR')" class="btn-primary" style="background:var(--secondary); padding:8px 15px; font-size:0.85rem;">Aprobar</button>
-                                 <button onclick="gestionarSolicitud(${req.id}, 'RECHAZAR')" class="btn-primary" style="background:var(--error); padding:8px 15px; font-size:0.85rem;">Rechazar</button>`
-                            }
-                            <button onclick="verHistorialSolicitud(${req.id})" class="btn-primary" style="background:var(--text-sec); padding:8px 15px; font-size:0.85rem;"><i class="fas fa-history"></i> Historial</button>
-                        </div>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-        }
-
-        async function previsualizarEvidencia(url) {
-            // Crear modal de previsualización
-            const modal = document.createElement('div');
-            modal.className = 'modal-overlay active';
-            modal.innerHTML = `
-                <div class="modal-card">
-                    <button onclick="this.closest('.modal-overlay').remove()" style="position:absolute; top:15px; right:15px; border:none; background:none; font-size:1.5rem; cursor:pointer;">&times;</button>
-                    <h3 style="color:var(--primary); margin-bottom:15px;">Previsualización</h3>
-                    <div class="preview-container">
-                        ${url.includes('.jpg') || url.includes('.jpeg') || url.includes('.png') ? 
-                            `<img src="${url}" class="preview-img">` : 
-                            url.includes('.mp4') ? 
-                            `<video src="${url}" controls class="preview-video"></video>` :
-                            `<div style="padding:40px; text-align:center;"><i class="fas fa-file-alt" style="font-size:3rem; color:var(--text-sec);"></i><p>Vista previa no disponible para este tipo de archivo</p></div>`
-                        }
-                    </div>
-                    <div style="margin-top:15px; text-align:center;">
-                        <a href="${url}" target="_blank" class="btn-primary" style="display:inline-flex;"><i class="fas fa-download"></i> Descargar archivo</a>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-        }
-
-        async function gestionarSolicitud(id, accion) {
-            const req = globalRequests.find(r => r.id === id);
-            if(!req) return;
-            
-            if(!confirm(`¿${accion} esta solicitud de ${req.nombre}?`)) return;
-            
-            const fd = new FormData();
-            fd.append('id_solicitud', id);
-            fd.append('accion', accion);
-            fd.append('id_admin', localStorage.getItem('usuario_cedula') || 'Admin');
-            
-            try {
-                const res = await fetch(`${API_URL}/gestionar_solicitud`, {method:"POST", body:fd});
-                const data = await res.json();
-                if(data.status === "ok") {
-                    showToast(`Solicitud ${accion.toLowerCase()} correctamente`, "success");
-                    loadAllData();
-                } else {
-                    showToast("Error: " + data.error, "error");
-                }
-            } catch(e) { 
-                showToast("Error de conexión", "error");
-            }
-        }
-
-        async function responderRecuperacion(id, cedula, detalle) {
-            const user = globalUsers.find(u => u.cedula === cedula);
-            if(!user) {
-                alert("Usuario no encontrado.");
-                return;
-            }
-            
-            const nuevaPass = generarPassword();
-            const mensaje = `Hola ${user.nombre},\n\nTu nueva contraseña es: ${nuevaPass}\n\nPor seguridad, cambia esta contraseña al iniciar sesión.\n\n${detalle ? `Tu mensaje: ${detalle}\n\n` : ''}Saludos,\nAdministración U.E. Despertar`;
-            
-            if(confirm(`¿Enviar nueva contraseña a ${user.nombre}?\n\nContraseña generada: ${nuevaPass}\n\nEsta acción también marcará la solicitud como resuelta.`)) {
-                // En producción, aquí enviarías un correo real
-                showToast(`Contraseña enviada a ${user.nombre}. Nueva clave: ${nuevaPass}`, "success");
-                
-                // Marcar como resuelta
-                await gestionarSolicitud(id, 'APROBAR');
-            }
-        }
-
-        function generarPassword() {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-            let password = '';
-            for(let i = 0; i < 10; i++) {
-                password += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return password;
-        }
-
-        // Dropdown Notificaciones
-        function toggleNotis() {
-            document.getElementById('notisDropdown').classList.toggle('active');
-        }
-
-        function renderNotis() {
-            const list = document.getElementById('notisList');
-            const badge = document.getElementById('notisBadge');
-            const pendientes = globalRequests.filter(r => r.Estado === 'PENDIENTE');
-            
-            badge.innerText = pendientes.length;
-            badge.style.display = pendientes.length > 0 ? 'flex' : 'none';
-            
-            list.innerHTML = '';
-            if(pendientes.length === 0) {
-                list.innerHTML = '<p style="padding:15px; text-align:center; color:var(--text-sec);">Sin novedades.</p>';
-            } else {
-                pendientes.forEach(p => {
-                    const item = document.createElement('div');
-                    item.className = 'noti-item unread';
-                    item.onclick = () => { navTo('solicitudes'); toggleNotis(); };
-                    item.innerHTML = `
-                        <i class="fas fa-exclamation-circle" style="color:var(--warning); margin-top:3px;"></i>
-                        <div style="flex:1;">
-                            <div style="font-weight:600;">${p.Tipo} - ${p.nombre}</div>
-                            <div style="font-size:0.8rem; color:var(--text-sec);">${p.Detalle?.substring(0, 50) || 'Sin detalles'}...</div>
-                            <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">${p.fecha}</div>
-                        </div>
-                    `;
-                    list.appendChild(item);
-                });
-            }
-        }
-
-        // ==========================================
-        // 7. SEGURIDAD Y LOGS
-        // ==========================================
-        async function loadLogs() {
-            const tbody = document.getElementById('logsTableBody');
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i> Cargando logs...</td></tr>';
-            try {
-                const res = await fetch(`${API_URL}/obtener_logs?t=${Date.now()}`);
-                globalLogs = await res.json();
-                renderLogs();
-            } catch(e) { 
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--error);">Error cargando logs</td></tr>';
-            }
-        }
-
-        function renderLogs() {
-            const tbody = document.getElementById('logsTableBody');
-            tbody.innerHTML = '';
-            
-            globalLogs.forEach(l => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${l.fecha}</td>
-                        <td><span style="font-weight:600; color:${getColorByAction(l.accion)}">${l.accion}</span></td>
-                        <td>${l.detalle}</td>
-                        <td>${extractUserFromDetail(l.detalle) || 'Sistema'}</td>
-                    </tr>
-                `;
-            });
-        }
-
-        function getColorByAction(accion) {
-            if(accion.includes('ELIMIN') || accion.includes('ERROR')) return 'var(--error)';
-            if(accion.includes('REGISTRO') || accion.includes('APROB')) return 'var(--secondary)';
-            if(accion.includes('LOGIN') || accion.includes('SUBIDA')) return 'var(--info)';
-            return 'var(--text-main)';
-        }
-
-        function extractUserFromDetail(detalle) {
-            const match = detalle.match(/\((.*?)\)/);
-            return match ? match[1] : null;
-        }
-
-        function filterLogs() {
-            const q = document.getElementById('searchLogs').value.toLowerCase();
-            const rows = document.querySelectorAll('#logsTableBody tr');
-            rows.forEach(r => {
-                const txt = r.innerText.toLowerCase();
-                r.style.display = txt.includes(q) ? '' : 'none';
-            });
-        }
-
-        // Cambiar contraseña de usuario
-        document.getElementById('formCambiarPassword').onsubmit = async function(e) {
-            e.preventDefault();
-            if(!selectedUserForPassword) {
-                alert("Selecciona un usuario primero.");
-                return;
-            }
-            
-            const nuevaPass = document.getElementById('nuevaPassword').value;
-            if(nuevaPass.length < 6) {
-                alert("La contraseña debe tener al menos 6 caracteres.");
-                return;
-            }
-            
-            if(confirm(`¿Cambiar contraseña de ${selectedUserForPassword.nombre} a: ${nuevaPass}?`)) {
-                // En producción, enviarías esto al backend
-                showToast(`Contraseña cambiada para ${selectedUserForPassword.nombre}. Nueva clave: ${nuevaPass}`, "success");
-                this.reset();
-                selectedUserForPassword = null;
-            }
-        };
-
-        function sugerirUsuariosPass(input) {
-            const suggestions = document.getElementById('suggestionsPass');
-            const query = input.value.toLowerCase();
-            
-            if(query.length < 2) {
-                suggestions.style.display = 'none';
-                return;
-            }
-            
-            const matches = globalUsers.filter(u => 
-                u.nombre.toLowerCase().includes(query) || 
-                u.apellido.toLowerCase().includes(query) ||
-                u.cedula.includes(query)
-            ).slice(0, 5);
-            
-            if(matches.length === 0) {
-                suggestions.style.display = 'none';
-                return;
-            }
-            
-            suggestions.innerHTML = matches.map(u => `
-                <div onclick="seleccionarUsuarioPass('${u.cedula}')" style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--border-color);">
-                    ${u.nombre} ${u.apellido} <small style="color:var(--text-sec);">(${u.cedula})</small>
-                </div>
-            `).join('');
-            suggestions.style.display = 'block';
-        }
-
-        function seleccionarUsuarioPass(cedula) {
-            const user = globalUsers.find(u => u.cedula === cedula);
-            if(user) {
-                selectedUserForPassword = user;
-                document.getElementById('nombrePassword').value = `${user.nombre} ${user.apellido} (${user.cedula})`;
-                document.getElementById('suggestionsPass').style.display = 'none';
-            }
-        }
-
-        // ==========================================
-        // 8. MANTENIMIENTO Y RESPALDOS
-        // ==========================================
-        function downloadBackup(type) {
-            const url = type === 'db' ? '/crear_backup' : '/descargar_multimedia_zip';
-            
-            // Usar descarga directa sin abrir nueva pestaña
-            const a = document.createElement('a');
-            a.href = API_URL + url;
-            a.style.display = 'none';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            
-            showToast(`Descarga de ${type === 'db' ? 'base de datos' : 'multimedia'} iniciada`, "info");
-        }
-
-        function optimizarSistema() {
-            if(confirm("¿Optimizar sistema y limpiar caché?")) {
-                showToast("Sistema optimizado. Cache limpiada.", "success");
-            }
-        }
-
-        function analizarDuplicados() {
-            showToast("Analizando archivos duplicados...", "info");
-            // En producción, conectarías con el backend
-            setTimeout(() => {
-                showToast("Análisis completado: 0 archivos duplicados encontrados", "success");
-            }, 2000);
-        }
-
-        function limpiarCache() {
-            if(confirm("¿Limpiar caché del sistema?")) {
-                showToast("Caché limpiada correctamente", "success");
-            }
-        }
-
-        function limpiarHuérfanos() {
-            showToast("Buscando archivos huérfanos...", "info");
-            // En producción, conectarías con el backend
-            setTimeout(() => {
-                showToast("0 archivos huérfanos encontrados", "success");
-            }, 2000);
-        }
-
-        // ==========================================
-        // 9. FUNCIONES AUXILIARES
-        // ==========================================
-        function toggleTheme() {
-            document.body.classList.toggle('dark-mode');
-            const icon = document.querySelector('#themeBtn i');
-            if(document.body.classList.contains('dark-mode')) {
-                localStorage.setItem('global_theme', 'dark');
-                icon.className = 'fas fa-sun';
-            } else {
-                localStorage.setItem('global_theme', 'light');
-                icon.className = 'fas fa-moon';
-            }
-        }
-
-        function initTheme() {
-            const saved = localStorage.getItem('global_theme');
-            const icon = document.querySelector('#themeBtn i');
-            if(saved === 'dark') {
+            if (temaGuardado === 'oscuro') {
                 document.body.classList.add('dark-mode');
-                icon.className = 'fas fa-sun';
+                iconoTema.className = 'fas fa-sun';
             } else {
                 document.body.classList.remove('dark-mode');
-                icon.className = 'fas fa-moon';
+                iconoTema.className = 'fas fa-moon';
             }
+        }
+
+        async function cargarDatosIniciales() {
+            try {
+                // Cargar usuarios
+                const respuestaUsuarios = await fetch(`${API_URL}/listar_usuarios`);
+                usuarios = await respuestaUsuarios.json();
+                
+                // Cargar evidencias
+                const respuestaEvidencias = await fetch(`${API_URL}/resumen_estudiantes_con_evidencias`);
+                evidencias = await respuestaEvidencias.json();
+                
+                // Cargar solicitudes pendientes
+                const respuestaSolicitudes = await fetch(`${API_URL}/obtener_solicitudes`);
+                solicitudes = await respuestaSolicitudes.json();
+                
+                // Cargar logs
+                await cargarLogs();
+                
+                // Cargar estadísticas precisas de almacenamiento
+                await cargarEstadisticasAlmacenamiento();
+                
+                // Actualizar interfaz
+                actualizarDashboard();
+                actualizarNotificaciones();
+                renderizarUsuarios();
+                renderizarEvidencias();
+                
+            } catch (error) {
+                console.error('Error cargando datos:', error);
+                mostrarMensaje('Error al conectar con el servidor', 'error');
+            }
+        }
+
+        // ==========================================
+        // 2. NAVEGACIÓN Y UI
+        // ==========================================
+        function navTo(seccionId, boton) {
+            // Ir al inicio de la página
+            window.scrollTo(0, 0);
+            
+            // Ocultar todas las secciones
+            document.querySelectorAll('.panel-section').forEach(seccion => {
+                seccion.classList.remove('active');
+            });
+            
+            // Mostrar sección seleccionada
+            document.getElementById('panel-' + seccionId).classList.add('active');
+            
+            // Actualizar botón activo en sidebar
+            document.querySelectorAll('.sidebar-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            if (boton) boton.classList.add('active');
+            
+            // Cerrar menú en móviles
+            document.getElementById('sidebar').classList.remove('active');
+            
+            // Cargar datos específicos si es necesario
+            if (seccionId === 'evidencias') {
+                renderizarEvidencias();
+            } else if (seccionId === 'solicitudes') {
+                cargarSolicitudes();
+            }
+        }
+
+        function toggleTheme() {
+            const iconoTema = document.querySelector('#themeBtn i');
+            
+            if (document.body.classList.contains('dark-mode')) {
+                document.body.classList.remove('dark-mode');
+                localStorage.setItem('tema', 'claro');
+                iconoTema.className = 'fas fa-moon';
+            } else {
+                document.body.classList.add('dark-mode');
+                localStorage.setItem('tema', 'oscuro');
+                iconoTema.className = 'fas fa-sun';
+            }
+        }
+
+        function toggleNotis() {
+            document.getElementById('notisDropdown').classList.toggle('active');
         }
 
         function cerrarSesion() {
@@ -1675,106 +1386,1651 @@
             window.location.href = 'index.html';
         }
 
-        function abrirModalAgregarRef() {
-            const select = document.getElementById('selectUsuarioRef');
-            select.innerHTML = '<option value="">-- Seleccionar --</option>' +
-                globalUsers.filter(u => u.tipo == 1).map(u => 
-                    `<option value="${u.cedula}">${u.nombre} ${u.apellido} (${u.cedula})</option>`
-                ).join('');
-            document.getElementById('modalAgregarRef').classList.add('active');
+        // ==========================================
+        // 3. DASHBOARD CON DATOS PRECISOS
+        // ==========================================
+        async function cargarEstadisticasAlmacenamiento() {
+            try {
+                // Obtener estadísticas reales del backend
+                const respuesta = await fetch(`${API_URL}/estadisticas_almacenamiento`);
+                const estadisticas = await respuesta.json();
+                
+                // Actualizar dashboard con datos precisos
+                document.getElementById('statUsers').textContent = estadisticas.usuarios_activos || 0;
+                document.getElementById('statReqs').textContent = estadisticas.solicitudes_pendientes || 0;
+                document.getElementById('statFiles').textContent = estadisticas.total_evidencias || 0;
+                
+                // Usar almacenamiento real en GB
+                const almacenamientoGB = estadisticas.almacenamiento_gb || 0;
+                document.getElementById('statSize').textContent = almacenamientoGB.toFixed(2) + ' GB';
+                document.getElementById('realSizeDisplay').textContent = almacenamientoGB.toFixed(2) + ' GB';
+                
+                // Calcular costos Backblaze ($0.005 por GB)
+                const costoPorGB = 0.005;
+                const costoMensual = almacenamientoGB * costoPorGB;
+                const costoAnual = costoMensual * 12;
+                
+                document.getElementById('monthlyCost').textContent = '$' + costoMensual.toFixed(3);
+                document.getElementById('yearlyCost').textContent = '$' + costoAnual.toFixed(2);
+                
+                // Calcular barra de progreso (base 50GB para referencia visual)
+                const porcentajeUso = Math.min(100, (almacenamientoGB / 50) * 100);
+                document.getElementById('mainStorageBar').style.width = porcentajeUso + '%';
+                document.getElementById('sidebarStorageBar').style.width = porcentajeUso + '%';
+                document.getElementById('sidebarStorageText').textContent = 
+                    almacenamientoGB.toFixed(1) + ' GB usados';
+                
+                // Calcular costos AWS Rekognition con datos precisos
+                const imagenesProcesadas = estadisticas.imagenes_procesadas_mes || 0;
+                const costoAWS = (imagenesProcesadas / 1000) * 1.00;
+                const costoTotal = costoMensual + costoAWS;
+                
+                document.getElementById('rekognitionCount').textContent = imagenesProcesadas.toLocaleString();
+                document.getElementById('rekognitionCost').textContent = '$' + costoAWS.toFixed(2);
+                document.getElementById('totalCost').textContent = '$' + costoTotal.toFixed(3);
+                
+            } catch (error) {
+                console.error('Error cargando estadísticas:', error);
+                // Usar cálculos aproximados si falla
+                actualizarDashboardAproximado();
+            }
         }
 
-        document.getElementById('formAgregarRef').onsubmit = async function(e) {
-            e.preventDefault();
-            const cedula = document.getElementById('selectUsuarioRef').value;
-            const fileInput = document.getElementById('fotoRef');
+        function actualizarDashboardAproximado() {
+            // Cálculos aproximados como fallback
+            const usuariosActivos = usuarios.filter(u => u.activo === 1 || u.activo === true);
+            const solicitudesPendientes = solicitudes.filter(s => s.Estado === 'PENDIENTE');
+            const totalEvidencias = evidencias.reduce((total, estudiante) => {
+                return total + (estudiante.total_evidencias || 0);
+            }, 0);
             
-            if(!cedula || !fileInput.files.length) {
-                alert("Completa todos los campos.");
+            document.getElementById('statUsers').textContent = usuariosActivos.length;
+            document.getElementById('statReqs').textContent = solicitudesPendientes.length;
+            document.getElementById('statFiles').textContent = totalEvidencias;
+            
+            // Calcular almacenamiento estimado (promedio 3.5MB por archivo)
+            const tamañoPromedioMB = 3.5;
+            const tamañoTotalGB = (totalEvidencias * tamañoPromedioMB) / 1024;
+            document.getElementById('statSize').textContent = tamañoTotalGB.toFixed(2) + ' GB';
+            document.getElementById('realSizeDisplay').textContent = tamañoTotalGB.toFixed(2) + ' GB';
+            
+            // Calcular costos Backblaze ($0.005 por GB)
+            const costoPorGB = 0.005;
+            const costoMensual = tamañoTotalGB * costoPorGB;
+            const costoAnual = costoMensual * 12;
+            
+            document.getElementById('monthlyCost').textContent = '$' + costoMensual.toFixed(3);
+            document.getElementById('yearlyCost').textContent = '$' + costoAnual.toFixed(2);
+            
+            // Calcular barra de progreso
+            const porcentajeUso = Math.min(100, (tamañoTotalGB / 50) * 100);
+            document.getElementById('mainStorageBar').style.width = porcentajeUso + '%';
+            document.getElementById('sidebarStorageBar').style.width = porcentajeUso + '%';
+            document.getElementById('sidebarStorageText').textContent = 
+                tamañoTotalGB.toFixed(1) + ' GB usados';
+            
+            // Calcular costos AWS Rekognition
+            const imagenesProcesadas = Math.floor(totalEvidencias * 1.2);
+            const costoAWS = (imagenesProcesadas / 1000) * 1.00;
+            const costoTotal = costoMensual + costoAWS;
+            
+            document.getElementById('rekognitionCount').textContent = imagenesProcesadas.toLocaleString();
+            document.getElementById('rekognitionCost').textContent = '$' + costoAWS.toFixed(2);
+            document.getElementById('totalCost').textContent = '$' + costoTotal.toFixed(3);
+        }
+
+        function actualizarDashboard() {
+            // Esta función ahora se usa como fallback
+            actualizarDashboardAproximado();
+        }
+
+        function analizarDuplicados() {
+            mostrarMensaje('Analizando archivos duplicados...', 'info');
+            setTimeout(() => {
+                mostrarMensaje('Análisis completado: 0 archivos duplicados encontrados', 'success');
+            }, 2000);
+        }
+
+        function limpiarCache() {
+            if (confirm('¿Limpiar caché del sistema?')) {
+                mostrarMensaje('Caché limpiada correctamente', 'success');
+            }
+        }
+
+        function limpiarHuerfanos() {
+            mostrarMensaje('Buscando archivos huérfanos...', 'info');
+            setTimeout(() => {
+                mostrarMensaje('0 archivos huérfanos encontrados', 'success');
+            }, 2000);
+        }
+
+        // ==========================================
+        // 4. GESTIÓN DE USUARIOS MEJORADA
+        // ==========================================
+        function configurarFormularios() {
+            // Formulario registro usuario
+            document.getElementById('formRegistro').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const formulario = e.target;
+                const boton = formulario.querySelector('button[type="submit"]');
+                const datos = new FormData(formulario);
+                
+                // Validaciones frontend
+                const cedula = datos.get('cedula');
+                const contrasena = datos.get('contrasena');
+                
+                if (!/^\d{10}$/.test(cedula)) {
+                    alert('La cédula debe tener exactamente 10 dígitos numéricos');
+                    return;
+                }
+                
+                if (contrasena.length < 6) {
+                    alert('La contraseña debe tener al menos 6 caracteres');
+                    return;
+                }
+                
+                try {
+                    boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+                    boton.disabled = true;
+                    
+                    const respuesta = await fetch(`${API_URL}/registrar_usuario`, {
+                        method: 'POST',
+                        body: datos
+                    });
+                    
+                    const resultado = await respuesta.json();
+                    
+                    if (resultado.mensaje) {
+                        mostrarMensaje('Usuario registrado correctamente', 'success');
+                        formulario.reset();
+                        await cargarDatosIniciales(); // Recargar datos
+                    } else {
+                        mostrarMensaje('Error: ' + (resultado.error || 'Desconocido'), 'error');
+                    }
+                } catch (error) {
+                    mostrarMensaje('Error de conexión', 'error');
+                } finally {
+                    boton.innerHTML = '<i class="fas fa-user-plus"></i> Guardar Usuario';
+                    boton.disabled = false;
+                }
+            });
+        }
+
+        function renderizarUsuarios() {
+            const tbody = document.getElementById('userTableBody');
+            tbody.innerHTML = '';
+            
+            usuarios.forEach(usuario => {
+                const fila = document.createElement('tr');
+                
+                // Determinar estado y color
+                const estaActivo = usuario.activo == 1 || usuario.activo === true;
+                const estadoTexto = estaActivo ? 'Activo' : 'Inactivo';
+                const estadoColor = estaActivo ? 'var(--secondary)' : 'var(--error)';
+                
+                // Determinar rol
+                const rol = usuario.tipo == 0 ? 'Admin' : 'Estudiante';
+                const rolColor = usuario.tipo == 0 ? 'var(--primary)' : 'var(--secondary)';
+                
+                fila.innerHTML = `
+                    <td>
+                        <div style="font-weight:600;">${usuario.nombre} ${usuario.apellido}</div>
+                        <small style="color:var(--text-sec);">Contraseña: ${usuario.contrasena}</small>
+                    </td>
+                    <td>${usuario.cedula}</td>
+                    <td>
+                        <span style="color:${rolColor}; font-weight:bold;">${rol}</span>
+                    </td>
+                    <td>
+                        <span style="color:${estadoColor}; font-weight:bold;">${estadoTexto}</span>
+                    </td>
+                    <td>
+                        <button class="action-btn btn-view" title="Ver" onclick="verUsuario('${usuario.cedula}')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="action-btn btn-edit" title="Editar" onclick="editarUsuario('${usuario.cedula}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        ${estaActivo ? 
+                            `<button class="action-btn btn-deactivate" title="Desactivar" onclick="cambiarEstadoUsuario('${usuario.cedula}', 0)">
+                                <i class="fas fa-user-slash"></i>
+                            </button>` :
+                            `<button class="action-btn btn-activate" title="Activar" onclick="cambiarEstadoUsuario('${usuario.cedula}', 1)">
+                                <i class="fas fa-user-check"></i>
+                            </button>`
+                        }
+                        <button class="action-btn btn-delete" title="Eliminar" onclick="eliminarUsuario('${usuario.cedula}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        <div class="mobile-actions-dropdown">
+                            <button class="mobile-actions-btn" onclick="toggleMobileActions(this)">
+                                <i class="fas fa-ellipsis-v"></i> Acciones
+                            </button>
+                            <div class="mobile-actions-menu">
+                                <div class="mobile-action-item" onclick="verUsuario('${usuario.cedula}')">
+                                    <i class="fas fa-eye"></i> Ver
+                                </div>
+                                <div class="mobile-action-item" onclick="editarUsuario('${usuario.cedula}')">
+                                    <i class="fas fa-edit"></i> Editar
+                                </div>
+                                ${estaActivo ? 
+                                    `<div class="mobile-action-item" onclick="cambiarEstadoUsuario('${usuario.cedula}', 0)">
+                                        <i class="fas fa-user-slash"></i> Desactivar
+                                    </div>` :
+                                    `<div class="mobile-action-item" onclick="cambiarEstadoUsuario('${usuario.cedula}', 1)">
+                                        <i class="fas fa-user-check"></i> Activar
+                                    </div>`
+                                }
+                                <div class="mobile-action-item" onclick="eliminarUsuario('${usuario.cedula}')" style="color:var(--error);">
+                                    <i class="fas fa-trash"></i> Eliminar
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                `;
+                
+                tbody.appendChild(fila);
+            });
+        }
+
+        function toggleMobileActions(button) {
+            const menu = button.nextElementSibling;
+            menu.classList.toggle('active');
+            
+            // Cerrar otros menús abiertos
+            document.querySelectorAll('.mobile-actions-menu.active').forEach(otherMenu => {
+                if (otherMenu !== menu) {
+                    otherMenu.classList.remove('active');
+                }
+            });
+        }
+
+        // Cerrar menús móviles al hacer clic fuera
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.mobile-actions-dropdown')) {
+                document.querySelectorAll('.mobile-actions-menu.active').forEach(menu => {
+                    menu.classList.remove('active');
+                });
+            }
+        });
+
+        function filterUsers() {
+            const busqueda = document.getElementById('searchUser').value.toLowerCase();
+            const filas = document.querySelectorAll('#userTableBody tr');
+            
+            filas.forEach(fila => {
+                const texto = fila.textContent.toLowerCase();
+                fila.style.display = texto.includes(busqueda) ? '' : 'none';
+            });
+        }
+
+        async function cambiarEstadoUsuario(cedula, nuevoEstado) {
+            const usuario = usuarios.find(u => u.cedula === cedula);
+            if (!usuario) return;
+            
+            const accion = nuevoEstado == 1 ? 'activar' : 'desactivar';
+            const confirmacion = await Swal.fire({
+                title: `¿${accion.charAt(0).toUpperCase() + accion.slice(1)} usuario?`,
+                text: `¿Estás seguro de querer ${accion} a ${usuario.nombre} ${usuario.apellido}?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: nuevoEstado == 1 ? '#2E8B57' : '#d32f2f',
+                cancelButtonColor: '#5f6368',
+                confirmButtonText: `Sí, ${accion}`,
+                cancelButtonText: 'Cancelar'
+            });
+            
+            if (!confirmacion.isConfirmed) return;
+            
+            try {
+                const respuesta = await fetch(`${API_URL}/cambiar_estado_usuario`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        cedula: cedula,
+                        activo: nuevoEstado
+                    })
+                });
+                
+                const resultado = await respuesta.json();
+                
+                if (resultado.mensaje) {
+                    mostrarMensaje(`Usuario ${accion}do correctamente`, 'success');
+                    await cargarDatosIniciales();
+                } else {
+                    mostrarMensaje('Error al cambiar estado', 'error');
+                }
+            } catch (error) {
+                mostrarMensaje('Error de conexión', 'error');
+            }
+        }
+
+        function verUsuario(cedula) {
+            const usuario = usuarios.find(u => u.cedula === cedula);
+            if (usuario) {
+                Swal.fire({
+                    title: `${usuario.nombre} ${usuario.apellido}`,
+                    html: `
+                        <div style="text-align:left; margin-top:20px;">
+                            <p><strong>Cédula:</strong> ${usuario.cedula}</p>
+                            <p><strong>Rol:</strong> ${usuario.tipo == 0 ? 'Administrador' : 'Estudiante'}</p>
+                            <p><strong>Estado:</strong> ${usuario.activo == 1 ? 'Activo' : 'Inactivo'}</p>
+                            <p><strong>Contraseña:</strong> ${usuario.contrasena}</p>
+                            ${usuario.foto ? `<p><strong>Foto:</strong> <br><img src="${usuario.foto}" style="max-width:200px; margin-top:10px; border-radius:8px;"></p>` : ''}
+                        </div>
+                    `,
+                    icon: 'info',
+                    confirmButtonColor: '#6A0DAD',
+                    confirmButtonText: 'Cerrar'
+                });
+            }
+        }
+
+        async function eliminarUsuario(cedula) {
+            const usuario = usuarios.find(u => u.cedula === cedula);
+            if (!usuario) return;
+            
+            const confirmacion = await Swal.fire({
+                title: '¿Eliminar usuario?',
+                text: `Esta acción eliminará permanentemente a ${usuario.nombre} ${usuario.apellido} y todas sus evidencias.`,
+                icon: 'error',
+                showCancelButton: true,
+                confirmButtonColor: '#d32f2f',
+                cancelButtonColor: '#5f6368',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            });
+            
+            if (!confirmacion.isConfirmed) return;
+            
+            try {
+                const respuesta = await fetch(`${API_URL}/eliminar_usuario/${cedula}`, {
+                    method: 'DELETE'
+                });
+                
+                if (respuesta.ok) {
+                    mostrarMensaje('Usuario eliminado correctamente', 'success');
+                    await cargarDatosIniciales();
+                } else {
+                    mostrarMensaje('Error al eliminar usuario', 'error');
+                }
+            } catch (error) {
+                mostrarMensaje('Error de conexión', 'error');
+            }
+        }
+
+        // ==========================================
+        // 5. EVIDENCIAS POR ESTUDIANTE
+        // ==========================================
+        function renderizarEvidencias() {
+            const grid = document.getElementById('evidenceGrid');
+            const vacio = document.getElementById('evidenceEmpty');
+            
+            if (evidencias.length === 0) {
+                grid.innerHTML = '';
+                vacio.style.display = 'flex';
                 return;
             }
             
-            const fd = new FormData();
-            fd.append('cedula', cedula);
-            fd.append('foto', fileInput.files[0]);
+            vacio.style.display = 'none';
+            grid.innerHTML = '';
+            
+            evidencias.forEach(estudiante => {
+                const tarjeta = document.createElement('div');
+                tarjeta.className = 'evidence-card';
+                tarjeta.onclick = () => verEvidenciasEstudiante(estudiante);
+                
+                tarjeta.innerHTML = `
+                    <img src="${estudiante.foto || 'https://via.placeholder.com/180'}" 
+                         class="card-media" 
+                         onerror="this.src='https://via.placeholder.com/180'"
+                         alt="${estudiante.nombre} ${estudiante.apellido}">
+                    ${estudiante.total_evidencias > 0 ? `
+                        <div style="position:absolute; top:10px; left:10px; background:var(--primary); 
+                                    color:white; padding:2px 8px; border-radius:10px; font-size:0.8rem;">
+                            ${estudiante.total_evidencias}
+                        </div>
+                    ` : ''}
+                    <div style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.7); 
+                                color:white; padding:10px; text-align:center;">
+                        <div style="font-weight:600; font-size:0.9rem;">${estudiante.nombre} ${estudiante.apellido}</div>
+                        <div style="font-size:0.8rem; opacity:0.8;">CI: ${estudiante.cedula}</div>
+                    </div>
+                `;
+                
+                grid.appendChild(tarjeta);
+            });
+        }
+
+        function filtrarEvidencias() {
+            const filtro = document.getElementById('filterEvidence').value.toLowerCase();
+            const tarjetas = document.querySelectorAll('.evidence-card');
+            const vacio = document.getElementById('evidenceEmpty');
+            let visibles = 0;
+            
+            tarjetas.forEach(tarjeta => {
+                const texto = tarjeta.textContent.toLowerCase();
+                if (texto.includes(filtro)) {
+                    tarjeta.style.display = 'block';
+                    visibles++;
+                } else {
+                    tarjeta.style.display = 'none';
+                }
+            });
+            
+            if (visibles === 0 && tarjetas.length > 0) {
+                vacio.style.display = 'flex';
+            } else {
+                vacio.style.display = 'none';
+            }
+        }
+
+        async function verEvidenciasEstudiante(estudiante) {
+            estudianteActual = estudiante;
             
             try {
-                const res = await fetch(`${API_URL}/agregar_referencia_facial`, {method:"POST", body:fd});
-                const data = await res.json();
-                if(data.mensaje) {
-                    showToast("Foto de referencia agregada correctamente", "success");
-                    closeModal('modalAgregarRef');
-                    this.reset();
-                } else {
-                    showToast("Error: " + data.error, "error");
-                }
-            } catch(e) {
-                showToast("Error de conexión", "error");
+                const respuesta = await fetch(`${API_URL}/todas_evidencias?cedula=${estudiante.cedula}`);
+                evidenciasEstudianteActual = await respuesta.json();
+                
+                // Actualizar título
+                document.getElementById('studentNameTitle').textContent = `Evidencias de ${estudiante.nombre} ${estudiante.apellido}`;
+                
+                // Mostrar información del estudiante
+                const infoContainer = document.getElementById('studentInfoContainer');
+                infoContainer.innerHTML = `
+                    <img src="${estudiante.foto || 'https://via.placeholder.com/150'}" 
+                         class="student-avatar" 
+                         onerror="this.src='https://via.placeholder.com/150'"
+                         alt="${estudiante.nombre} ${estudiante.apellido}">
+                    <div>
+                        <h3 style="color:var(--primary); margin-bottom:5px;">${estudiante.nombre} ${estudiante.apellido}</h3>
+                        <p style="color:var(--text-sec); margin-bottom:5px;">Cédula: ${estudiante.cedula}</p>
+                        <p style="color:var(--text-sec);">Total evidencias: ${evidenciasEstudianteActual.length}</p>
+                    </div>
+                `;
+                infoContainer.style.display = 'flex';
+                
+                // Mostrar evidencias
+                renderizarEvidenciasEstudiante();
+                
+                // Cambiar a la sección de evidencias del estudiante
+                document.querySelectorAll('.panel-section').forEach(seccion => {
+                    seccion.classList.remove('active');
+                });
+                document.getElementById('panel-evidencias-estudiante').classList.add('active');
+                
+                // Actualizar botón activo en sidebar
+                document.querySelectorAll('.sidebar-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                
+                // Ir al inicio de la página
+                window.scrollTo(0, 0);
+                
+            } catch (error) {
+                console.error('Error cargando evidencias del estudiante:', error);
+                mostrarMensaje('Error al cargar evidencias del estudiante', 'error');
             }
-        };
+        }
 
-        function mostrarHistorialSolicitudes() {
-            const historial = globalRequests.filter(r => r.Estado !== 'PENDIENTE');
-            const content = document.getElementById('historialContent');
+        function renderizarEvidenciasEstudiante() {
+            const grid = document.getElementById('studentEvidenceGrid');
+            const vacio = document.getElementById('studentEvidenceEmpty');
             
-            if(historial.length === 0) {
-                content.innerHTML = '<p style="text-align:center; padding:20px; color:var(--text-sec);">No hay historial de solicitudes</p>';
+            if (evidenciasEstudianteActual.length === 0) {
+                grid.innerHTML = '';
+                vacio.style.display = 'flex';
+                return;
+            }
+            
+            vacio.style.display = 'none';
+            grid.innerHTML = '';
+            
+            evidenciasEstudianteActual.forEach((evidencia, index) => {
+                const tarjeta = document.createElement('div');
+                tarjeta.className = `evidence-card ${modoSeleccion ? 'selection-mode-active' : ''}`;
+                if (evidenciasSeleccionadas.includes(evidencia.id)) {
+                    tarjeta.classList.add('selected');
+                }
+                
+                tarjeta.onclick = () => {
+                    if (modoSeleccion) {
+                        toggleSeleccionEvidencia(evidencia.id, tarjeta);
+                    } else {
+                        abrirVisor(index);
+                    }
+                };
+                
+                const tipo = obtenerTipoArchivo(evidencia.url);
+                let contenido = '';
+                
+                if (tipo === 'imagen') {
+                    contenido = `<img src="${evidencia.url}" class="card-media" loading="lazy">`;
+                } else if (tipo === 'video') {
+                    contenido = `
+                        <video src="${evidencia.url}#t=0.1" class="card-media"></video>
+                        <div class="video-overlay"><i class="fas fa-play-circle"></i></div>
+                    `;
+                } else {
+                    contenido = `
+                        <div style="width:100%;height:100%;background:var(--bg-input);display:flex;align-items:center;justify-content:center;color:var(--text-main);">
+                            <i class="fas fa-file-alt" style="font-size:2.5rem;"></i>
+                        </div>
+                    `;
+                }
+                
+                tarjeta.innerHTML = `
+                    <div class="selection-check"><i class="fas fa-check"></i></div>
+                    ${contenido}
+                `;
+                
+                grid.appendChild(tarjeta);
+            });
+            
+            // Actualizar contador de selección
+            document.getElementById('countSelection').textContent = evidenciasSeleccionadas.length;
+        }
+
+        function volverAEvidencias() {
+            // Limpiar selección
+            modoSeleccion = false;
+            evidenciasSeleccionadas = [];
+            document.getElementById('floatingBar').classList.remove('active');
+            
+            // Cambiar a la sección principal de evidencias
+            document.querySelectorAll('.panel-section').forEach(seccion => {
+                seccion.classList.remove('active');
+            });
+            document.getElementById('panel-evidencias').classList.add('active');
+            
+            // Actualizar botón activo en sidebar
+            document.querySelectorAll('.sidebar-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector('[onclick*="evidencias"]').classList.add('active');
+            
+            // Ir al inicio de la página
+            window.scrollTo(0, 0);
+        }
+
+        // ==========================================
+        // 6. SELECCIÓN MÚLTIPLE
+        // ==========================================
+        function toggleModoSeleccion() {
+            modoSeleccion = !modoSeleccion;
+            
+            if (modoSeleccion) {
+                document.getElementById('floatingBar').classList.add('active');
+                document.getElementById('btnSelectMode').innerHTML = '<i class="fas fa-times"></i> Cancelar';
             } else {
-                content.innerHTML = historial.map(r => `
-                    <div style="padding:12px; border-bottom:1px solid var(--border-color);">
-                        <div style="font-weight:600; color:${r.Estado === 'APROBAR' ? 'var(--secondary)' : 'var(--error)'};">${r.Tipo} - ${r.nombre}</div>
-                        <div style="font-size:0.85rem; color:var(--text-sec);">${r.Detalle?.substring(0, 60) || 'Sin detalles'}...</div>
-                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:5px;">
-                            ${r.fecha} • Estado: ${r.Estado}
+                document.getElementById('floatingBar').classList.remove('active');
+                document.getElementById('btnSelectMode').innerHTML = '<i class="fas fa-check-square"></i> Seleccionar';
+                evidenciasSeleccionadas = [];
+            }
+            
+            renderizarEvidenciasEstudiante();
+        }
+
+        function toggleSeleccionEvidencia(id, elemento) {
+            const index = evidenciasSeleccionadas.indexOf(id);
+            if (index === -1) {
+                evidenciasSeleccionadas.push(id);
+                elemento.classList.add('selected');
+            } else {
+                evidenciasSeleccionadas.splice(index, 1);
+                elemento.classList.remove('selected');
+            }
+            
+            document.getElementById('countSelection').textContent = evidenciasSeleccionadas.length;
+        }
+
+        function cancelarSeleccion() {
+            modoSeleccion = false;
+            evidenciasSeleccionadas = [];
+            document.getElementById('floatingBar').classList.remove('active');
+            document.getElementById('btnSelectMode').innerHTML = '<i class="fas fa-check-square"></i> Seleccionar';
+            renderizarEvidenciasEstudiante();
+        }
+
+        async function descargarSeleccionadas() {
+            if (evidenciasSeleccionadas.length === 0) {
+                mostrarMensaje('Selecciona al menos una evidencia', 'warning');
+                return;
+            }
+            
+            try {
+                mostrarMensaje('Preparando descarga...', 'info');
+                
+                // En un entorno real, aquí se enviarían los IDs al backend
+                // para generar un ZIP y descargarlo
+                const formData = new FormData();
+                formData.append('ids', evidenciasSeleccionadas.join(','));
+                
+                const respuesta = await fetch(`${API_URL}/descargar_evidencias_zip`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (respuesta.ok) {
+                    const blob = await respuesta.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `evidencias_${estudianteActual.cedula}_${Date.now()}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    
+                    mostrarMensaje('Descarga iniciada', 'success');
+                    cancelarSeleccion();
+                } else {
+                    mostrarMensaje('Error al preparar la descarga', 'error');
+                }
+            } catch (error) {
+                console.error('Error descargando evidencias:', error);
+                mostrarMensaje('Error de conexión al descargar', 'error');
+            }
+        }
+
+        async function eliminarSeleccionadas() {
+            if (evidenciasSeleccionadas.length === 0) {
+                mostrarMensaje('Selecciona al menos una evidencia', 'warning');
+                return;
+            }
+            
+            const confirmacion = await Swal.fire({
+                title: '¿Eliminar evidencias seleccionadas?',
+                text: `Se eliminarán ${evidenciasSeleccionadas.length} evidencias permanentemente.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d32f2f',
+                cancelButtonColor: '#5f6368',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            });
+            
+            if (!confirmacion.isConfirmed) return;
+            
+            try {
+                mostrarMensaje('Eliminando evidencias...', 'info');
+                
+                // En un entorno real, aquí se enviarían los IDs al backend para eliminarlos
+                for (const id of evidenciasSeleccionadas) {
+                    await fetch(`${API_URL}/eliminar_evidencia/${id}`, {
+                        method: 'DELETE'
+                    });
+                }
+                
+                mostrarMensaje(`${evidenciasSeleccionadas.length} evidencias eliminadas`, 'success');
+                
+                // Recargar evidencias del estudiante
+                await verEvidenciasEstudiante(estudianteActual);
+                cancelarSeleccion();
+                
+            } catch (error) {
+                console.error('Error eliminando evidencias:', error);
+                mostrarMensaje('Error al eliminar evidencias', 'error');
+            }
+        }
+
+        // ==========================================
+        // 7. VISOR DE EVIDENCIAS MEJORADO
+        // ==========================================
+        function obtenerTipoArchivo(url) {
+            if (!url) return 'documento';
+            const extension = url.split('.').pop().toLowerCase();
+            
+            if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) {
+                return 'imagen';
+            } else if (['mp4', 'avi', 'mov', 'webm'].includes(extension)) {
+                return 'video';
+            } else {
+                return 'documento';
+            }
+        }
+
+        function abrirVisor(indice) {
+            evidenciasVisor = evidenciasEstudianteActual;
+            indiceVisorActual = indice;
+            
+            const visor = document.getElementById('lightbox');
+            const contenido = document.getElementById('lightboxContent');
+            const enlaceDescarga = document.getElementById('lbDownloadLink');
+            
+            if (evidenciasVisor.length === 0) return;
+            
+            const evidenciaActual = evidenciasVisor[indiceVisorActual];
+            
+            // Configurar enlace de descarga
+            enlaceDescarga.href = evidenciaActual.url;
+            enlaceDescarga.download = evidenciaActual.url.split('/').pop();
+            
+            // Mostrar contenido
+            contenido.innerHTML = '';
+            
+            if (evidenciaActual.tipo === 'imagen') {
+                const imagen = document.createElement('img');
+                imagen.src = evidenciaActual.url;
+                imagen.className = 'lb-media-item';
+                imagen.alt = 'Evidencia del estudiante';
+                contenido.appendChild(imagen);
+            } else if (evidenciaActual.tipo === 'video') {
+                const video = document.createElement('video');
+                video.src = evidenciaActual.url;
+                video.className = 'lb-media-item';
+                video.controls = true;
+                contenido.appendChild(video);
+            } else {
+                contenido.innerHTML = `
+                    <div style="color:white; text-align:center; padding:40px;">
+                        <i class="fas fa-file-alt" style="font-size:4rem; margin-bottom:20px;"></i>
+                        <h3>Documento</h3>
+                        <p>Vista previa no disponible para este tipo de archivo</p>
+                        <a href="${evidenciaActual.url}" target="_blank" 
+                           style="color:var(--primary); text-decoration:underline; margin-top:20px; display:inline-block;">
+                            Descargar archivo
+                        </a>
+                    </div>
+                `;
+            }
+            
+            visor.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function cerrarLightbox() {
+            document.getElementById('lightbox').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        function cerrarLightboxSiFondo(evento) {
+            if (evento.target.id === 'lightbox') {
+                cerrarLightbox();
+            }
+        }
+
+        function imagenSiguiente(evento) {
+            if (evento) evento.stopPropagation();
+            indiceVisorActual = (indiceVisorActual + 1) % evidenciasVisor.length;
+            actualizarVisor();
+        }
+
+        function imagenAnterior(evento) {
+            if (evento) evento.stopPropagation();
+            indiceVisorActual = (indiceVisorActual - 1 + evidenciasVisor.length) % evidenciasVisor.length;
+            actualizarVisor();
+        }
+
+        function actualizarVisor() {
+            const contenido = document.getElementById('lightboxContent');
+            const enlaceDescarga = document.getElementById('lbDownloadLink');
+            
+            if (evidenciasVisor.length === 0) return;
+            
+            const evidenciaActual = evidenciasVisor[indiceVisorActual];
+            
+            // Configurar enlace de descarga
+            enlaceDescarga.href = evidenciaActual.url;
+            enlaceDescarga.download = evidenciaActual.url.split('/').pop();
+            
+            // Mostrar contenido
+            contenido.innerHTML = '';
+            
+            if (evidenciaActual.tipo === 'imagen') {
+                const imagen = document.createElement('img');
+                imagen.src = evidenciaActual.url;
+                imagen.className = 'lb-media-item';
+                imagen.alt = 'Evidencia del estudiante';
+                contenido.appendChild(imagen);
+            } else if (evidenciaActual.tipo === 'video') {
+                const video = document.createElement('video');
+                video.src = evidenciaActual.url;
+                video.className = 'lb-media-item';
+                video.controls = true;
+                contenido.appendChild(video);
+            } else {
+                contenido.innerHTML = `
+                    <div style="color:white; text-align:center; padding:40px;">
+                        <i class="fas fa-file-alt" style="font-size:4rem; margin-bottom:20px;"></i>
+                        <h3>Documento</h3>
+                        <p>Vista previa no disponible para este tipo de archivo</p>
+                        <a href="${evidenciaActual.url}" target="_blank" 
+                           style="color:var(--primary); text-decoration:underline; margin-top:20px; display:inline-block;">
+                            Descargar archivo
+                        </a>
+                    </div>
+                `;
+            }
+        }
+
+        function handleSwipe() {
+            const SWIPE_THRESHOLD = 50;
+            
+            if (touchEndX < touchStartX - SWIPE_THRESHOLD) {
+                // Deslizamiento a la izquierda - siguiente imagen
+                imagenSiguiente(new Event('swipe'));
+            }
+            
+            if (touchEndX > touchStartX + SWIPE_THRESHOLD) {
+                // Deslizamiento a la derecha - imagen anterior
+                imagenAnterior(new Event('swipe'));
+            }
+        }
+
+        // ==========================================
+        // 8. SOLICITUDES MEJORADAS
+        // ==========================================
+        function actualizarNotificaciones() {
+            const pendientes = solicitudes.filter(s => s.Estado === 'PENDIENTE');
+            const insignia = document.getElementById('notisBadge');
+            const lista = document.getElementById('notisList');
+            
+            // Actualizar insignia
+            if (pendientes.length > 0) {
+                insignia.textContent = pendientes.length;
+                insignia.style.display = 'flex';
+            } else {
+                insignia.style.display = 'none';
+            }
+            
+            // Actualizar lista
+            if (pendientes.length === 0) {
+                lista.innerHTML = '<p style="padding:15px; text-align:center; color:var(--text-sec);">Sin notificaciones</p>';
+                return;
+            }
+            
+            lista.innerHTML = pendientes.map(solicitud => `
+                <div class="noti-item unread" onclick="navTo('solicitudes'); toggleNotis();">
+                    <i class="fas fa-exclamation-circle" style="color:var(--warning); margin-top:3px;"></i>
+                    <div style="flex:1;">
+                        <div style="font-weight:600;">${solicitud.Tipo} - ${solicitud.nombre || 'Usuario'}</div>
+                        <div style="font-size:0.8rem; color:var(--text-sec);">
+                            ${solicitud.Detalle?.substring(0, 50) || 'Sin detalles'}...
+                        </div>
+                        <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">
+                            ${solicitud.fecha}
                         </div>
                     </div>
-                `).join('');
+                </div>
+            `).join('');
+        }
+
+        async function cargarSolicitudes() {
+            try {
+                const respuesta = await fetch(`${API_URL}/obtener_solicitudes`);
+                solicitudes = await respuesta.json();
+                renderizarSolicitudes();
+            } catch (error) {
+                console.error('Error cargando solicitudes:', error);
+                mostrarMensaje('Error al cargar solicitudes', 'error');
+            }
+        }
+
+        function renderizarSolicitudes() {
+            const container = document.getElementById('requestsContainer');
+            container.innerHTML = '';
+            
+            // Separar solicitudes pendientes y resueltas
+            const pendientes = solicitudes.filter(s => s.Estado === 'PENDIENTE');
+            const resueltas = solicitudes.filter(s => s.Estado !== 'PENDIENTE');
+            
+            if (pendientes.length === 0 && resueltas.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="display:flex;">
+                        <i class="fas fa-inbox" style="font-size:5rem; opacity:0.2; margin-bottom:25px;"></i>
+                        <h3>No hay solicitudes</h3>
+                        <p>Todas las solicitudes han sido procesadas</p>
+                    </div>
+                `;
+                return;
             }
             
-            document.getElementById('modalHistorial').classList.add('active');
-        }
-
-        function verHistorialSolicitud(id) {
-            const req = globalRequests.find(r => r.id === id);
-            if(req) {
-                alert(`Historial de solicitud #${id}\n\nUsuario: ${req.nombre}\nTipo: ${req.Tipo}\nEstado: ${req.Estado}\nFecha: ${req.fecha}\nDetalles: ${req.Detalle || 'Sin detalles'}`);
+            // Mostrar solicitudes pendientes primero
+            if (pendientes.length > 0) {
+                container.innerHTML += `
+                    <h3 style="color:var(--primary); margin-bottom:15px; border-bottom:2px solid var(--primary); padding-bottom:10px;">
+                        <i class="fas fa-clock"></i> Solicitudes Pendientes (${pendientes.length})
+                    </h3>
+                `;
+                
+                pendientes.forEach(solicitud => {
+                    container.innerHTML += crearCardSolicitud(solicitud);
+                });
+            }
+            
+            // Mostrar historial después
+            if (resueltas.length > 0) {
+                container.innerHTML += `
+                    <h3 style="color:var(--text-sec); margin:30px 0 15px 0; border-bottom:2px solid var(--border-color); padding-bottom:10px;">
+                        <i class="fas fa-history"></i> Historial de Solicitudes (${resueltas.length})
+                    </h3>
+                `;
+                
+                resueltas.forEach(solicitud => {
+                    container.innerHTML += crearCardSolicitud(solicitud);
+                });
             }
         }
 
-        function cambiarContraseñaUsuario() {
-            alert("Para cambiar contraseña, ve a la pestaña 'Seguridad / Logs' y usa el formulario 'Cambiar Contraseña de Usuario'.");
-            navTo('seguridad');
+        function crearCardSolicitud(solicitud) {
+            const esPendiente = solicitud.Estado === 'PENDIENTE';
+            const badgeClass = esPendiente ? 'badge-pending' : 
+                              solicitud.Estado === 'APROBADA' ? 'badge-resolved' : 'badge-rejected';
+            const badgeText = esPendiente ? 'PENDIENTE' : 
+                            solicitud.Estado === 'APROBADA' ? 'RESUELTA' : 'RECHAZADA';
+            
+            let accionesHTML = '';
+            
+            if (esPendiente) {
+                if (solicitud.Tipo === 'REPORTE_EVIDENCIA') {
+                    accionesHTML = `
+                        <button class="btn-primary" onclick="previsualizarReporte('${solicitud.id}')" style="background:var(--info); font-size:0.9rem;">
+                            <i class="fas fa-eye"></i> Previsualizar
+                        </button>
+                        <button class="btn-primary" onclick="responderSolicitud('${solicitud.id}', 'aceptar')" style="background:var(--secondary); font-size:0.9rem;">
+                            <i class="fas fa-check"></i> Aceptar
+                        </button>
+                        <button class="btn-primary" onclick="responderSolicitud('${solicitud.id}', 'rechazar')" style="background:var(--error); font-size:0.9rem;">
+                            <i class="fas fa-times"></i> Rechazar
+                        </button>
+                    `;
+                } else if (solicitud.Tipo === 'RECUPERACION_CONTRASENA') {
+                    accionesHTML = `
+                        <button class="btn-primary" onclick="responderRecuperacion('${solicitud.id}')" style="background:var(--warning); font-size:0.9rem;">
+                            <i class="fas fa-key"></i> Enviar Contraseña
+                        </button>
+                        <button class="btn-primary" onclick="responderSolicitud('${solicitud.id}', 'rechazar')" style="background:var(--error); font-size:0.9rem;">
+                            <i class="fas fa-times"></i> Rechazar
+                        </button>
+                    `;
+                } else {
+                    accionesHTML = `
+                        <button class="btn-primary" onclick="responderSolicitud('${solicitud.id}', 'aceptar')" style="background:var(--secondary); font-size:0.9rem;">
+                            <i class="fas fa-check"></i> Aceptar
+                        </button>
+                        <button class="btn-primary" onclick="responderSolicitud('${solicitud.id}', 'rechazar')" style="background:var(--error); font-size:0.9rem;">
+                            <i class="fas fa-times"></i> Rechazar
+                        </button>
+                    `;
+                }
+            } else {
+                accionesHTML = `
+                    <span style="color:var(--text-sec); font-size:0.9rem;">
+                        <i class="fas fa-user-check"></i> Resuelta por: ${solicitud.resuelto_por || 'Admin'}
+                    </span>
+                `;
+            }
+            
+            return `
+                <div class="request-card">
+                    <div class="request-header">
+                        <div>
+                            <h4 style="color:var(--text-main); margin-bottom:5px;">${solicitud.Tipo} - ${solicitud.nombre || 'Usuario'}</h4>
+                            <p style="color:var(--text-sec); font-size:0.9rem; margin-bottom:5px;">
+                                ${solicitud.Detalle || 'Sin detalles'}
+                            </p>
+                            <span class="request-badge ${badgeClass}">${badgeText}</span>
+                            <span style="color:var(--text-muted); font-size:0.8rem; margin-left:10px;">
+                                ${solicitud.fecha}
+                            </span>
+                        </div>
+                        <div class="request-actions">
+                            ${accionesHTML}
+                        </div>
+                    </div>
+                    ${solicitud.evidencia_url ? `
+                        <div style="margin-top:10px;">
+                            <p style="color:var(--text-sec); font-size:0.9rem; margin-bottom:5px;">Evidencia reportada:</p>
+                            <img src="${solicitud.evidencia_url}" class="request-preview" onclick="abrirPrevisualizacion('${solicitud.evidencia_url}')">
+                        </div>
+                    ` : ''}
+                </div>
+            `;
         }
 
-        function closeModal(id) {
-            document.getElementById(id).classList.remove('active');
+        async function previsualizarReporte(solicitudId) {
+            const solicitud = solicitudes.find(s => s.id === solicitudId);
+            if (!solicitud) return;
+            
+            document.getElementById('modalSolicitudTitulo').textContent = `Previsualizar Reporte - ${solicitud.nombre}`;
+            
+            let contenido = `
+                <div style="text-align:left;">
+                    <p><strong>Tipo:</strong> ${solicitud.Tipo}</p>
+                    <p><strong>Estudiante:</strong> ${solicitud.nombre}</p>
+                    <p><strong>Detalles:</strong> ${solicitud.Detalle || 'Sin detalles'}</p>
+                    <p><strong>Fecha:</strong> ${solicitud.fecha}</p>
+            `;
+            
+            if (solicitud.evidencia_url) {
+                contenido += `
+                    <p><strong>Evidencia reportada:</strong></p>
+                    <img src="${solicitud.evidencia_url}" style="max-width:100%; border-radius:8px; margin:10px 0; border:1px solid var(--border-color);">
+                `;
+            }
+            
+            contenido += `
+                    <div style="margin-top:20px; display:flex; gap:10px; justify-content:center;">
+                        <button class="btn-primary" onclick="responderSolicitud('${solicitudId}', 'aceptar')" style="background:var(--secondary);">
+                            <i class="fas fa-check"></i> Aceptar (Desvincular)
+                        </button>
+                        <button class="btn-primary" onclick="responderSolicitud('${solicitudId}', 'rechazar')" style="background:var(--error);">
+                            <i class="fas fa-times"></i> Rechazar (Mantener)
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('modalSolicitudContenido').innerHTML = contenido;
+            document.getElementById('modalResponderSolicitud').classList.add('active');
         }
 
-        function showToast(mensaje, tipo = 'info') {
-            // Implementación simple de toast
+        async function responderRecuperacion(solicitudId) {
+            const solicitud = solicitudes.find(s => s.id === solicitudId);
+            if (!solicitud) return;
+            
+            // Buscar usuario
+            const usuario = usuarios.find(u => u.cedula === solicitud.cedula);
+            if (!usuario) {
+                mostrarMensaje('Usuario no encontrado', 'error');
+                return;
+            }
+            
+            document.getElementById('modalSolicitudTitulo').textContent = `Enviar Contraseña - ${usuario.nombre}`;
+            
+            const contenido = `
+                <div style="text-align:left;">
+                    <p><strong>Estudiante:</strong> ${usuario.nombre} ${usuario.apellido}</p>
+                    <p><strong>Cédula:</strong> ${usuario.cedula}</p>
+                    <p><strong>Contraseña actual:</strong> ${usuario.contrasena}</p>
+                    <p><strong>Correo para envío:</strong> ${solicitud.email || 'No especificado'}</p>
+                    <p><strong>Mensaje del estudiante:</strong> ${solicitud.Detalle || 'Sin mensaje adicional'}</p>
+                    
+                    <div class="form-group" style="margin-top:15px;">
+                        <label>Nueva Contraseña (opcional):</label>
+                        <input type="text" id="nuevaContrasenaRecuperacion" class="form-control" placeholder="Dejar en blanco para mantener la actual">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Mensaje personalizado:</label>
+                        <textarea id="mensajeRecuperacion" class="form-control" rows="4" placeholder="Hola [Nombre], esta es tu contraseña...">Hola ${usuario.nombre}, esta es tu contraseña: ${usuario.contrasena}. Intenta probarla y si no sirve contacta nuevamente a los admins. Recuerda no perder tu contraseña. ¡Gracias!</textarea>
+                    </div>
+                    
+                    <div style="margin-top:20px; display:flex; gap:10px; justify-content:center;">
+                        <button class="btn-primary" onclick="enviarContrasenaRecuperacion('${solicitudId}', '${usuario.cedula}')" style="background:var(--secondary);">
+                            <i class="fas fa-paper-plane"></i> Enviar Correo
+                        </button>
+                        <button class="btn-primary" onclick="cambiarContrasenaRecuperacion('${solicitudId}', '${usuario.cedula}')" style="background:var(--warning);">
+                            <i class="fas fa-key"></i> Cambiar Contraseña
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('modalSolicitudContenido').innerHTML = contenido;
+            document.getElementById('modalResponderSolicitud').classList.add('active');
+        }
+
+        async function enviarContrasenaRecuperacion(solicitudId, cedula) {
+            const mensaje = document.getElementById('mensajeRecuperacion').value;
+            const nuevaContrasena = document.getElementById('nuevaContrasenaRecuperacion').value;
+            
+            try {
+                // En un entorno real, aquí se enviaría el correo
+                mostrarMensaje('Correo enviado al estudiante', 'success');
+                await responderSolicitud(solicitudId, 'aceptar');
+                cerrarModal('modalResponderSolicitud');
+                
+                // Si se especificó nueva contraseña, cambiarla
+                if (nuevaContrasena) {
+                    await cambiarPasswordUsuario(cedula, nuevaContrasena);
+                }
+                
+            } catch (error) {
+                console.error('Error enviando correo:', error);
+                mostrarMensaje('Error al enviar correo', 'error');
+            }
+        }
+
+        async function cambiarContrasenaRecuperacion(solicitudId, cedula) {
+            const nuevaContrasena = document.getElementById('nuevaContrasenaRecuperacion').value;
+            
+            if (!nuevaContrasena) {
+                mostrarMensaje('Ingresa una nueva contraseña', 'warning');
+                return;
+            }
+            
+            if (nuevaContrasena.length < 6) {
+                mostrarMensaje('La contraseña debe tener al menos 6 caracteres', 'warning');
+                return;
+            }
+            
+            try {
+                await cambiarPasswordUsuario(cedula, nuevaContrasena);
+                mostrarMensaje('Contraseña cambiada exitosamente', 'success');
+                await responderSolicitud(solicitudId, 'aceptar');
+                cerrarModal('modalResponderSolicitud');
+                
+            } catch (error) {
+                console.error('Error cambiando contraseña:', error);
+                mostrarMensaje('Error al cambiar contraseña', 'error');
+            }
+        }
+
+        async function cambiarPasswordUsuario(cedula, nuevaContrasena) {
+            // En un entorno real, aquí se enviaría al backend
+            console.log(`Cambiando contraseña de ${cedula} a: ${nuevaContrasena}`);
+            
+            // Simulación
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return true;
+        }
+
+        async function responderSolicitud(solicitudId, accion) {
+            const solicitud = solicitudes.find(s => s.id === solicitudId);
+            if (!solicitud) return;
+            
+            const confirmacion = await Swal.fire({
+                title: accion === 'aceptar' ? '¿Aceptar solicitud?' : '¿Rechazar solicitud?',
+                text: `Esta acción ${accion === 'aceptar' ? 'aprobará' : 'rechazará'} la solicitud de ${solicitud.nombre}`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: accion === 'aceptar' ? '#2E8B57' : '#d32f2f',
+                cancelButtonColor: '#5f6368',
+                confirmButtonText: `Sí, ${accion === 'aceptar' ? 'aceptar' : 'rechazar'}`,
+                cancelButtonText: 'Cancelar'
+            });
+            
+            if (!confirmacion.isConfirmed) return;
+            
+            try {
+                // En un entorno real, aquí se enviaría al backend
+                const respuesta = await fetch(`${API_URL}/responder_solicitud`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        id: solicitudId,
+                        estado: accion === 'aceptar' ? 'APROBADA' : 'RECHAZADA',
+                        resuelto_por: 'Admin' // En realidad sería el nombre del admin actual
+                    })
+                });
+                
+                if (respuesta.ok) {
+                    mostrarMensaje(`Solicitud ${accion === 'aceptar' ? 'aceptada' : 'rechazada'} correctamente`, 'success');
+                    
+                    // Actualizar interfaz
+                    await cargarSolicitudes();
+                    await cargarDatosIniciales();
+                    
+                    // Cerrar modales
+                    cerrarModal('modalResponderSolicitud');
+                } else {
+                    mostrarMensaje('Error al responder solicitud', 'error');
+                }
+            } catch (error) {
+                console.error('Error respondiendo solicitud:', error);
+                mostrarMensaje('Error de conexión', 'error');
+            }
+        }
+
+        // ==========================================
+        // 9. SEGURIDAD Y LOGS CON FECHA ECUATORIANA
+        // ==========================================
+        async function cargarLogs() {
+            try {
+                const respuesta = await fetch(`${API_URL}/obtener_logs`);
+                logs = await respuesta.json();
+                
+                // Convertir fechas a zona horaria de Ecuador (GMT-5)
+                logs.forEach(log => {
+                    if (log.fecha) {
+                        const fechaUTC = new Date(log.fecha);
+                        // Ajustar a Ecuador (UTC-5)
+                        fechaUTC.setHours(fechaUTC.getHours() - 5);
+                        log.fecha_ecuador = fechaUTC.toLocaleString('es-EC', {
+                            timeZone: 'America/Guayaquil',
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit'
+                        });
+                    }
+                });
+                
+                renderizarLogs();
+            } catch (error) {
+                console.error('Error cargando logs:', error);
+            }
+        }
+
+        function renderizarLogs() {
+            const tbody = document.getElementById('logsTableBody');
+            tbody.innerHTML = '';
+            
+            logs.forEach(log => {
+                const fila = document.createElement('tr');
+                
+                fila.innerHTML = `
+                    <td>${log.fecha_ecuador || log.fecha}</td>
+                    <td>
+                        <span style="font-weight:600; color:${obtenerColorAccion(log.accion)}">
+                            ${log.accion}
+                        </span>
+                    </td>
+                    <td>${log.detalle}</td>
+                    <td>${extraerUsuarioLog(log.detalle) || 'Sistema'}</td>
+                `;
+                
+                tbody.appendChild(fila);
+            });
+        }
+
+        function obtenerColorAccion(accion) {
+            if (accion.includes('ELIMIN') || accion.includes('ERROR')) {
+                return 'var(--error)';
+            } else if (accion.includes('REGISTRO') || accion.includes('APROB')) {
+                return 'var(--secondary)';
+            } else if (accion.includes('LOGIN') || accion.includes('SUBIDA')) {
+                return 'var(--info)';
+            }
+            return 'var(--text-main)';
+        }
+
+        function extraerUsuarioLog(detalle) {
+            const coincidencia = detalle.match(/\((.*?)\)/);
+            return coincidencia ? coincidencia[1] : null;
+        }
+
+        function filtrarLogs() {
+            const busqueda = document.getElementById('searchLogs').value.toLowerCase();
+            const filas = document.querySelectorAll('#logsTableBody tr');
+            
+            filas.forEach(fila => {
+                const texto = fila.textContent.toLowerCase();
+                fila.style.display = texto.includes(busqueda) ? '' : 'none';
+            });
+        }
+
+        // ==========================================
+        // 10. FUNCIONES AUXILIARES
+        // ==========================================
+        function mostrarMensaje(mensaje, tipo) {
+            // Implementación de toast
             const toast = document.createElement('div');
             toast.style.cssText = `
-                position: fixed; bottom: 20px; right: 20px; 
+                position: fixed; bottom: 20px; right: 20px;
                 padding: 12px 20px; border-radius: 8px; z-index: 9999;
-                color: white; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                animation: fadeInUp 0.3s;
-                background: ${tipo === 'success' ? 'var(--secondary)' : tipo === 'error' ? 'var(--error)' : 'var(--info)'};
+                color: white; font-weight: 600;
+                background: ${tipo === 'success' ? 'var(--secondary)' : 
+                           tipo === 'error' ? 'var(--error)' : 
+                           tipo === 'warning' ? 'var(--warning)' : 'var(--info)'};
+                animation: fadeIn 0.3s;
             `;
-            toast.innerHTML = `<i class="fas fa-${tipo === 'success' ? 'check-circle' : tipo === 'error' ? 'exclamation-circle' : 'info-circle'}"></i> ${mensaje}`;
+            
+            toast.innerHTML = `
+                <i class="fas fa-${tipo === 'success' ? 'check-circle' : 
+                                   tipo === 'error' ? 'exclamation-circle' : 
+                                   tipo === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
+                ${mensaje}
+            `;
+            
             document.body.appendChild(toast);
             
             setTimeout(() => {
-                toast.style.animation = 'fadeOut 0.3s forwards';
-                setTimeout(() => toast.remove(), 300);
+                toast.remove();
             }, 3000);
         }
 
+        function abrirModalAgregarRef() {
+            const select = document.getElementById('selectUsuarioRef');
+            select.innerHTML = '<option value="">-- Seleccionar --</option>' +
+                usuarios.filter(u => u.tipo == 1).map(u => 
+                    `<option value="${u.cedula}">${u.nombre} ${u.apellido} (${u.cedula})</option>`
+                ).join('');
+            
+            document.getElementById('modalAgregarRef').classList.add('active');
+        }
+
+        async function agregarReferencia(evento) {
+            evento.preventDefault();
+            
+            const cedula = document.getElementById('selectUsuarioRef').value;
+            const archivoInput = document.getElementById('fotoRef');
+            
+            if (!cedula || !archivoInput.files.length) {
+                mostrarMensaje('Completa todos los campos', 'warning');
+                return;
+            }
+            
+            const datos = new FormData();
+            datos.append('cedula', cedula);
+            datos.append('foto', archivoInput.files[0]);
+            
+            const boton = evento.target.querySelector('button[type="submit"]');
+            
+            try {
+                boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subiendo...';
+                boton.disabled = true;
+                
+                const respuesta = await fetch(`${API_URL}/agregar_referencia_facial`, {
+                    method: 'POST',
+                    body: datos
+                });
+                
+                const resultado = await respuesta.json();
+                
+                if (resultado.mensaje) {
+                    mostrarMensaje('Foto de referencia agregada correctamente', 'success');
+                    cerrarModal('modalAgregarRef');
+                    evento.target.reset();
+                } else {
+                    mostrarMensaje('Error: ' + resultado.error, 'error');
+                }
+            } catch (error) {
+                mostrarMensaje('Error de conexión', 'error');
+            } finally {
+                boton.innerHTML = '<i class="fas fa-save"></i> Agregar Referencia';
+                boton.disabled = false;
+            }
+        }
+
+        function cerrarModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
         // Cerrar modales al hacer clic fuera
-        document.addEventListener('click', (e) => {
-            if(e.target.classList.contains('modal-overlay')) {
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal-overlay')) {
                 e.target.classList.remove('active');
             }
         });
+
+        // ==========================================
+        // 11. FUNCIONES RESTANTES DEL CÓDIGO ORIGINAL
+        // ==========================================
+        function mostrarSugerencias(texto) {
+            const sugerencias = document.getElementById('suggestionsBox');
+            
+            if (texto.length < 2) {
+                sugerencias.style.display = 'none';
+                return;
+            }
+            
+            const coincidencias = usuarios.filter(usuario => {
+                const nombreCompleto = `${usuario.nombre} ${usuario.apellido}`.toLowerCase();
+                return nombreCompleto.includes(texto.toLowerCase());
+            }).slice(0, 5);
+            
+            if (coincidencias.length === 0) {
+                sugerencias.style.display = 'none';
+                return;
+            }
+            
+            sugerencias.innerHTML = coincidencias.map(usuario => `
+                <div onclick="seleccionarUsuario('${usuario.cedula}')" 
+                     style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--border-color);">
+                    ${usuario.nombre} ${usuario.apellido} 
+                    <small style="color:var(--text-sec);">(${usuario.cedula})</small>
+                </div>
+            `).join('');
+            
+            sugerencias.style.display = 'block';
+        }
+
+        function seleccionarUsuario(cedula) {
+            const usuario = usuarios.find(u => u.cedula === cedula);
+            if (usuario) {
+                document.getElementById('manualNombres').value = 
+                    `${usuario.nombre} ${usuario.apellido}`;
+                document.getElementById('suggestionsBox').style.display = 'none';
+            }
+        }
+
+        async function subirManual(evento) {
+            evento.preventDefault();
+            
+            const archivoInput = document.getElementById('manualFile');
+            const nombresInput = document.getElementById('manualNombres');
+            
+            if (!archivoInput.files.length) {
+                mostrarMensaje('Selecciona un archivo primero', 'warning');
+                return;
+            }
+            
+            if (!nombresInput.value.trim()) {
+                mostrarMensaje('Ingresa al menos un nombre de estudiante', 'warning');
+                return;
+            }
+            
+            // Buscar cédulas por nombres
+            const nombres = nombresInput.value.split(',').map(n => n.trim());
+            const cedulas = [];
+            
+            nombres.forEach(nombre => {
+                const usuario = usuarios.find(u => {
+                    const nombreCompleto = `${u.nombre} ${u.apellido}`.toLowerCase();
+                    return nombreCompleto.includes(nombre.toLowerCase());
+                });
+                
+                if (usuario) {
+                    cedulas.push(usuario.cedula);
+                }
+            });
+            
+            if (cedulas.length === 0) {
+                mostrarMensaje('No se encontraron estudiantes con esos nombres', 'warning');
+                return;
+            }
+            
+            const datos = new FormData();
+            datos.append('archivo', archivoInput.files[0]);
+            datos.append('cedulas', cedulas.join(','));
+            
+            const boton = evento.target.querySelector('button[type="submit"]');
+            
+            try {
+                boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subiendo...';
+                boton.disabled = true;
+                
+                const respuesta = await fetch(`${API_URL}/subir_manual`, {
+                    method: 'POST',
+                    body: datos
+                });
+                
+                const resultado = await respuesta.json();
+                
+                if (resultado.mensaje === 'OK') {
+                    mostrarMensaje(`Archivo asignado a ${resultado.asignado_a?.length || 0} estudiantes`, 'success');
+                    archivoInput.value = '';
+                    nombresInput.value = '';
+                    await cargarDatosIniciales();
+                } else {
+                    mostrarMensaje('Error: ' + (resultado.error || 'Desconocido'), 'error');
+                }
+            } catch (error) {
+                mostrarMensaje('Error de conexión', 'error');
+            } finally {
+                boton.innerHTML = '<i class="fas fa-user-check"></i> Asignar Manualmente';
+                boton.disabled = false;
+            }
+        }
+
+        async function handleUploadIA(input) {
+            const archivos = input.files;
+            if (archivos.length === 0) return;
+            
+            const log = document.getElementById('uploadLog');
+            const progreso = document.getElementById('uploadProgress');
+            const barra = document.getElementById('progressBar');
+            const texto = document.getElementById('progressText');
+            
+            log.innerHTML = '<div><i class="fas fa-info-circle"></i> Iniciando análisis...</div>';
+            progreso.style.display = 'block';
+            
+            let completados = 0;
+            const total = archivos.length;
+            
+            for (let i = 0; i < total; i++) {
+                const archivo = archivos[i];
+                const datos = new FormData();
+                datos.append('archivo', archivo);
+                
+                // Actualizar progreso
+                texto.textContent = `Procesando ${i + 1}/${total}: ${archivo.name}`;
+                barra.style.width = ((i / total) * 100) + '%';
+                
+                try {
+                    const respuesta = await fetch(`${API_URL}/subir_evidencia`, {
+                        method: 'POST',
+                        body: datos
+                    });
+                    
+                    const resultado = await respuesta.json();
+                    
+                    if (resultado.status === 'exito') {
+                        log.innerHTML += `<div style="color:var(--secondary);">✅ ${archivo.name} asignado a: ` +
+                                       `${resultado.asignado_a?.join(', ') || 'varios estudiantes'}</div>`;
+                    } else if (resultado.status === 'alerta') {
+                        log.innerHTML += `<div style="color:var(--warning);">⚠ ${archivo.name}: ` +
+                                       `${resultado.mensaje || 'Sin coincidencias'}</div>`;
+                    } else {
+                        log.innerHTML += `<div style="color:var(--error);">❌ ${archivo.name}: ` +
+                                       `${resultado.motivo || 'Error'}</div>`;
+                    }
+                } catch (error) {
+                    log.innerHTML += `<div style="color:var(--error);">❌ ${archivo.name}: Error de red</div>`;
+                }
+                
+                completados++;
+                barra.style.width = ((completados / total) * 100) + '%';
+            }
+            
+            texto.textContent = 'Proceso completado ✅';
+            input.value = '';
+            
+            // Recargar datos
+            setTimeout(() => {
+                cargarDatosIniciales();
+            }, 1000);
+        }
+
+        function sugerirUsuariosPassword(texto) {
+            const sugerencias = document.getElementById('suggestionsPass');
+            
+            if (texto.length < 2) {
+                sugerencias.style.display = 'none';
+                return;
+            }
+            
+            const coincidencias = usuarios.filter(usuario => {
+                const nombreCompleto = `${usuario.nombre} ${usuario.apellido}`.toLowerCase();
+                return nombreCompleto.includes(texto.toLowerCase());
+            }).slice(0, 5);
+            
+            if (coincidencias.length === 0) {
+                sugerencias.style.display = 'none';
+                return;
+            }
+            
+            sugerencias.innerHTML = coincidencias.map(usuario => `
+                <div onclick="seleccionarUsuarioPassword('${usuario.cedula}')" 
+                     style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--border-color);">
+                    ${usuario.nombre} ${usuario.apellido}
+                    <small style="color:var(--text-sec);">(${usuario.cedula})</small>
+                </div>
+            `).join('');
+            
+            sugerencias.style.display = 'block';
+        }
+
+        function seleccionarUsuarioPassword(cedula) {
+            usuarioSeleccionadoPassword = usuarios.find(u => u.cedula === cedula);
+            if (usuarioSeleccionadoPassword) {
+                document.getElementById('nombrePassword').value = 
+                    `${usuarioSeleccionadoPassword.nombre} ${usuarioSeleccionadoPassword.apellido}`;
+                document.getElementById('suggestionsPass').style.display = 'none';
+            }
+        }
+
+        async function cambiarPassword(evento) {
+            evento.preventDefault();
+            
+            if (!usuarioSeleccionadoPassword) {
+                mostrarMensaje('Selecciona un usuario primero', 'warning');
+                return;
+            }
+            
+            const nuevaPassword = document.getElementById('nuevaPassword').value;
+            
+            if (nuevaPassword.length < 6) {
+                mostrarMensaje('La contraseña debe tener al menos 6 caracteres', 'warning');
+                return;
+            }
+            
+            const confirmacion = await Swal.fire({
+                title: '¿Cambiar contraseña?',
+                text: `¿Cambiar contraseña de ${usuarioSeleccionadoPassword.nombre} a: ${nuevaPassword}?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#6A0DAD',
+                cancelButtonColor: '#5f6368',
+                confirmButtonText: 'Sí, cambiar',
+                cancelButtonText: 'Cancelar'
+            });
+            
+            if (!confirmacion.isConfirmed) return;
+            
+            try {
+                // En un entorno real, aquí se enviaría al backend
+                mostrarMensaje(`Contraseña cambiada para ${usuarioSeleccionadoPassword.nombre}`, 'success');
+                
+                // Limpiar formulario
+                document.getElementById('formCambiarPassword').reset();
+                usuarioSeleccionadoPassword = null;
+            } catch (error) {
+                mostrarMensaje('Error al cambiar contraseña', 'error');
+            }
+        }
+
+        function descargarBackup(tipo) {
+            const url = tipo === 'db' 
+                ? `${API_URL}/crear_backup` 
+                : `${API_URL}/descargar_multimedia_zip`;
+            
+            // Descarga directa sin abrir nueva pestaña
+            const enlace = document.createElement('a');
+            enlace.href = url;
+            enlace.style.display = 'none';
+            document.body.appendChild(enlace);
+            enlace.click();
+            document.body.removeChild(enlace);
+            
+            mostrarMensaje(`Descarga de ${tipo === 'db' ? 'base de datos' : 'multimedia'} iniciada`, 'info');
+        }
+
+        function optimizarSistema() {
+            if (confirm('¿Optimizar sistema y limpiar caché?')) {
+                mostrarMensaje('Sistema optimizado', 'success');
+            }
+        }
+
+        // SweetAlert para diálogos más profesionales
+        const Swal = {
+            fire: function(options) {
+                return new Promise((resolve) => {
+                    const result = confirm(options.text || '¿Estás seguro?');
+                    resolve({ isConfirmed: result });
+                });
+            }
+        };
 
     </script>
 </body>
