@@ -325,6 +325,40 @@
             box-shadow: 0 0 0 4px rgba(106,13,173,0.1);
         }
 
+        /* ESTILOS PARA EL CAMPO DE CONTRASEÑA CON BOTÓN DE VISIBILIDAD */
+        .password-container {
+            position: relative;
+            width: 100%;
+        }
+        
+        .password-container .form-control {
+            padding-right: 50px; /* Espacio para el botón de ojo */
+        }
+        
+        .toggle-password {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            color: var(--text-sec);
+            cursor: pointer;
+            font-size: 1.1rem;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+        
+        .toggle-password:hover {
+            color: var(--primary);
+            background: var(--primary-soft);
+        }
+
         .error-box {
             background: rgba(211, 47, 47, 0.1);
             border: 1px solid rgba(211, 47, 47, 0.3);
@@ -366,7 +400,7 @@
             color: var(--primary); text-decoration: underline;
         }
 
-/* ==========================================================================
+        /* ==========================================================================
    7. MODALES (CORREGIDO - FUNCIONA 100%)
    ========================================================================== */
 .modal-overlay {
@@ -878,7 +912,12 @@ input, textarea, select {
                 
                 <div class="form-group">
                     <label>Contraseña:</label>
-                    <input type="password" id="contrasena" name="contrasena" class="form-control" placeholder="Tu clave secreta" required>
+                    <div class="password-container">
+                        <input type="password" id="contrasena" name="contrasena" class="form-control" placeholder="Tu clave secreta" required>
+                        <button type="button" class="toggle-password" id="togglePassword" title="Mostrar/ocultar contraseña">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
                 
                 <button type="submit" class="btn-submit" id="loginBtn">
@@ -957,59 +996,96 @@ input, textarea, select {
     </footer>
 
     <script>
-    // 1. CONFIGURACIÓN DEL SERVIDOR
-    const API_URL = "https://proyecto-de-grado-oficial-production.up.railway.app";
+        const API_URL = "http://localhost:8000";
 
-    // 2. LÓGICA DE TEMA (CLARO/OSCURO) - ¡RESTAURADA!
-    function toggleTheme() {
-        document.body.classList.toggle('dark-mode');
-        const themeBtn = document.getElementById('themeBtn');
-        const icon = themeBtn.querySelector('i');
+        // --- INICIALIZACIÓN ---
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                initTheme();
+                
+                // Restaurar menú hamburguesa
+                document.getElementById('menuToggle').onclick = toggleMenu;
+                document.getElementById('closeMenu').onclick = toggleMenu;
+                document.getElementById('overlayMenu').onclick = toggleMenu;
+                
+                // Inicializar botón de mostrar/ocultar contraseña
+                initPasswordToggle();
+            } catch (error) { console.error("Error init:", error); }
+        });
 
-        if (document.body.classList.contains('dark-mode')) {
-            localStorage.setItem('global_theme', 'dark');
-            if(icon) {
-                icon.classList.remove('fa-sun');
-                icon.classList.add('fa-moon');
-            }
-        } else {
-            localStorage.setItem('global_theme', 'light');
-            if(icon) {
-                icon.classList.remove('fa-moon');
-                icon.classList.add('fa-sun');
+        // --- TEMA Y MENÚ ---
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('global_theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+            initTheme();
+        }
+        
+        function initTheme() {
+            const saved = localStorage.getItem('global_theme');
+            const icon = document.querySelector('#themeBtn i');
+            if(saved === 'dark') { 
+                document.body.classList.add('dark-mode'); 
+                icon.className = 'fas fa-sun'; 
+            } else { 
+                document.body.classList.remove('dark-mode'); 
+                icon.className = 'fas fa-moon'; 
             }
         }
-    }
+        
+        function toggleMenu() { 
+            document.getElementById('sideMenu').classList.toggle('active'); 
+            document.getElementById('overlayMenu').classList.toggle('active'); 
+        }
 
-    // Cargar tema y configuraciones al iniciar
-    document.addEventListener('DOMContentLoaded', () => {
-        // Restaurar Tema
-        const savedTheme = localStorage.getItem('global_theme');
-        if (savedTheme === 'dark') {
-            document.body.classList.add('dark-mode');
-            const themeBtn = document.getElementById('themeBtn');
-            if(themeBtn) {
-                const icon = themeBtn.querySelector('i');
-                if(icon) {
-                    icon.classList.remove('fa-sun');
-                    icon.classList.add('fa-moon');
-                }
+        // --- BOTÓN DE MOSTRAR/OCULTAR CONTRASEÑA ---
+        function initPasswordToggle() {
+            const toggleBtn = document.getElementById('togglePassword');
+            const passwordInput = document.getElementById('contrasena');
+            
+            if (toggleBtn && passwordInput) {
+                toggleBtn.addEventListener('click', function() {
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+                    
+                    // Cambiar el icono
+                    const icon = this.querySelector('i');
+                    if (type === 'password') {
+                        icon.className = 'fas fa-eye';
+                        this.setAttribute('title', 'Mostrar contraseña');
+                    } else {
+                        icon.className = 'fas fa-eye-slash';
+                        this.setAttribute('title', 'Ocultar contraseña');
+                    }
+                });
             }
         }
-        console.log("Sistema iniciado correctamente en:", API_URL);
-    });
 
-    // 3. LÓGICA DE INICIO DE SESIÓN
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        loginForm.addEventListener('submit', async function(e) {
+        // --- MODALES ---
+        function abrirSoporte() { 
+            toggleMenu(); 
+            document.getElementById('modalSoporte').classList.add('active'); 
+        }
+        function cerrarSoporte() { document.getElementById('modalSoporte').classList.remove('active'); }
+        
+        function abrirRecuperar() { document.getElementById('modalRecuperar').classList.add('active'); }
+        function cerrarRecuperar() { document.getElementById('modalRecuperar').classList.remove('active'); }
+
+        // Cerrar modales al hacer clic fuera
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal-overlay')) {
+                event.target.classList.remove('active');
+            }
+        }
+
+        // --- LÓGICA DE LOGIN ---
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault(); 
             const errorBox = document.getElementById('errorMessage');
             const errorText = document.getElementById('errorText');
             const btn = document.getElementById('loginBtn');
             const originalText = btn.innerHTML;
             
-            if(errorBox) errorBox.style.display = 'none';
+            errorBox.style.display = 'none';
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
             btn.disabled = true;
 
@@ -1017,89 +1093,67 @@ input, textarea, select {
 
             try {
                 const res = await fetch(`${API_URL}/buscar_estudiante`, { method: "POST", body: datos });
-                if (!res.ok) throw new Error(`Error server: ${res.status}`);
                 const data = await res.json();
 
                 if (data.encontrado) {
                     localStorage.setItem('usuario_cedula', datos.get('cedula'));
-                    localStorage.setItem('usuario_nombre', data.datos.nombre);
-                    localStorage.setItem('usuario_tipo', data.datos.tipo);
+                    localStorage.setItem('usuario_contrasena', datos.get('contrasena'));
                     
-                    if (data.datos.tipo === 0) window.location.href = "perfiladmin.html";
+                    const tipoUsuario = data.datos.tipo !== undefined ? data.datos.tipo : 1; 
+                    localStorage.setItem('usuario_tipo', tipoUsuario);
+                    
+                    if (tipoUsuario === 0) window.location.href = "perfiladmin.html";
                     else window.location.href = "perfil.html";
+
                 } else {
-                    if(errorText) errorText.innerHTML = data.mensaje || 'Credenciales incorrectas.';
-                    if(errorBox) errorBox.style.display = 'block';
+                    if (data.mensaje === "Cuenta desactivada") {
+                        errorText.innerHTML = '<strong>Acceso Denegado:</strong> Usuario desactivado.';
+                    } else {
+                        errorText.innerHTML = 'Usuario o contraseña incorrectos.';
+                    }
+                    errorBox.style.display = 'block';
+                    
+                    // Desplazar ligeramente la vista hacia el error
+                    errorBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
             } catch (error) {
                 console.error(error);
-                if(errorText) errorText.innerHTML = 'Error de conexión con Railway.';
-                if(errorBox) errorBox.style.display = 'block';
+                errorText.innerHTML = 'Error de conexión con el servidor.';
+                errorBox.style.display = 'block';
             } finally {
                 btn.innerHTML = originalText;
                 btn.disabled = false;
             }
         });
-    }
 
-    // 4. LÓGICA DE RECUPERACIÓN
-    const formRecuperar = document.getElementById('formRecuperar');
-    if (formRecuperar) {
-        formRecuperar.addEventListener('submit', async function(e) {
+        // --- LÓGICA DE RECUPERACIÓN ---
+        document.getElementById('formRecuperar').addEventListener('submit', async function(e) {
             e.preventDefault();
             const btn = document.getElementById('btnEnviarRecup');
             const originalText = btn.innerHTML;
-            btn.innerText = "Enviando..."; btn.disabled = true;
+            btn.innerText = "Enviando..."; 
+            btn.disabled = true;
 
             const datos = new FormData(this);
+
             try {
                 const res = await fetch(`${API_URL}/solicitar_recuperacion`, { method: "POST", body: datos });
                 const data = await res.json();
+                
                 if (data.status === 'ok') {
-                    alert("✅ Solicitud enviada. Revisa tu correo pronto.");
+                    alert("✅ Solicitud enviada.\n\nEl administrador revisará tu caso y te contactará al correo proporcionado.");
                     cerrarRecuperar();
                     this.reset();
                 } else {
-                    alert("❌ Error: " + (data.mensaje || "Desconocido"));
+                    alert("❌ Error: " + data.mensaje);
                 }
             } catch (error) {
-                alert("Error de conexión.");
+                alert("Error de conexión. Intenta más tarde.");
             } finally {
-                btn.innerHTML = originalText; btn.disabled = false;
+                btn.innerHTML = originalText; 
+                btn.disabled = false;
             }
         });
-    }
-
-    // 5. FUNCIONES DE INTERFAZ (UI)
-    function togglePassword() {
-        const input = document.getElementById('passwordInput');
-        const icon = document.querySelector('.toggle-password i');
-        if (input.type === "password") {
-            input.type = "text";
-            icon.classList.remove('fa-eye');
-            icon.classList.add('fa-eye-slash');
-        } else {
-            input.type = "password";
-            icon.classList.remove('fa-eye-slash');
-            icon.classList.add('fa-eye');
-        }
-    }
-
-    function abrirRecuperar() {
-        const modal = document.getElementById('modalRecuperar');
-        if(modal) modal.classList.add('active');
-    }
-
-    function cerrarRecuperar() {
-        const modal = document.getElementById('modalRecuperar');
-        if(modal) modal.classList.remove('active');
-    }
-
-    window.onclick = function(event) {
-        if (event.target.classList.contains('modal-overlay')) {
-            event.target.classList.remove('active');
-        }
-    }
-</script>
+    </script>
 </body>
 </html>
