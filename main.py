@@ -153,15 +153,15 @@ app = FastAPI()
 
 # Lista de orígenes permitidos - INCLUYENDO TU FRONTEND LOCAL
 # Lista de orígenes permitidos
-origins = [
-    "https://proyecto-grado-karlos.vercel.app",  # <--- AGREGA ESTA LÍNEA EXACTA
-    "http://127.0.0.1:5500",
-    "http://localhost:5500",
-    "http://127.0.0.1:8000",
-    "http://localhost:8000",
-    "https://proyecto-de-grado-oficial-production.up.railway.app",
-    "*"
-]
+origins = ["*"]  # <--- ESTO ES LA CLAVE: El asterisco permite TODO
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # <--- Importante: Debe ser una lista con el asterisco
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Configuración completa de CORS
 app.add_middleware(
