@@ -150,10 +150,11 @@ app = FastAPI()
 
 # Lista EXACTA de sitios permitidos
 origins = [
-    "https://proyecto-grado-karlos.vercel.app",    # <--- Tu Web en Vercel
-    "https://proyecto-grado-karlos.vercel.app/",   # <--- Variación con slash por si acaso
-    "http://127.0.0.1:5500",                         # <--- Tu PC
-    "http://localhost:5500",                         # <--- Tu PC alternativo
+    "https://proyecto-grado-karlos.vercel.app",
+    "https://proyecto-grado-karlos.vercel.app/",
+    "https://www.proyecto-grado-karlos.vercel.app",
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
     "https://proyecto-de-grado-oficial-production.up.railway.app"
 ]
 

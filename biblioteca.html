@@ -1091,6 +1091,9 @@ input, textarea, select {
         btn.disabled = true;
 
         const datos = new FormData(this);
+        
+        // AÑADIDO: Log de depuración para verificar la URL
+        console.log('Intentando conectar a: ' + API_URL + '/buscar_estudiante');
 
         try {
             const res = await fetch(`${API_URL}/buscar_estudiante`, { method: "POST", body: datos });
