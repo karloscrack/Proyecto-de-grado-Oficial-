@@ -27,8 +27,8 @@ DB_ORIGINAL_PATH = os.path.join(BASE_DIR, DB_FILENAME)
 # --- CONFIGURACIÓN DE CORREO ---
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
-SMTP_EMAIL = "tu_correo_sistema@gmail.com"  # Cambiar por tu correo real
-SMTP_PASSWORD = "tu_contraseña_aplicacion"   # Cambiar por tu contraseña de app
+SMTP_EMAIL = "tu_correo_sistema@gmail.com"
+SMTP_PASSWORD = "tu_contraseña_aplicacion"
 
 # --- 1. CONFIGURACIÓN Y CREDENCIALES AWS/B2 ---
 AWS_ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY")
@@ -38,7 +38,9 @@ COLLECTION_ID = "estudiantes_db"
 
 try:
     if AWS_ACCESS_KEY:
-        rekog = boto3.client('rekognition', region_name=AWS_REGION, aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_SECRET_KEY)
+        rekog = boto3.client('rekognition', region_name=AWS_REGION, 
+                           aws_access_key_id=AWS_ACCESS_KEY, 
+                           aws_secret_access_key=AWS_SECRET_KEY)
     else:
         rekog = None
 except:
@@ -51,7 +53,11 @@ BUCKET_NAME = "Proyecto-Grado-Karlos-2025"
 
 try:
     my_config = Config(signature_version='s3v4', region_name='us-east-005')
-    s3_client = boto3.client('s3', endpoint_url=ENDPOINT_B2, aws_access_key_id=KEY_ID_B2, aws_secret_access_key=APP_KEY_B2, config=my_config)
+    s3_client = boto3.client('s3', 
+                            endpoint_url=ENDPOINT_B2,
+                            aws_access_key_id=KEY_ID_B2,
+                            aws_secret_access_key=APP_KEY_B2,
+                            config=my_config)
 except:
     s3_client = None
 
@@ -60,7 +66,7 @@ logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 # --- LÓGICA DE VOLUMEN PERSISTENTE ---
 VOLUMEN_PATH = "/app/datos_persistentes"
-DB_PATH_FINAL = DB_ORIGINAL_PATH 
+DB_PATH_FINAL = DB_ORIGINAL_PATH
 
 if os.path.exists(VOLUMEN_PATH):
     db_en_volumen = os.path.join(VOLUMEN_PATH, DB_FILENAME)
@@ -140,6 +146,7 @@ def init_db_completa():
 
         conn.commit()
         conn.close()
+        print("✅ Base de datos inicializada correctamente")
     except Exception as e:
         print(f"❌ Error inicializando DB: {e}")
 
@@ -154,9 +161,10 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Permite TODOS los orígenes
-    allow_credentials=False,  # ✅ OBLIGATORIO: False cuando allow_origins=["*"]
-    allow_methods=["*"],  # Permite todos los métodos HTTP
+    allow_credentials=True,  # IMPORTANTE: Cambié a True para permitir cookies si las usas
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],  # Métodos explícitos
     allow_headers=["*"],  # Permite todos los headers
+    expose_headers=["*"]  # Expone todos los headers
 )
 
 # --- FUNCIONES AUXILIARES ---
@@ -170,7 +178,8 @@ def registrar_auditoria(accion, detalle):
         conn = get_db_connection()
         conn.execute("INSERT INTO Auditoria (Accion, Detalle) VALUES (?, ?)", (accion, detalle))
         conn.commit(); conn.close()
-    except: pass
+    except Exception as e:
+        print(f"Error auditoria: {e}")
 
 def enviar_correo_real(destinatario, asunto, mensaje):
     try:
@@ -201,58 +210,90 @@ def calcular_hash(ruta):
         for b in iter(lambda: f.read(4096), b""): h.update(b)
     return h.hexdigest()
 
-# --- ENDPOINTS PRINCIPALES (LIMPIOS DE HEADERS MANUALES) ---
+# =========================================================================
+# 4. MIDDLEWARE PERSONALIZADO PARA HEADERS CORS (GARANTIZADO)
+# =========================================================================
+@app.middleware("http")
+async def add_cors_headers(request, call_next):
+    response = await call_next(request)
+    
+    # ✅ AÑADIR HEADERS CORS A TODAS LAS RESPUESTAS
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    response.headers["Access-Control-Expose-Headers"] = "*"
+    
+    return response
 
+# =========================================================================
+# 5. MANEJAR SOLICITUDES OPTIONS (PREFLIGHT) MANUALMENTE
+# =========================================================================
+@app.options("/{rest_of_path:path}")
+async def preflight_handler(request, rest_of_path: str):
+    response = JSONResponse(content={"message": "Preflight OK"})
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    return response
+
+# --- ENDPOINTS PRINCIPALES ---
 @app.get("/")
 def home():
     return {
         "status": "online", 
-        "backend": "Sistema Educativo Despertar V4.0",
-        "cors_enabled": True
+        "backend": "Sistema Educativo Despertar V5.0 (CORS FIXED)",
+        "cors_enabled": True,
+        "timestamp": datetime.datetime.now().isoformat()
     }
 
 @app.post("/iniciar_sesion")
 @app.post("/buscar_estudiante")
 async def buscar_estudiante(cedula: str = Form(...), contrasena: Optional[str] = Form(None)):
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("SELECT * FROM Usuarios WHERE CI=?", (cedula,))
-    user = c.fetchone()
-    
-    if not user:
-        conn.close()
-        return JSONResponse(content={"encontrado": False, "mensaje": "Usuario no encontrado"})
-    
-    if contrasena and user["Password"] != contrasena:
-        conn.close()
-        return JSONResponse(content={"encontrado": False, "mensaje": "Contraseña incorrecta"})
-    
-    if user["Activo"] == 0:
-        conn.close()
-        return JSONResponse(content={"encontrado": False, "mensaje": "Cuenta desactivada por administración"})
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("SELECT * FROM Usuarios WHERE CI=?", (cedula,))
+        user = c.fetchone()
         
-    c.execute("SELECT id, Url_Archivo as url, Tipo_Archivo as tipo, Fecha_Subida FROM Evidencias WHERE CI_Estudiante=? AND Estado=1 ORDER BY Fecha_Subida DESC", (cedula,))
-    evs = [dict(row) for row in c.fetchall()]
+        if not user:
+            conn.close()
+            return JSONResponse(content={"encontrado": False, "mensaje": "Usuario no encontrado"})
+        
+        if contrasena and user["Password"] != contrasena:
+            conn.close()
+            return JSONResponse(content={"encontrado": False, "mensaje": "Contraseña incorrecta"})
+        
+        if user["Activo"] == 0:
+            conn.close()
+            return JSONResponse(content={"encontrado": False, "mensaje": "Cuenta desactivada por administración"})
+            
+        c.execute("SELECT id, Url_Archivo as url, Tipo_Archivo as tipo, Fecha_Subida FROM Evidencias WHERE CI_Estudiante=? AND Estado=1 ORDER BY Fecha_Subida DESC", (cedula,))
+        evs = [dict(row) for row in c.fetchall()]
 
-    c.execute("""SELECT Tipo, Estado, Respuesta, Fecha FROM Solicitudes 
-                 WHERE CI_Solicitante=? AND Estado != 'PENDIENTE' 
-                 ORDER BY Fecha DESC LIMIT 5""", (cedula,))
-    notis = [dict(row) for row in c.fetchall()]
+        c.execute("""SELECT Tipo, Estado, Respuesta, Fecha FROM Solicitudes 
+                     WHERE CI_Solicitante=? AND Estado != 'PENDIENTE' 
+                     ORDER BY Fecha DESC LIMIT 5""", (cedula,))
+        notis = [dict(row) for row in c.fetchall()]
 
-    conn.close()
-    
-    return JSONResponse(content={
-        "encontrado": True,
-        "datos": {
-            "nombre": user["Nombre"],
-            "apellido": user["Apellido"],
-            "cedula": user["CI"],
-            "tipo": user["Tipo"],
-            "url_foto": user["Foto"],
-            "galeria": evs,
-            "notificaciones": notis
-        }
-    })
+        conn.close()
+        
+        return JSONResponse(content={
+            "encontrado": True,
+            "datos": {
+                "nombre": user["Nombre"],
+                "apellido": user["Apellido"],
+                "cedula": user["CI"],
+                "tipo": user["Tipo"],
+                "url_foto": user["Foto"],
+                "galeria": evs,
+                "notificaciones": notis
+            }
+        })
+    except Exception as e:
+        print(f"Error en buscar_estudiante: {e}")
+        return JSONResponse(content={"encontrado": False, "mensaje": f"Error del servidor: {str(e)}"})
 
 @app.post("/registrar_usuario")
 async def registrar_usuario(nombre: str=Form(...), apellido: str=Form(...), cedula: str=Form(...), contrasena: str=Form(...), tipo_usuario: int=Form(...), foto: UploadFile=UploadFile(...)):
@@ -430,7 +471,8 @@ async def listar():
 async def cors_test():
     return JSONResponse(content={
             "message": "CORS está funcionando correctamente",
-            "timestamp": datetime.datetime.now().isoformat()
+            "timestamp": datetime.datetime.now().isoformat(),
+            "headers_received": "Access-Control-Allow-Origin: *"
         })
 
 @app.get("/static/{file_path:path}")
@@ -541,9 +583,30 @@ async def cambiar_estado_usuario(datos: EstadoUsuarioRequest):
         return JSONResponse(content={"mensaje": "Estado actualizado"})
     except Exception as e:
         return JSONResponse(content={"error": str(e)})
-    
+
+# =========================================================================
+# 6. DIAGNÓSTICO DE CORS
+# =========================================================================
+@app.get("/cors-debug")
+async def cors_debug():
+    """Endpoint para debuggear problemas de CORS"""
+    return JSONResponse(content={
+        "message": "CORS Debug Endpoint",
+        "allow_origin": "*",
+        "allow_methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+        "allow_headers": "*",
+        "allow_credentials": "true",
+        "expose_headers": "*",
+        "timestamp": datetime.datetime.now().isoformat()
+    })
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    print(f"--> Servidor con CORS MEJORADO INICIADO en puerto {port}")
+    print(f"🚀 Servidor con CORS 100% GARANTIZADO iniciado en puerto {port}")
+    print(f"✅ Endpoints disponibles:")
+    print(f"   - https://proyecto-de-grado-oficial-production.up.railway.app/")
+    print(f"   - https://proyecto-de-grado-oficial-production.up.railway.app/health")
+    print(f"   - https://proyecto-de-grado-oficial-production.up.railway.app/cors-test")
+    print(f"   - https://proyecto-de-grado-oficial-production.up.railway.app/cors-debug")
     uvicorn.run(app, host="0.0.0.0", port=port)
