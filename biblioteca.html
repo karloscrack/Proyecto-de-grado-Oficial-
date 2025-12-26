@@ -996,164 +996,165 @@ input, textarea, select {
     </footer>
 
     <script>
-        const API_URL = "http://localhost:8000";
+    // --- URL DEL SERVIDOR (CORREGIDA PARA PRODUCCIÓN) ---
+    const API_URL = "https://proyecto-de-grado-oficial-production.up.railway.app";
 
-        // --- INICIALIZACIÓN ---
-        document.addEventListener('DOMContentLoaded', () => {
-            try {
-                initTheme();
-                
-                // Restaurar menú hamburguesa
-                document.getElementById('menuToggle').onclick = toggleMenu;
-                document.getElementById('closeMenu').onclick = toggleMenu;
-                document.getElementById('overlayMenu').onclick = toggleMenu;
-                
-                // Inicializar botón de mostrar/ocultar contraseña
-                initPasswordToggle();
-            } catch (error) { console.error("Error init:", error); }
-        });
-
-        // --- TEMA Y MENÚ ---
-        function toggleTheme() {
-            document.body.classList.toggle('dark-mode');
-            localStorage.setItem('global_theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+    // --- INICIALIZACIÓN ---
+    document.addEventListener('DOMContentLoaded', () => {
+        try {
             initTheme();
-        }
-        
-        function initTheme() {
-            const saved = localStorage.getItem('global_theme');
-            const icon = document.querySelector('#themeBtn i');
-            if(saved === 'dark') { 
-                document.body.classList.add('dark-mode'); 
-                icon.className = 'fas fa-sun'; 
-            } else { 
-                document.body.classList.remove('dark-mode'); 
-                icon.className = 'fas fa-moon'; 
-            }
-        }
-        
-        function toggleMenu() { 
-            document.getElementById('sideMenu').classList.toggle('active'); 
-            document.getElementById('overlayMenu').classList.toggle('active'); 
-        }
-
-        // --- BOTÓN DE MOSTRAR/OCULTAR CONTRASEÑA ---
-        function initPasswordToggle() {
-            const toggleBtn = document.getElementById('togglePassword');
-            const passwordInput = document.getElementById('contrasena');
             
-            if (toggleBtn && passwordInput) {
-                toggleBtn.addEventListener('click', function() {
-                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-                    passwordInput.setAttribute('type', type);
-                    
-                    // Cambiar el icono
-                    const icon = this.querySelector('i');
-                    if (type === 'password') {
-                        icon.className = 'fas fa-eye';
-                        this.setAttribute('title', 'Mostrar contraseña');
-                    } else {
-                        icon.className = 'fas fa-eye-slash';
-                        this.setAttribute('title', 'Ocultar contraseña');
-                    }
-                });
-            }
-        }
-
-        // --- MODALES ---
-        function abrirSoporte() { 
-            toggleMenu(); 
-            document.getElementById('modalSoporte').classList.add('active'); 
-        }
-        function cerrarSoporte() { document.getElementById('modalSoporte').classList.remove('active'); }
-        
-        function abrirRecuperar() { document.getElementById('modalRecuperar').classList.add('active'); }
-        function cerrarRecuperar() { document.getElementById('modalRecuperar').classList.remove('active'); }
-
-        // Cerrar modales al hacer clic fuera
-        window.onclick = function(event) {
-            if (event.target.classList.contains('modal-overlay')) {
-                event.target.classList.remove('active');
-            }
-        }
-
-        // --- LÓGICA DE LOGIN ---
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
-            e.preventDefault(); 
-            const errorBox = document.getElementById('errorMessage');
-            const errorText = document.getElementById('errorText');
-            const btn = document.getElementById('loginBtn');
-            const originalText = btn.innerHTML;
+            // Restaurar menú hamburguesa
+            document.getElementById('menuToggle').onclick = toggleMenu;
+            document.getElementById('closeMenu').onclick = toggleMenu;
+            document.getElementById('overlayMenu').onclick = toggleMenu;
             
-            errorBox.style.display = 'none';
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
-            btn.disabled = true;
+            // Inicializar botón de mostrar/ocultar contraseña
+            initPasswordToggle();
+        } catch (error) { console.error("Error init:", error); }
+    });
 
-            const datos = new FormData(this);
+    // --- TEMA Y MENÚ ---
+    function toggleTheme() {
+        document.body.classList.toggle('dark-mode');
+        localStorage.setItem('global_theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+        initTheme();
+    }
+    
+    function initTheme() {
+        const saved = localStorage.getItem('global_theme');
+        const icon = document.querySelector('#themeBtn i');
+        if(saved === 'dark') { 
+            document.body.classList.add('dark-mode'); 
+            icon.className = 'fas fa-sun'; 
+        } else { 
+            document.body.classList.remove('dark-mode'); 
+            icon.className = 'fas fa-moon'; 
+        }
+    }
+    
+    function toggleMenu() { 
+        document.getElementById('sideMenu').classList.toggle('active'); 
+        document.getElementById('overlayMenu').classList.toggle('active'); 
+    }
 
-            try {
-                const res = await fetch(`${API_URL}/buscar_estudiante`, { method: "POST", body: datos });
-                const data = await res.json();
-
-                if (data.encontrado) {
-                    localStorage.setItem('usuario_cedula', datos.get('cedula'));
-                    localStorage.setItem('usuario_contrasena', datos.get('contrasena'));
-                    
-                    const tipoUsuario = data.datos.tipo !== undefined ? data.datos.tipo : 1; 
-                    localStorage.setItem('usuario_tipo', tipoUsuario);
-                    
-                    if (tipoUsuario === 0) window.location.href = "perfiladmin.html";
-                    else window.location.href = "perfil.html";
-
-                } else {
-                    if (data.mensaje === "Cuenta desactivada") {
-                        errorText.innerHTML = '<strong>Acceso Denegado:</strong> Usuario desactivado.';
-                    } else {
-                        errorText.innerHTML = 'Usuario o contraseña incorrectos.';
-                    }
-                    errorBox.style.display = 'block';
-                    
-                    // Desplazar ligeramente la vista hacia el error
-                    errorBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            } catch (error) {
-                console.error(error);
-                errorText.innerHTML = 'Error de conexión con el servidor.';
-                errorBox.style.display = 'block';
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        });
-
-        // --- LÓGICA DE RECUPERACIÓN ---
-        document.getElementById('formRecuperar').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const btn = document.getElementById('btnEnviarRecup');
-            const originalText = btn.innerHTML;
-            btn.innerText = "Enviando..."; 
-            btn.disabled = true;
-
-            const datos = new FormData(this);
-
-            try {
-                const res = await fetch(`${API_URL}/solicitar_recuperacion`, { method: "POST", body: datos });
-                const data = await res.json();
+    // --- BOTÓN DE MOSTRAR/OCULTAR CONTRASEÑA ---
+    function initPasswordToggle() {
+        const toggleBtn = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('contrasena');
+        
+        if (toggleBtn && passwordInput) {
+            toggleBtn.addEventListener('click', function() {
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
                 
-                if (data.status === 'ok') {
-                    alert("✅ Solicitud enviada.\n\nEl administrador revisará tu caso y te contactará al correo proporcionado.");
-                    cerrarRecuperar();
-                    this.reset();
+                // Cambiar el icono
+                const icon = this.querySelector('i');
+                if (type === 'password') {
+                    icon.className = 'fas fa-eye';
+                    this.setAttribute('title', 'Mostrar contraseña');
                 } else {
-                    alert("❌ Error: " + data.mensaje);
+                    icon.className = 'fas fa-eye-slash';
+                    this.setAttribute('title', 'Ocultar contraseña');
                 }
-            } catch (error) {
-                alert("Error de conexión. Intenta más tarde.");
-            } finally {
-                btn.innerHTML = originalText; 
-                btn.disabled = false;
+            });
+        }
+    }
+
+    // --- MODALES ---
+    function abrirSoporte() { 
+        toggleMenu(); 
+        document.getElementById('modalSoporte').classList.add('active'); 
+    }
+    function cerrarSoporte() { document.getElementById('modalSoporte').classList.remove('active'); }
+    
+    function abrirRecuperar() { document.getElementById('modalRecuperar').classList.add('active'); }
+    function cerrarRecuperar() { document.getElementById('modalRecuperar').classList.remove('active'); }
+
+    // Cerrar modales al hacer clic fuera
+    window.onclick = function(event) {
+        if (event.target.classList.contains('modal-overlay')) {
+            event.target.classList.remove('active');
+        }
+    }
+
+    // --- LÓGICA DE LOGIN ---
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault(); 
+        const errorBox = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+        const btn = document.getElementById('loginBtn');
+        const originalText = btn.innerHTML;
+        
+        errorBox.style.display = 'none';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+        btn.disabled = true;
+
+        const datos = new FormData(this);
+
+        try {
+            const res = await fetch(`${API_URL}/buscar_estudiante`, { method: "POST", body: datos });
+            const data = await res.json();
+
+            if (data.encontrado) {
+                localStorage.setItem('usuario_cedula', datos.get('cedula'));
+                localStorage.setItem('usuario_contrasena', datos.get('contrasena'));
+                
+                const tipoUsuario = data.datos.tipo !== undefined ? data.datos.tipo : 1; 
+                localStorage.setItem('usuario_tipo', tipoUsuario);
+                
+                if (tipoUsuario === 0) window.location.href = "perfiladmin.html";
+                else window.location.href = "perfil.html";
+
+            } else {
+                if (data.mensaje === "Cuenta desactivada") {
+                    errorText.innerHTML = '<strong>Acceso Denegado:</strong> Usuario desactivado.';
+                } else {
+                    errorText.innerHTML = 'Usuario o contraseña incorrectos.';
+                }
+                errorBox.style.display = 'block';
+                
+                // Desplazar ligeramente la vista hacia el error
+                errorBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
-        });
-    </script>
+        } catch (error) {
+            console.error(error);
+            errorText.innerHTML = 'Error de conexión con el servidor.';
+            errorBox.style.display = 'block';
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    });
+
+    // --- LÓGICA DE RECUPERACIÓN ---
+    document.getElementById('formRecuperar').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btnEnviarRecup');
+        const originalText = btn.innerHTML;
+        btn.innerText = "Enviando..."; 
+        btn.disabled = true;
+
+        const datos = new FormData(this);
+
+        try {
+            const res = await fetch(`${API_URL}/solicitar_recuperacion`, { method: "POST", body: datos });
+            const data = await res.json();
+            
+            if (data.status === 'ok') {
+                alert("✅ Solicitud enviada.\n\nEl administrador revisará tu caso y te contactará al correo proporcionado.");
+                cerrarRecuperar();
+                this.reset();
+            } else {
+                alert("❌ Error: " + data.mensaje);
+            }
+        } catch (error) {
+            alert("Error de conexión. Intenta más tarde.");
+        } finally {
+            btn.innerHTML = originalText; 
+            btn.disabled = false;
+        }
+    });
+</script>
 </body>
 </html>
