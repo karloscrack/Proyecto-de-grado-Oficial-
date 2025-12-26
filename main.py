@@ -152,17 +152,15 @@ init_db_completa()
 app = FastAPI()
 
 # Lista de orígenes permitidos - INCLUYENDO TU FRONTEND LOCAL
+# Lista de orígenes permitidos
 origins = [
-    "http://127.0.0.1:5500",      # Live Server VS Code
-    "http://localhost:5500",      # Live Server alternativo
-    "http://127.0.0.1:8000",     # Si corres otro backend local
-    "http://localhost:8000",      # Backend local alternativo
-    "http://127.0.0.1:3000",     # React/Vue dev server
-    "http://localhost:3000",      # Otro puerto común
-    "https://proyecto-de-grado-oficial-production.up.railway.app",  # Tu propio backend en producción
-    "http://localhost",           # Localhost sin puerto
-    "http://127.0.0.1",          # 127.0.0.1 sin puerto
-    "*",                          # Permite todos en desarrollo (cuidado en producción)
+    "https://proyecto-grado-karlos.vercel.app",  # <--- AGREGA ESTA LÍNEA EXACTA
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+    "https://proyecto-de-grado-oficial-production.up.railway.app",
+    "*"
 ]
 
 # Configuración completa de CORS
