@@ -166,12 +166,10 @@ origins = [
 # Configuración completa de CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,        # Usa la lista personalizada
-    allow_credentials=True,       # Permite cookies/autenticación
-    allow_methods=["*"],          # Permite todos los métodos HTTP
-    allow_headers=["*"],          # Permite todos los headers
-    expose_headers=["*"],         # Expone todos los headers al frontend
-    max_age=600,                  # Cachea preflight requests por 10 minutos
+    allow_origins=["*"],        # CAMBIA ESTO A ["*"] PARA PERMITIR TODO TEMPORALMENTE
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # --- FUNCIONES AUXILIARES ---
