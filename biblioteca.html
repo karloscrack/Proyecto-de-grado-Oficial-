@@ -1158,6 +1158,24 @@ input, textarea, select {
             btn.disabled = false;
         }
     });
+    // 1. Prueba simple GET
+fetch('https://proyecto-de-grado-oficial-production.up.railway.app/cors-test')
+  .then(response => response.json())
+  .then(data => console.log('✅ CORS TEST OK:', data))
+  .catch(error => console.error('❌ CORS TEST ERROR:', error));
+
+// 2. Prueba OPTIONS (preflight)
+fetch('https://proyecto-de-grado-oficial-production.up.railway.app/buscar_estudiante', {
+  method: 'OPTIONS',
+  headers: {
+    'Content-Type': 'application/x-www-form-urlencoded',
+  }
+})
+.then(response => {
+  console.log('✅ OPTIONS response:', response.status);
+  console.log('Headers:', [...response.headers.entries()]);
+})
+.catch(error => console.error('❌ OPTIONS error:', error));
 </script>
 </body>
 </html>
