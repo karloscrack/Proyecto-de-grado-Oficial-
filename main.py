@@ -1,5 +1,3 @@
-[file name]: main.py
-[file content begin]
 import shutil
 import os
 import sqlite3
@@ -549,4 +547,3 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     print(f"--> Servidor con CORS MEJORADO INICIADO en puerto {port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
-[file content end]
