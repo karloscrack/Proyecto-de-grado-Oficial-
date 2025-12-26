@@ -1,3 +1,5 @@
+[file name]: main.py
+[file content begin]
 import shutil
 import os
 import sqlite3
@@ -145,25 +147,18 @@ def init_db_completa():
 
 init_db_completa()
 
-# --- 3. CONFIGURACIÓN DE CORS (SOLUCIÓN DEFINITIVA) ---
+# =========================================================================
+# 3. CONFIGURACIÓN DE CORS - A PRUEBA DE FALLOS
+# =========================================================================
 app = FastAPI()
 
-# Lista EXACTA de sitios permitidos
-origins = [
-    "https://proyecto-grado-karlos.vercel.app",
-    "https://proyecto-grado-karlos.vercel.app/",
-    "https://www.proyecto-grado-karlos.vercel.app",
-    "http://127.0.0.1:5500",
-    "http://localhost:5500",
-    "https://proyecto-de-grado-oficial-production.up.railway.app"
-]
-
+# ✅ CONFIGURACIÓN CORS PERMISIVA PERO SEGURA
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["*"],  # Permite TODOS los orígenes
+    allow_credentials=False,  # ✅ OBLIGATORIO: False cuando allow_origins=["*"]
+    allow_methods=["*"],  # Permite todos los métodos HTTP
+    allow_headers=["*"],  # Permite todos los headers
 )
 
 # --- FUNCIONES AUXILIARES ---
@@ -554,3 +549,4 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     print(f"--> Servidor con CORS MEJORADO INICIADO en puerto {port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
+[file content end]
