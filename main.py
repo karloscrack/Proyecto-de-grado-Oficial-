@@ -149,11 +149,16 @@ init_db_completa()
 app = FastAPI()
 
 # Permitimos todo para evitar errores de origen cruzado (CORS)
-origins = ["*"]
+origins = [
+    "https://proyecto-grado-karlos.vercel.app",    # <--- Tu Web en Vercel (INVITADO VIP)
+    "http://127.0.0.1:5500",                         # <--- Tu PC
+    "http://localhost:5500",                         # <--- Tu PC alternativo
+    "https://proyecto-de-grado-oficial-production.up.railway.app" # <--- El mismo servidor
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,      # <--- Usamos la lista específica, NO ["*"]
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
