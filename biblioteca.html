@@ -136,7 +136,7 @@
         ::-webkit-scrollbar-thumb:hover { background: var(--primary-dark); }
 
         /* ==========================================================================
-           4. HEADER RESTAURADO (MISMO ESTILO QUE PERFIL.HTML)
+           4. HEADER RESTAURADO
            ========================================================================== */
         .main-header {
             position: fixed; top: 0; left: 0; width: 100%;
@@ -162,10 +162,10 @@
             display: flex; align-items: center; gap: 15px;
         }
 
-        /* Botones Circulares del Header (Tema y Notis) */
+        /* Botones Circulares del Header */
         .btn-icon-header {
             background: transparent;
-            border: 2px solid var(--primary); /* Borde original */
+            border: 2px solid var(--primary);
             color: var(--primary);
             width: 42px; height: 42px;
             border-radius: 50%;
@@ -180,7 +180,7 @@
             box-shadow: 0 0 15px var(--primary-soft);
         }
 
-        /* Botón Volver (Estilo Píldora - AZUL como en login original) */
+        /* Botón Volver */
         .btn-logout-header {
             background: var(--info); color: white; border: none;
             padding: 0 25px; height: 42px; border-radius: 50px;
@@ -204,7 +204,7 @@
         .menu-toggle:active { transform: scale(0.9); }
 
         /* ==========================================================================
-           5. MENÚ LATERAL (SIDEBAR)
+           5. MENÚ LATERAL
            ========================================================================== */
         .side-menu {
             position: fixed; top: 0; right: -320px;
@@ -225,7 +225,6 @@
         }
         .side-menu-header h3 { color: var(--primary); font-size: 1.3rem; margin: 0; font-weight: 700; }
         
-        /* BOTÓN CERRAR MENÚ (Estilo Mejorado) */
         .close-menu {
             background: transparent; border: none; font-size: 1.8rem;
             color: var(--text-sec); cursor: pointer;
@@ -257,7 +256,7 @@
         .overlay-bg.active { display: block; opacity: 1; }
 
         /* ==========================================================================
-           6. CONTENIDO PRINCIPAL - PANTALLA DE LOGIN (MÁS COMPACTO)
+           6. CONTENIDO PRINCIPAL - PANTALLA DE LOGIN
            ========================================================================== */
         .login-container {
             display: flex; justify-content: center; align-items: center;
@@ -401,147 +400,148 @@
         }
 
         /* ==========================================================================
-   7. MODALES (CORREGIDO - FUNCIONA 100%)
-   ========================================================================== */
-.modal-overlay {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.85); backdrop-filter: blur(10px);
-    z-index: var(--z-modal); 
-    display: none; 
-    justify-content: center; 
-    align-items: center;
-    padding: 20px;
-    overflow-y: auto;
-}
+           7. MODALES (CORREGIDO - FUNCIONA 100%)
+           ========================================================================== */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(10px);
+            z-index: var(--z-modal); 
+            display: none; 
+            justify-content: center; 
+            align-items: center;
+            padding: 20px;
+            overflow-y: auto;
+        }
 
-.modal-overlay.active {
-    display: flex !important; /* FORZAR display cuando está activo */
-    animation: fadeIn 0.3s forwards;
-}
+        .modal-overlay.active {
+            display: flex !important; /* FORZAR display cuando está activo */
+            animation: fadeIn 0.3s forwards;
+        }
 
-.modal-card {
-    background: var(--bg-card); 
-    width: 100%; 
-    max-width: 380px; /* Más compacto */
-    border-radius: 16px; 
-    padding: 25px 20px;
-    position: relative; 
-    box-shadow: 0 25px 70px rgba(0,0,0,0.5);
-    border-top: 4px solid var(--primary); 
-    text-align: center;
-    animation: popIn 0.4s ease-out;
-    margin: auto;
-    max-height: 85vh;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-}
+        .modal-card {
+            background: var(--bg-card); 
+            width: 100%; 
+            max-width: 380px; /* Más compacto */
+            border-radius: 16px; 
+            padding: 25px 20px;
+            position: relative; 
+            box-shadow: 0 25px 70px rgba(0,0,0,0.5);
+            border-top: 4px solid var(--primary); 
+            text-align: center;
+            animation: popIn 0.4s ease-out;
+            margin: auto;
+            max-height: 85vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
 
-.modal-card h3 {
-    margin-bottom: 10px; 
-    color: var(--primary); 
-    font-size: 1.3rem;
-    font-weight: 700;
-}
+        .modal-card h3 {
+            margin-bottom: 10px; 
+            color: var(--primary); 
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
 
-.modal-card p {
-    color: var(--text-sec); 
-    font-size: 0.9rem; 
-    margin-bottom: 20px;
-    line-height: 1.4;
-}
+        .modal-card p {
+            color: var(--text-sec); 
+            font-size: 0.9rem; 
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
 
-/* Botón de cerrar en modales */
-.modal-close-btn {
-    position: absolute; 
-    top: 12px; 
-    right: 12px; 
-    border: none; 
-    background: none; 
-    font-size: 1.8rem; 
-    cursor: pointer; 
-    color: var(--text-sec);
-    width: 36px; 
-    height: 36px;
-    display: flex; 
-    align-items: center; 
-    justify-content: center;
-    border-radius: 50%;
-    transition: all 0.3s;
-    z-index: 2;
-}
-.modal-close-btn:hover {
-    background: var(--input-bg);
-    color: var(--error);
-    transform: rotate(90deg);
-}
+        /* Botón de cerrar en modales */
+        .modal-close-btn {
+            position: absolute; 
+            top: 12px; 
+            right: 12px; 
+            border: none; 
+            background: none; 
+            font-size: 1.8rem; 
+            cursor: pointer; 
+            color: var(--text-sec);
+            width: 36px; 
+            height: 36px;
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s;
+            z-index: 2;
+        }
+        .modal-close-btn:hover {
+            background: var(--input-bg);
+            color: var(--error);
+            transform: rotate(90deg);
+        }
 
-/* Formulario de recuperación */
-#formRecuperar {
-    text-align: left;
-}
+        /* Formulario de recuperación */
+        #formRecuperar {
+            text-align: left;
+        }
 
-/* Textarea específico */
-#formRecuperar textarea {
-    min-height: 90px;
-    max-height: 120px;
-    resize: vertical;
-    width: 100%;
-    padding: 12px 14px !important;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: var(--input-bg);
-    color: var(--text-main);
-    font-size: 0.9rem;
-    line-height: 1.4;
-    box-sizing: border-box;
-    margin-top: 5px;
-}
+        /* Textarea específico */
+        #formRecuperar textarea {
+            min-height: 90px;
+            max-height: 120px;
+            resize: vertical;
+            width: 100%;
+            padding: 12px 14px !important;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--input-bg);
+            color: var(--text-main);
+            font-size: 0.9rem;
+            line-height: 1.4;
+            box-sizing: border-box;
+            margin-top: 5px;
+        }
 
-.contact-info {
-    display: flex; 
-    flex-direction: column; 
-    gap: 15px; 
-    font-size: 1rem; 
-    color: var(--text-main); 
-    margin: 25px 0;
-}
-.contact-info div {
-    display: flex; 
-    align-items: center; 
-    gap: 15px;
-    justify-content: flex-start; 
-    padding: 12px 15px;
-    background: var(--input-bg); 
-    border-radius: 10px;
-}
-.contact-info i { 
-    color: var(--secondary); 
-    font-size: 1.3rem; 
-    width: 30px; 
-    text-align: center;
-}
+        .contact-info {
+            display: flex; 
+            flex-direction: column; 
+            gap: 15px; 
+            font-size: 1rem; 
+            color: var(--text-main); 
+            margin: 25px 0;
+        }
+        .contact-info div {
+            display: flex; 
+            align-items: center; 
+            gap: 15px;
+            justify-content: flex-start; 
+            padding: 12px 15px;
+            background: var(--input-bg); 
+            border-radius: 10px;
+        }
+        .contact-info i { 
+            color: var(--secondary); 
+            font-size: 1.3rem; 
+            width: 30px; 
+            text-align: center;
+        }
 
-/* Botón secundario para modales */
-.btn-secondary {
-    background: transparent; 
-    color: var(--text-sec); 
-    border: 1px solid var(--border-color);
-    padding: 12px; 
-    border-radius: 8px; 
-    font-weight: 600; 
-    cursor: pointer;
-    transition: 0.3s; 
-    width: 100%; 
-    margin-top: 8px;
-}
-.btn-secondary:hover {
-    background: var(--input-bg); 
-    border-color: var(--primary); 
-    color: var(--primary);
-}
+        /* Botón secundario para modales */
+        .btn-secondary {
+            background: transparent; 
+            color: var(--text-sec); 
+            border: 1px solid var(--border-color);
+            padding: 12px; 
+            border-radius: 8px; 
+            font-weight: 600; 
+            cursor: pointer;
+            transition: 0.3s; 
+            width: 100%; 
+            margin-top: 8px;
+        }
+        .btn-secondary:hover {
+            background: var(--input-bg); 
+            border-color: var(--primary); 
+            color: var(--primary);
+        }
+
         /* ==========================================================================
-           8. FOOTER (MISMO ESTILO QUE PERFIL.HTML)
+           8. FOOTER
            ========================================================================== */
         footer {
             background: #1a1a1a; color: white; padding: 30px 20px;
@@ -575,276 +575,277 @@
             100% { opacity: 1; transform: scale(1); }
         }
 
-/* ==========================================================================
-   10. RESPONSIVE PARA MÓVILES - MEJORADO PARA MODALES
-   ========================================================================== */
-@media (max-width: 768px) {
-    /* Header móvil */
-    .main-header { 
-        height: var(--header-height-mobile); 
-        padding: 0 12px; 
-    }
-    .header-actions { 
-        gap: 6px; 
-    }
-    
-    .logo-container img { 
-        height: 40px;
-        max-width: 120px;
-    }
-    
-    .btn-icon-header {
-        width: 36px; 
-        height: 36px;
-        font-size: 1rem;
-    }
-    
-    .btn-logout-header {
-        padding: 0 12px; 
-        height: 36px;
-        font-size: 0.85rem;
-    }
-    
-    .btn-logout-header span { 
-        display: none; 
-    }
-    
-    .menu-toggle {
-        width: 36px; 
-        height: 36px;
-        font-size: 1.4rem;
-    }
+        /* ==========================================================================
+           10. RESPONSIVE PARA MÓVILES - MEJORADO PARA MODALES
+           ========================================================================== */
+        @media (max-width: 768px) {
+            /* Header móvil */
+            .main-header { 
+                height: var(--header-height-mobile); 
+                padding: 0 12px; 
+            }
+            .header-actions { 
+                gap: 6px; 
+            }
+            
+            .logo-container img { 
+                height: 40px;
+                max-width: 120px;
+            }
+            
+            .btn-icon-header {
+                width: 36px; 
+                height: 36px;
+                font-size: 1rem;
+            }
+            
+            .btn-logout-header {
+                padding: 0 12px; 
+                height: 36px;
+                font-size: 0.85rem;
+            }
+            
+            .btn-logout-header span { 
+                display: none; 
+            }
+            
+            .menu-toggle {
+                width: 36px; 
+                height: 36px;
+                font-size: 1.4rem;
+            }
 
-    /* Login card */
-    .login-container { 
-        padding: 15px 10px; 
-    }
-    
-    .login-card { 
-        padding: 25px 20px; 
-        max-width: 100%;
-        border-radius: 12px;
-        margin: 10px;
-    }
-    
-    .login-icon-container i {
-        font-size: 2.5rem;
-        padding: 14px;
-    }
-    
-    .login-card h2 {
-        font-size: 1.4rem;
-    }
-    
-    .login-card p {
-        font-size: 0.9rem;
-        margin-bottom: 20px;
-    }
-    
-    /* MODALES EN MÓVILES - ARREGLADO 100% */
-    .modal-overlay {
-        padding: 10px;
-        align-items: flex-start;
-        overflow-y: auto;
-    }
-    
-    .modal-card {
-        width: 100% !important;
-        max-width: 100% !important;
-        padding: 22px 18px !important;
-        border-radius: 14px;
-        max-height: 85vh;
-        margin: 10px 0;
-    }
-    
-    .modal-card h3 {
-        font-size: 1.2rem;
-        margin-bottom: 8px;
-    }
-    
-    .modal-card p {
-        font-size: 0.85rem;
-        margin-bottom: 15px;
-    }
-    
-    #formRecuperar textarea {
-        min-height: 80px !important;
-        max-height: 100px;
-        font-size: 0.85rem !important;
-        padding: 10px 12px !important;
-    }
-    
-    .modal-close-btn {
-        top: 10px;
-        right: 10px;
-        font-size: 1.6rem;
-        width: 32px;
-        height: 32px;
-    }
-    
-    .contact-info div {
-        padding: 10px 12px;
-        font-size: 0.9rem;
-    }
-    
-    .btn-submit, .btn-secondary {
-        padding: 12px;
-        font-size: 0.9rem;
-    }
-    
-    /* Footer móvil */
-    footer {
-        padding: 20px 10px;
-    }
-    
-    .footer-logo img {
-        height: 45px;
-    }
-    
-    .footer-content h3 {
-        font-size: 1rem;
-    }
-    
-    .footer-social a {
-        width: 36px;
-        height: 36px;
-        font-size: 0.85rem;
-        margin: 0 4px;
-    }
-    
-    .footer-links a {
-        font-size: 0.85rem;
-        margin: 0 5px;
-    }
-    
-    .copyright {
-        font-size: 0.75rem;
-        padding-top: 12px;
-    }
-}
-/* ==========================================================================
-   11. PARA PANTALLAS MUY PEQUEÑAS (iPhone SE, Galaxy Fold, etc.)
-   ========================================================================== */
-@media (max-width: 480px) {
-    .main-header {
-        padding: 0 8px;
-    }
-    
-    .header-actions {
-        gap: 4px;
-    }
-    
-    .logo-container img {
-        height: 36px;
-        max-width: 100px;
-    }
-    
-    .btn-icon-header,
-    .btn-logout-header,
-    .menu-toggle {
-        width: 34px;
-        height: 34px;
-        font-size: 0.9rem;
-    }
-    
-    .btn-logout-header {
-        padding: 0 10px;
-    }
-    
-    .login-card {
-        padding: 20px 16px;
-        margin: 5px;
-    }
-    
-    .login-icon-container i {
-        font-size: 2.2rem;
-        padding: 12px;
-    }
-    
-    .login-card h2 {
-        font-size: 1.3rem;
-    }
-    
-    .form-control {
-        padding: 11px 13px;
-        font-size: 0.85rem;
-    }
-    
-    .btn-submit {
-        padding: 12px;
-        font-size: 0.85rem;
-    }
-    
-    /* Modal más compacto para pantallas muy pequeñas */
-    .modal-card {
-        padding: 20px 16px;
-        border-radius: 14px;
-        max-height: 80vh;
-    }
-    
-    .modal-card h3 {
-        font-size: 1.2rem;
-    }
-    
-    .modal-card p {
-        font-size: 0.85rem;
-    }
-    
-    .contact-info div {
-        font-size: 0.85rem;
-        padding: 8px 10px;
-    }
-    
-    .footer-social a {
-        width: 34px;
-        height: 34px;
-        margin: 0 3px;
-    }
-    
-    .footer-logo img {
-        height: 40px;
-    }
-    
-    .footer-content h3 {
-        font-size: 0.95rem;
-    }
-}
+            /* Login card */
+            .login-container { 
+                padding: 15px 10px; 
+            }
+            
+            .login-card { 
+                padding: 25px 20px; 
+                max-width: 100%;
+                border-radius: 12px;
+                margin: 10px;
+            }
+            
+            .login-icon-container i {
+                font-size: 2.5rem;
+                padding: 14px;
+            }
+            
+            .login-card h2 {
+                font-size: 1.4rem;
+            }
+            
+            .login-card p {
+                font-size: 0.9rem;
+                margin-bottom: 20px;
+            }
+            
+            /* MODALES EN MÓVILES */
+            .modal-overlay {
+                padding: 10px;
+                align-items: flex-start;
+                overflow-y: auto;
+            }
+            
+            .modal-card {
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 22px 18px !important;
+                border-radius: 14px;
+                max-height: 85vh;
+                margin: 10px 0;
+            }
+            
+            .modal-card h3 {
+                font-size: 1.2rem;
+                margin-bottom: 8px;
+            }
+            
+            .modal-card p {
+                font-size: 0.85rem;
+                margin-bottom: 15px;
+            }
+            
+            #formRecuperar textarea {
+                min-height: 80px !important;
+                max-height: 100px;
+                font-size: 0.85rem !important;
+                padding: 10px 12px !important;
+            }
+            
+            .modal-close-btn {
+                top: 10px;
+                right: 10px;
+                font-size: 1.6rem;
+                width: 32px;
+                height: 32px;
+            }
+            
+            .contact-info div {
+                padding: 10px 12px;
+                font-size: 0.9rem;
+            }
+            
+            .btn-submit, .btn-secondary {
+                padding: 12px;
+                font-size: 0.9rem;
+            }
+            
+            /* Footer móvil */
+            footer {
+                padding: 20px 10px;
+            }
+            
+            .footer-logo img {
+                height: 45px;
+            }
+            
+            .footer-content h3 {
+                font-size: 1rem;
+            }
+            
+            .footer-social a {
+                width: 36px;
+                height: 36px;
+                font-size: 0.85rem;
+                margin: 0 4px;
+            }
+            
+            .footer-links a {
+                font-size: 0.85rem;
+                margin: 0 5px;
+            }
+            
+            .copyright {
+                font-size: 0.75rem;
+                padding-top: 12px;
+            }
+        }
 
-/* ==========================================================================
-   12. PARA TABLETS PEQUEÑAS
-   ========================================================================== */
-@media (min-width: 481px) and (max-width: 768px) {
-    .login-card {
-        max-width: 90%;
-    }
-    
-    .modal-card {
-        max-width: 90%;
-    }
-}
+        /* ==========================================================================
+           11. PARA PANTALLAS MUY PEQUEÑAS
+           ========================================================================== */
+        @media (max-width: 480px) {
+            .main-header {
+                padding: 0 8px;
+            }
+            
+            .header-actions {
+                gap: 4px;
+            }
+            
+            .logo-container img {
+                height: 36px;
+                max-width: 100px;
+            }
+            
+            .btn-icon-header,
+            .btn-logout-header,
+            .menu-toggle {
+                width: 34px;
+                height: 34px;
+                font-size: 0.9rem;
+            }
+            
+            .btn-logout-header {
+                padding: 0 10px;
+            }
+            
+            .login-card {
+                padding: 20px 16px;
+                margin: 5px;
+            }
+            
+            .login-icon-container i {
+                font-size: 2.2rem;
+                padding: 12px;
+            }
+            
+            .login-card h2 {
+                font-size: 1.3rem;
+            }
+            
+            .form-control {
+                padding: 11px 13px;
+                font-size: 0.85rem;
+            }
+            
+            .btn-submit {
+                padding: 12px;
+                font-size: 0.85rem;
+            }
+            
+            /* Modal más compacto para pantallas muy pequeñas */
+            .modal-card {
+                padding: 20px 16px;
+                border-radius: 14px;
+                max-height: 80vh;
+            }
+            
+            .modal-card h3 {
+                font-size: 1.2rem;
+            }
+            
+            .modal-card p {
+                font-size: 0.85rem;
+            }
+            
+            .contact-info div {
+                font-size: 0.85rem;
+                padding: 8px 10px;
+            }
+            
+            .footer-social a {
+                width: 34px;
+                height: 34px;
+                margin: 0 3px;
+            }
+            
+            .footer-logo img {
+                height: 40px;
+            }
+            
+            .footer-content h3 {
+                font-size: 0.95rem;
+            }
+        }
 
-/* ==========================================================================
-   13. PREVENIR DESBORDAMIENTO GLOBAL
-   ========================================================================== */
-* {
-    max-width: 100%; /* Previene que cualquier elemento se salga */
-}
+        /* ==========================================================================
+           12. PARA TABLETS PEQUEÑAS
+           ========================================================================== */
+        @media (min-width: 481px) and (max-width: 768px) {
+            .login-card {
+                max-width: 90%;
+            }
+            
+            .modal-card {
+                max-width: 90%;
+            }
+        }
 
-body {
-    overflow-x: hidden; /* Oculta scroll horizontal */
-}
+        /* ==========================================================================
+           13. PREVENIR DESBORDAMIENTO GLOBAL
+           ========================================================================== */
+        * {
+            max-width: 100%; /* Previene que cualquier elemento se salga */
+        }
 
-/* Asegurar que los textos largos se rompan */
-h1, h2, h3, h4, p, span, a, button, label {
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-}
+        body {
+            overflow-x: hidden; /* Oculta scroll horizontal */
+        }
 
-/* Asegurar que los inputs no se salgan */
-input, textarea, select {
-    max-width: 100%;
-    box-sizing: border-box;
-}
+        /* Asegurar que los textos largos se rompan */
+        h1, h2, h3, h4, p, span, a, button, label {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        /* Asegurar que los inputs no se salgan */
+        input, textarea, select {
+            max-width: 100%;
+            box-sizing: border-box;
+        }
     </style>
 </head>
 
@@ -929,7 +930,7 @@ input, textarea, select {
         </div>
     </div>
 
-            <div class="modal-overlay" id="modalRecuperar">
+    <div class="modal-overlay" id="modalRecuperar">
         <div class="modal-card">
             <button onclick="cerrarRecuperar()" class="modal-close-btn" title="Cerrar">&times;</button>
             <i class="fas fa-key" style="font-size: 2.5rem; color: var(--primary); margin-bottom: 12px;"></i>
@@ -1011,6 +1012,9 @@ input, textarea, select {
             
             // Inicializar botón de mostrar/ocultar contraseña
             initPasswordToggle();
+            
+            // Probar conexión con el backend al cargar
+            testBackendConnection();
         } catch (error) { console.error("Error init:", error); }
     });
 
@@ -1078,7 +1082,27 @@ input, textarea, select {
         }
     }
 
-    // --- LÓGICA DE LOGIN ---
+    // --- TEST DE CONEXIÓN AL BACKEND ---
+    async function testBackendConnection() {
+        try {
+            console.log('🔍 Probando conexión con el backend...');
+            const response = await fetch(`${API_URL}/health`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ Backend conectado:', data);
+            } else {
+                console.warn('⚠️ Backend respondió con estado:', response.status);
+            }
+        } catch (error) {
+            console.error('❌ No se pudo conectar al backend:', error);
+        }
+    }
+
+    // --- LÓGICA DE LOGIN (USANDO /iniciar_sesion) ---
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
         e.preventDefault(); 
         const errorBox = document.getElementById('errorMessage');
@@ -1092,37 +1116,54 @@ input, textarea, select {
 
         const datos = new FormData(this);
         
-        // AÑADIDO: Log de depuración para verificar la URL
-        console.log('Intentando conectar a: ' + API_URL + '/buscar_estudiante');
+        // Sanitizar datos en el frontend también
+        const cedula = datos.get('cedula').trim();
+        const contrasena = datos.get('contrasena').trim();
+        
+        // Validar que no estén vacíos
+        if (!cedula || !contrasena) {
+            errorText.innerHTML = 'La cédula y contraseña son requeridas';
+            errorBox.style.display = 'block';
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            return;
+        }
+
+        console.log('🔍 Enviando login a:', API_URL + '/iniciar_sesion');
+        console.log('   - Cédula:', cedula);
+        console.log('   - Contraseña:', '*'.repeat(contrasena.length));
 
         try {
-            const res = await fetch(`${API_URL}/buscar_estudiante`, { method: "POST", body: datos });
+            const res = await fetch(`${API_URL}/iniciar_sesion`, { 
+                method: "POST", 
+                body: datos 
+            });
+            
             const data = await res.json();
+            console.log('📥 Respuesta del backend:', data);
 
-            if (data.encontrado) {
-                localStorage.setItem('usuario_cedula', datos.get('cedula'));
-                localStorage.setItem('usuario_contrasena', datos.get('contrasena'));
+            if (data.autenticado) {
+                localStorage.setItem('usuario_cedula', cedula);
+                localStorage.setItem('usuario_contrasena', contrasena);
+                localStorage.setItem('usuario_tipo', data.datos.tipo || 1);
                 
-                const tipoUsuario = data.datos.tipo !== undefined ? data.datos.tipo : 1; 
-                localStorage.setItem('usuario_tipo', tipoUsuario);
-                
-                if (tipoUsuario === 0) window.location.href = "perfiladmin.html";
-                else window.location.href = "perfil.html";
+                // Redireccionar según tipo de usuario
+                if (data.datos.tipo === 0) {
+                    window.location.href = "perfiladmin.html";
+                } else {
+                    window.location.href = "perfil.html";
+                }
 
             } else {
-                if (data.mensaje === "Cuenta desactivada") {
-                    errorText.innerHTML = '<strong>Acceso Denegado:</strong> Usuario desactivado.';
-                } else {
-                    errorText.innerHTML = 'Usuario o contraseña incorrectos.';
-                }
+                errorText.innerHTML = data.mensaje || 'Usuario o contraseña incorrectos';
                 errorBox.style.display = 'block';
                 
                 // Desplazar ligeramente la vista hacia el error
                 errorBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         } catch (error) {
-            console.error(error);
-            errorText.innerHTML = 'Error de conexión con el servidor.';
+            console.error('❌ Error en login:', error);
+            errorText.innerHTML = 'Error de conexión con el servidor. Intente nuevamente.';
             errorBox.style.display = 'block';
         } finally {
             btn.innerHTML = originalText;
@@ -1153,29 +1194,12 @@ input, textarea, select {
             }
         } catch (error) {
             alert("Error de conexión. Intenta más tarde.");
+            console.error('Error en recuperación:', error);
         } finally {
             btn.innerHTML = originalText; 
             btn.disabled = false;
         }
     });
-    // 1. Prueba simple GET
-fetch('https://proyecto-de-grado-oficial-production.up.railway.app/cors-test')
-  .then(response => response.json())
-  .then(data => console.log('✅ CORS TEST OK:', data))
-  .catch(error => console.error('❌ CORS TEST ERROR:', error));
-
-// 2. Prueba OPTIONS (preflight)
-fetch('https://proyecto-de-grado-oficial-production.up.railway.app/buscar_estudiante', {
-  method: 'OPTIONS',
-  headers: {
-    'Content-Type': 'application/x-www-form-urlencoded',
-  }
-})
-.then(response => {
-  console.log('✅ OPTIONS response:', response.status);
-  console.log('Headers:', [...response.headers.entries()]);
-})
-.catch(error => console.error('❌ OPTIONS error:', error));
-</script>
+    </script>
 </body>
 </html>
