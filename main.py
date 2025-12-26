@@ -298,6 +298,10 @@ async def buscar_estudiante(cedula: str = Form(...), contrasena: Optional[str] =
 @app.post("/registrar_usuario")
 async def registrar_usuario(nombre: str=Form(...), apellido: str=Form(...), cedula: str=Form(...), contrasena: str=Form(...), tipo_usuario: int=Form(...), foto: UploadFile=UploadFile(...)):
     try:
+        # SANITIZACIÓN: Eliminar espacios en blanco alrededor
+        cedula = cedula.strip()
+        contrasena = contrasena.strip()
+        
         conn = get_db_connection()
         c = conn.cursor()
         c.execute("SELECT CI FROM Usuarios WHERE CI=?", (cedula,))
@@ -325,6 +329,64 @@ async def registrar_usuario(nombre: str=Form(...), apellido: str=Form(...), cedu
         return JSONResponse(content={"mensaje": "Registrado", "url": url})
     except Exception as e:
         return JSONResponse(content={"error": str(e)})
+
+@app.post("/iniciar_sesion")
+@app.post("/buscar_estudiante")
+async def buscar_estudiante(cedula: str = Form(...), contrasena: Optional[str] = Form(None)):
+    try:
+        # SANITIZACIÓN: Eliminar espacios en blanco alrededor
+        cedula = cedula.strip()
+        if contrasena:
+            contrasena = contrasena.strip()
+        
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("SELECT * FROM Usuarios WHERE CI=?", (cedula,))
+        user = c.fetchone()
+        
+        if not user:
+            conn.close()
+            return JSONResponse(content={"encontrado": False, "mensaje": "Usuario no encontrado"})
+        
+        # DEBUG: Mostrar contraseñas para verificación
+        print(f"🔍 DEBUG LOGIN - Cédula: {cedula}")
+        print(f"   Contraseña recibida: '{contrasena}'")
+        print(f"   Contraseña en DB: '{user['Password']}'")
+        print(f"   ¿Son iguales?: {contrasena == user['Password']}")
+        
+        if contrasena and user["Password"] != contrasena:
+            conn.close()
+            return JSONResponse(content={"encontrado": False, "mensaje": "Contraseña incorrecta"})
+        
+        if user["Activo"] == 0:
+            conn.close()
+            return JSONResponse(content={"encontrado": False, "mensaje": "Cuenta desactivada por administración"})
+            
+        c.execute("SELECT id, Url_Archivo as url, Tipo_Archivo as tipo, Fecha_Subida FROM Evidencias WHERE CI_Estudiante=? AND Estado=1 ORDER BY Fecha_Subida DESC", (cedula,))
+        evs = [dict(row) for row in c.fetchall()]
+
+        c.execute("""SELECT Tipo, Estado, Respuesta, Fecha FROM Solicitudes 
+                     WHERE CI_Solicitante=? AND Estado != 'PENDIENTE' 
+                     ORDER BY Fecha DESC LIMIT 5""", (cedula,))
+        notis = [dict(row) for row in c.fetchall()]
+
+        conn.close()
+        
+        return JSONResponse(content={
+            "encontrado": True,
+            "datos": {
+                "nombre": user["Nombre"],
+                "apellido": user["Apellido"],
+                "cedula": user["CI"],
+                "tipo": user["Tipo"],
+                "url_foto": user["Foto"],
+                "galeria": evs,
+                "notificaciones": notis
+            }
+        })
+    except Exception as e:
+        print(f"Error en buscar_estudiante: {e}")
+        return JSONResponse(content={"encontrado": False, "mensaje": f"Error del servidor: {str(e)}"})
 
 @app.post("/solicitar_recuperacion")
 async def solicitar_recuperacion(cedula: str = Form(None), email: str = Form(...), mensaje: str = Form(None)):
