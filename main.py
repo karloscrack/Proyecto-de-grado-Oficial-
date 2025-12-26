@@ -145,20 +145,21 @@ def init_db_completa():
 
 init_db_completa()
 
-# --- 3. CONFIGURACIÓN DE CORS (CORREGIDA Y LIMPIA) ---
+# --- 3. CONFIGURACIÓN DE CORS (SOLUCIÓN DEFINITIVA) ---
 app = FastAPI()
 
-# Permitimos todo para evitar errores de origen cruzado (CORS)
+# Lista EXACTA de sitios permitidos
 origins = [
-    "https://proyecto-grado-karlos.vercel.app",    # <--- Tu Web en Vercel (INVITADO VIP)
+    "https://proyecto-grado-karlos.vercel.app",    # <--- Tu Web en Vercel
+    "https://proyecto-grado-karlos.vercel.app/",   # <--- Variación con slash por si acaso
     "http://127.0.0.1:5500",                         # <--- Tu PC
     "http://localhost:5500",                         # <--- Tu PC alternativo
-    "https://proyecto-de-grado-oficial-production.up.railway.app" # <--- El mismo servidor
+    "https://proyecto-de-grado-oficial-production.up.railway.app"
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,      # <--- Usamos la lista específica, NO ["*"]
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -206,15 +207,14 @@ def calcular_hash(ruta):
         for b in iter(lambda: f.read(4096), b""): h.update(b)
     return h.hexdigest()
 
-# --- ENDPOINTS PRINCIPALES ---
+# --- ENDPOINTS PRINCIPALES (LIMPIOS DE HEADERS MANUALES) ---
 
 @app.get("/")
 def home():
     return {
         "status": "online", 
         "backend": "Sistema Educativo Despertar V4.0",
-        "cors_enabled": True,
-        "mode": "PERMISSIVE_ALL"
+        "cors_enabled": True
     }
 
 @app.post("/iniciar_sesion")
