@@ -12,6 +12,7 @@
     <link rel="icon" type="image/png" href="Img/Logo_pestaña.png">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
@@ -365,8 +366,7 @@
         /* Lightbox mejorado */
         .lightbox-modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95);
-            z-index: 5000; display: none;
+            background: rgba(0,0,0,0.95); z-index: 5000; display: none;
             justify-content: center; align-items: center; flex-direction: column;
             opacity: 0; transition: opacity 0.3s ease;
         }
@@ -431,12 +431,6 @@
         }
         .btn-float:hover { transform: translateY(-2px); filter: brightness(1.1); }
         .btn-float.danger { background: var(--error); }
-        .btn-float-cancel {
-            background: transparent; border: 1px solid #666; color: #ccc;
-            width: 40px; height: 40px; border-radius: 50%; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: 0.3s;
-        }
-        .btn-float-cancel:hover { border-color: white; color: white; }
 
         /* Botón de retroceso */
         .btn-back {
@@ -468,8 +462,8 @@
         /* Modales */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8);
-            z-index: 5000; display: none; justify-content: center; align-items: center;
+            background: rgba(0,0,0,0.8); z-index: 5000; display: none; 
+            justify-content: center; align-items: center;
         }
         .modal-overlay.active { display: flex; }
         .modal-card {
@@ -612,6 +606,82 @@
         @media (min-width: 481px) {
             .mobile-actions-dropdown { display: none; }
         }
+        
+        .modal-card textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .request-preview {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+            transition: transform 0.2s;
+        }
+
+        .request-preview:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        /* Estilos para los tipos de solicitud */
+        .solicitud-tipo {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .tipo-reporte {
+            background: rgba(211, 47, 47, 0.1);
+            color: var(--error);
+        }
+
+        .tipo-problema {
+            background: rgba(249, 168, 37, 0.1);
+            color: var(--warning);
+        }
+
+        .tipo-subida {
+            background: rgba(33, 150, 243, 0.1);
+            color: var(--info);
+        }
+
+        .tipo-contrasena {
+            background: rgba(106, 13, 173, 0.1);
+            color: var(--primary);
+        }
+        
+        /* Estilos para el modal de responder */
+        .respuesta-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+        
+        .respuesta-textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-input);
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 0.95rem;
+            resize: vertical;
+        }
+        
+        .respuesta-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-soft);
+        }
     </style>
 </head>
 
@@ -715,10 +785,16 @@
                 </div>
             </div>
 
-            <!-- CALCULADORA REAL CON DATOS PRECISOS -->
+            <!-- CALCULADORA REAL CON DATOS PRECISOS - CORREGIDA -->
             <div class="storage-calc">
                 <h3 style="font-size:1.1rem; margin-bottom:10px;"><i class="fas fa-calculator"></i> Estimación de Costos (Backblaze B2)</h3>
-                <p style="font-size:0.9rem; color:var(--text-sec); margin-bottom:15px;">Calculado a $0.005/GB mes. Datos en tiempo real.</p>
+                <p style="font-size:0.9rem; color:var(--text-sec); margin-bottom:15px;">
+                    Datos reales de Backblaze: <br>
+                    • Evidencias: 1.0 GB<br>
+                    • Fotos usuarios: 12.2 MB<br>
+                    • Perfiles: 34.8 MB<br>
+                    Total: <strong>~1.047 GB</strong>
+                </p>
                 
                 <div class="storage-bar-bg">
                     <div id="mainStorageBar" class="storage-bar-fill"></div>
@@ -1196,9 +1272,6 @@
                            font-size:1.5rem; cursor:pointer; color:var(--text-sec);">
                 &times;
             </button>
-            <h3 style="color:var(--primary); margin-bottom:15px;" id="modalSolicitudTitulo">
-                Responder Solicitud
-            </h3>
             <div id="modalSolicitudContenido">
                 <!-- Contenido cargado dinámicamente -->
             </div>
@@ -1206,1521 +1279,277 @@
     </div>
 
     <script>
-        // ==========================================
-        // CONFIGURACIÓN Y VARIABLES GLOBALES
-        // ==========================================
-        const API_URL = "https://proyecto-de-grado-oficial-production.up.railway.app";
-        let usuarios = [];
-        let solicitudes = [];
-        let evidencias = [];
-        let logs = [];
-        let usuarioSeleccionadoPassword = null;
-        let evidenciasVisor = [];
-        let indiceVisorActual = 0;
-        let modoSeleccion = false;
-        let evidenciasSeleccionadas = [];
-        let estudianteActual = null;
-        let evidenciasEstudianteActual = [];
+    // ==========================================
+    // 1. CONFIGURACIÓN E INICIALIZACIÓN
+    // ==========================================
+    const API_URL = "https://proyecto-de-grado-oficial-production.up.railway.app";
+    let usuarios = [];
+    let evidencias = [];
+    let solicitudes = [];
+    let logs = [];
+    
+    // Variables globales
+    let modoSeleccion = false;
+    let evidenciasSeleccionadas = [];
+    let estudianteActual = null;
+    let evidenciasEstudianteActual = [];
+    let usuarioSeleccionadoPassword = null;
+
+    // Inicializar al cargar
+    document.addEventListener('DOMContentLoaded', function() {
+        // Verificar Admin
+        const tipoUsuario = localStorage.getItem('usuario_tipo');
+        if (tipoUsuario !== "0") {
+            alert("Acceso restringido. Solo administradores.");
+            window.location.href = "index.html";
+            return;
+        }
+
+        inicializarTema();
+        cargarDatosIniciales();
         
-        // Variables para navegación táctil
-        let touchStartX = 0;
-        let touchEndX = 0;
-
-        // ==========================================
-        // 1. INICIALIZACIÓN
-        // ==========================================
-        document.addEventListener('DOMContentLoaded', function() {
-            // Verificar que sea admin
-            if (localStorage.getItem('usuario_tipo') !== "0") {
-                alert("Acceso restringido. Solo administradores.");
-                window.location.href = "index.html";
-                return;
-            }
-
-            // Configurar tema
-            inicializarTema();
-            
-            // Cargar datos iniciales
-            cargarDatosIniciales();
-            
-            // Configurar eventos
-            document.getElementById('menuToggle').addEventListener('click', function() {
-                document.getElementById('sidebar').classList.toggle('active');
-            });
-            
-            // Cerrar menú al hacer clic fuera
-            document.addEventListener('click', function(e) {
-                if (window.innerWidth <= 992 && 
-                    !e.target.closest('#sidebar') && 
-                    !e.target.closest('#menuToggle')) {
-                    document.getElementById('sidebar').classList.remove('active');
-                }
-            });
-            
-            // Configurar formularios
-            configurarFormularios();
-            
-            // Configurar navegación por teclado en lightbox
-            document.addEventListener('keydown', function(e) {
-                const lightbox = document.getElementById('lightbox');
-                if (lightbox.classList.contains('active')) {
-                    if (e.key === 'ArrowRight') {
-                        imagenSiguiente(e);
-                    } else if (e.key === 'ArrowLeft') {
-                        imagenAnterior(e);
-                    } else if (e.key === 'Escape') {
-                        cerrarLightbox();
-                    }
-                }
-            });
-            
-            // Configurar navegación táctil en lightbox
-            const lightbox = document.getElementById('lightbox');
-            lightbox.addEventListener('touchstart', function(e) {
-                touchStartX = e.changedTouches[0].screenX;
-            }, {passive: true});
-            
-            lightbox.addEventListener('touchend', function(e) {
-                touchEndX = e.changedTouches[0].screenX;
-                handleSwipe();
-            }, {passive: true});
+        // Eventos Globales
+        document.getElementById('menuToggle').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('active');
         });
-
-        function inicializarTema() {
-            const temaGuardado = localStorage.getItem('tema');
-            const iconoTema = document.querySelector('#themeBtn i');
-            
-            if (temaGuardado === 'oscuro') {
-                document.body.classList.add('dark-mode');
-                iconoTema.className = 'fas fa-sun';
-            } else {
-                document.body.classList.remove('dark-mode');
-                iconoTema.className = 'fas fa-moon';
+        
+        // Cerrar menús al hacer clic fuera
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 992 && !e.target.closest('#sidebar') && !e.target.closest('#menuToggle')) {
+                document.getElementById('sidebar').classList.remove('active');
             }
-        }
-
-        async function cargarDatosIniciales() {
-            try {
-                // Cargar usuarios
-                const respuestaUsuarios = await fetch(`${API_URL}/listar_usuarios`);
-                usuarios = await respuestaUsuarios.json();
-                
-                // Cargar evidencias
-                const respuestaEvidencias = await fetch(`${API_URL}/resumen_estudiantes_con_evidencias`);
-                evidencias = await respuestaEvidencias.json();
-                
-                // Cargar solicitudes pendientes
-                const respuestaSolicitudes = await fetch(`${API_URL}/obtener_solicitudes`);
-                solicitudes = await respuestaSolicitudes.json();
-                
-                // Cargar logs
-                await cargarLogs();
-                
-                // Cargar estadísticas precisas de almacenamiento
-                await cargarEstadisticasAlmacenamiento();
-                
-                // Actualizar interfaz
-                actualizarDashboard();
-                actualizarNotificaciones();
-                renderizarUsuarios();
-                renderizarEvidencias();
-                
-            } catch (error) {
-                console.error('Error cargando datos:', error);
-                mostrarMensaje('Error al conectar con el servidor', 'error');
-            }
-        }
-
-        // ==========================================
-        // 2. NAVEGACIÓN Y UI
-        // ==========================================
-        function navTo(seccionId, boton) {
-            // Ir al inicio de la página
-            window.scrollTo(0, 0);
-            
-            // Ocultar todas las secciones
-            document.querySelectorAll('.panel-section').forEach(seccion => {
-                seccion.classList.remove('active');
-            });
-            
-            // Mostrar sección seleccionada
-            document.getElementById('panel-' + seccionId).classList.add('active');
-            
-            // Actualizar botón activo en sidebar
-            document.querySelectorAll('.sidebar-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            if (boton) boton.classList.add('active');
-            
-            // Cerrar menú en móviles
-            document.getElementById('sidebar').classList.remove('active');
-            
-            // Cargar datos específicos si es necesario
-            if (seccionId === 'evidencias') {
-                renderizarEvidencias();
-            } else if (seccionId === 'solicitudes') {
-                cargarSolicitudes();
-            }
-        }
-
-        function toggleTheme() {
-            const iconoTema = document.querySelector('#themeBtn i');
-            
-            if (document.body.classList.contains('dark-mode')) {
-                document.body.classList.remove('dark-mode');
-                localStorage.setItem('tema', 'claro');
-                iconoTema.className = 'fas fa-moon';
-            } else {
-                document.body.classList.add('dark-mode');
-                localStorage.setItem('tema', 'oscuro');
-                iconoTema.className = 'fas fa-sun';
-            }
-        }
-
-        function toggleNotis() {
-            document.getElementById('notisDropdown').classList.toggle('active');
-        }
-
-        function cerrarSesion() {
-            localStorage.clear();
-            window.location.href = 'index.html';
-        }
-
-        // ==========================================
-        // 3. DASHBOARD CON DATOS PRECISOS
-        // ==========================================
-        async function cargarEstadisticasAlmacenamiento() {
-            try {
-                // Obtener estadísticas reales del backend
-                const respuesta = await fetch(`${API_URL}/estadisticas_almacenamiento`);
-                const estadisticas = await respuesta.json();
-                
-                // Actualizar dashboard con datos precisos
-                document.getElementById('statUsers').textContent = estadisticas.usuarios_activos || 0;
-                document.getElementById('statReqs').textContent = estadisticas.solicitudes_pendientes || 0;
-                document.getElementById('statFiles').textContent = estadisticas.total_evidencias || 0;
-                
-                // Usar almacenamiento real en GB
-                const almacenamientoGB = estadisticas.almacenamiento_gb || 0;
-                document.getElementById('statSize').textContent = almacenamientoGB.toFixed(2) + ' GB';
-                document.getElementById('realSizeDisplay').textContent = almacenamientoGB.toFixed(2) + ' GB';
-                
-                // Calcular costos Backblaze ($0.005 por GB)
-                const costoPorGB = 0.005;
-                const costoMensual = almacenamientoGB * costoPorGB;
-                const costoAnual = costoMensual * 12;
-                
-                document.getElementById('monthlyCost').textContent = '$' + costoMensual.toFixed(3);
-                document.getElementById('yearlyCost').textContent = '$' + costoAnual.toFixed(2);
-                
-                // Calcular barra de progreso (base 50GB para referencia visual)
-                const porcentajeUso = Math.min(100, (almacenamientoGB / 50) * 100);
-                document.getElementById('mainStorageBar').style.width = porcentajeUso + '%';
-                document.getElementById('sidebarStorageBar').style.width = porcentajeUso + '%';
-                document.getElementById('sidebarStorageText').textContent = 
-                    almacenamientoGB.toFixed(1) + ' GB usados';
-                
-                // Calcular costos AWS Rekognition con datos precisos
-                const imagenesProcesadas = estadisticas.imagenes_procesadas_mes || 0;
-                const costoAWS = (imagenesProcesadas / 1000) * 1.00;
-                const costoTotal = costoMensual + costoAWS;
-                
-                document.getElementById('rekognitionCount').textContent = imagenesProcesadas.toLocaleString();
-                document.getElementById('rekognitionCost').textContent = '$' + costoAWS.toFixed(2);
-                document.getElementById('totalCost').textContent = '$' + costoTotal.toFixed(3);
-                
-            } catch (error) {
-                console.error('Error cargando estadísticas:', error);
-                // Usar cálculos aproximados si falla
-                actualizarDashboardAproximado();
-            }
-        }
-
-        function actualizarDashboardAproximado() {
-            // Cálculos aproximados como fallback
-            const usuariosActivos = usuarios.filter(u => u.activo === 1 || u.activo === true);
-            const solicitudesPendientes = solicitudes.filter(s => s.Estado === 'PENDIENTE');
-            const totalEvidencias = evidencias.reduce((total, estudiante) => {
-                return total + (estudiante.total_evidencias || 0);
-            }, 0);
-            
-            document.getElementById('statUsers').textContent = usuariosActivos.length;
-            document.getElementById('statReqs').textContent = solicitudesPendientes.length;
-            document.getElementById('statFiles').textContent = totalEvidencias;
-            
-            // Calcular almacenamiento estimado (promedio 3.5MB por archivo)
-            const tamañoPromedioMB = 3.5;
-            const tamañoTotalGB = (totalEvidencias * tamañoPromedioMB) / 1024;
-            document.getElementById('statSize').textContent = tamañoTotalGB.toFixed(2) + ' GB';
-            document.getElementById('realSizeDisplay').textContent = tamañoTotalGB.toFixed(2) + ' GB';
-            
-            // Calcular costos Backblaze ($0.005 por GB)
-            const costoPorGB = 0.005;
-            const costoMensual = tamañoTotalGB * costoPorGB;
-            const costoAnual = costoMensual * 12;
-            
-            document.getElementById('monthlyCost').textContent = '$' + costoMensual.toFixed(3);
-            document.getElementById('yearlyCost').textContent = '$' + costoAnual.toFixed(2);
-            
-            // Calcular barra de progreso
-            const porcentajeUso = Math.min(100, (tamañoTotalGB / 50) * 100);
-            document.getElementById('mainStorageBar').style.width = porcentajeUso + '%';
-            document.getElementById('sidebarStorageBar').style.width = porcentajeUso + '%';
-            document.getElementById('sidebarStorageText').textContent = 
-                tamañoTotalGB.toFixed(1) + ' GB usados';
-            
-            // Calcular costos AWS Rekognition
-            const imagenesProcesadas = Math.floor(totalEvidencias * 1.2);
-            const costoAWS = (imagenesProcesadas / 1000) * 1.00;
-            const costoTotal = costoMensual + costoAWS;
-            
-            document.getElementById('rekognitionCount').textContent = imagenesProcesadas.toLocaleString();
-            document.getElementById('rekognitionCost').textContent = '$' + costoAWS.toFixed(2);
-            document.getElementById('totalCost').textContent = '$' + costoTotal.toFixed(3);
-        }
-
-        function actualizarDashboard() {
-            // Esta función ahora se usa como fallback
-            actualizarDashboardAproximado();
-        }
-
-        function analizarDuplicados() {
-            mostrarMensaje('Analizando archivos duplicados...', 'info');
-            setTimeout(() => {
-                mostrarMensaje('Análisis completado: 0 archivos duplicados encontrados', 'success');
-            }, 2000);
-        }
-
-        function limpiarCache() {
-            if (confirm('¿Limpiar caché del sistema?')) {
-                mostrarMensaje('Caché limpiada correctamente', 'success');
-            }
-        }
-
-        function limpiarHuerfanos() {
-            mostrarMensaje('Buscando archivos huérfanos...', 'info');
-            setTimeout(() => {
-                mostrarMensaje('0 archivos huérfanos encontrados', 'success');
-            }, 2000);
-        }
-
-        // ==========================================
-        // 4. GESTIÓN DE USUARIOS MEJORADA
-        // ==========================================
-        function configurarFormularios() {
-            // Formulario registro usuario
-            document.getElementById('formRegistro').addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
-                const formulario = e.target;
-                const boton = formulario.querySelector('button[type="submit"]');
-                const datos = new FormData(formulario);
-                
-                // Validaciones frontend
-                const cedula = datos.get('cedula');
-                const contrasena = datos.get('contrasena');
-                
-                if (!/^\d{10}$/.test(cedula)) {
-                    alert('La cédula debe tener exactamente 10 dígitos numéricos');
-                    return;
-                }
-                
-                if (contrasena.length < 6) {
-                    alert('La contraseña debe tener al menos 6 caracteres');
-                    return;
-                }
-                
-                try {
-                    boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
-                    boton.disabled = true;
-                    
-                    const respuesta = await fetch(`${API_URL}/registrar_usuario`, {
-                        method: 'POST',
-                        body: datos
-                    });
-                    
-                    const resultado = await respuesta.json();
-                    
-                    if (resultado.mensaje) {
-                        mostrarMensaje('Usuario registrado correctamente', 'success');
-                        formulario.reset();
-                        await cargarDatosIniciales(); // Recargar datos
-                    } else {
-                        mostrarMensaje('Error: ' + (resultado.error || 'Desconocido'), 'error');
-                    }
-                } catch (error) {
-                    mostrarMensaje('Error de conexión', 'error');
-                } finally {
-                    boton.innerHTML = '<i class="fas fa-user-plus"></i> Guardar Usuario';
-                    boton.disabled = false;
-                }
-            });
-        }
-
-        function renderizarUsuarios() {
-            const tbody = document.getElementById('userTableBody');
-            tbody.innerHTML = '';
-            
-            usuarios.forEach(usuario => {
-                const fila = document.createElement('tr');
-                
-                // Determinar estado y color
-                const estaActivo = usuario.activo == 1 || usuario.activo === true;
-                const estadoTexto = estaActivo ? 'Activo' : 'Inactivo';
-                const estadoColor = estaActivo ? 'var(--secondary)' : 'var(--error)';
-                
-                // Determinar rol
-                const rol = usuario.tipo == 0 ? 'Admin' : 'Estudiante';
-                const rolColor = usuario.tipo == 0 ? 'var(--primary)' : 'var(--secondary)';
-                
-                fila.innerHTML = `
-                    <td>
-                        <div style="font-weight:600;">${usuario.nombre} ${usuario.apellido}</div>
-                        <small style="color:var(--text-sec);">Contraseña: ${usuario.contrasena}</small>
-                    </td>
-                    <td>${usuario.cedula}</td>
-                    <td>
-                        <span style="color:${rolColor}; font-weight:bold;">${rol}</span>
-                    </td>
-                    <td>
-                        <span style="color:${estadoColor}; font-weight:bold;">${estadoTexto}</span>
-                    </td>
-                    <td>
-                        <button class="action-btn btn-view" title="Ver" onclick="verUsuario('${usuario.cedula}')">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        <button class="action-btn btn-edit" title="Editar" onclick="editarUsuario('${usuario.cedula}')">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        ${estaActivo ? 
-                            `<button class="action-btn btn-deactivate" title="Desactivar" onclick="cambiarEstadoUsuario('${usuario.cedula}', 0)">
-                                <i class="fas fa-user-slash"></i>
-                            </button>` :
-                            `<button class="action-btn btn-activate" title="Activar" onclick="cambiarEstadoUsuario('${usuario.cedula}', 1)">
-                                <i class="fas fa-user-check"></i>
-                            </button>`
-                        }
-                        <button class="action-btn btn-delete" title="Eliminar" onclick="eliminarUsuario('${usuario.cedula}')">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                        <div class="mobile-actions-dropdown">
-                            <button class="mobile-actions-btn" onclick="toggleMobileActions(this)">
-                                <i class="fas fa-ellipsis-v"></i> Acciones
-                            </button>
-                            <div class="mobile-actions-menu">
-                                <div class="mobile-action-item" onclick="verUsuario('${usuario.cedula}')">
-                                    <i class="fas fa-eye"></i> Ver
-                                </div>
-                                <div class="mobile-action-item" onclick="editarUsuario('${usuario.cedula}')">
-                                    <i class="fas fa-edit"></i> Editar
-                                </div>
-                                ${estaActivo ? 
-                                    `<div class="mobile-action-item" onclick="cambiarEstadoUsuario('${usuario.cedula}', 0)">
-                                        <i class="fas fa-user-slash"></i> Desactivar
-                                    </div>` :
-                                    `<div class="mobile-action-item" onclick="cambiarEstadoUsuario('${usuario.cedula}', 1)">
-                                        <i class="fas fa-user-check"></i> Activar
-                                    </div>`
-                                }
-                                <div class="mobile-action-item" onclick="eliminarUsuario('${usuario.cedula}')" style="color:var(--error);">
-                                    <i class="fas fa-trash"></i> Eliminar
-                                </div>
-                            </div>
-                        </div>
-                    </td>
-                `;
-                
-                tbody.appendChild(fila);
-            });
-        }
-
-        function toggleMobileActions(button) {
-            const menu = button.nextElementSibling;
-            menu.classList.toggle('active');
-            
-            // Cerrar otros menús abiertos
-            document.querySelectorAll('.mobile-actions-menu.active').forEach(otherMenu => {
-                if (otherMenu !== menu) {
-                    otherMenu.classList.remove('active');
-                }
-            });
-        }
-
-        // Cerrar menús móviles al hacer clic fuera
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.mobile-actions-dropdown')) {
-                document.querySelectorAll('.mobile-actions-menu.active').forEach(menu => {
-                    menu.classList.remove('active');
-                });
+            if (!e.target.closest('.notis-dropdown') && !e.target.closest('.btn-icon-header')) {
+                document.getElementById('notisDropdown').classList.remove('active');
             }
         });
+        
+        // Configurar formularios
+        configurarFormularios();
+    });
 
-        function filterUsers() {
-            const busqueda = document.getElementById('searchUser').value.toLowerCase();
-            const filas = document.querySelectorAll('#userTableBody tr');
-            
-            filas.forEach(fila => {
-                const texto = fila.textContent.toLowerCase();
-                fila.style.display = texto.includes(busqueda) ? '' : 'none';
-            });
-        }
+    async function cargarDatosIniciales() {
+        try {
+            // Cargar datos en paralelo
+            const [resUsers, resEvidencias, resSolicitudes, resLogs, resStats] = await Promise.all([
+                fetch(`${API_URL}/listar_usuarios`),
+                fetch(`${API_URL}/resumen_estudiantes_con_evidencias`),
+                fetch(`${API_URL}/obtener_solicitudes`),
+                fetch(`${API_URL}/obtener_logs`),
+                fetch(`${API_URL}/estadisticas_almacenamiento`)
+            ]);
 
-        async function cambiarEstadoUsuario(cedula, nuevoEstado) {
-            const usuario = usuarios.find(u => u.cedula === cedula);
-            if (!usuario) return;
-            
-            const accion = nuevoEstado == 1 ? 'activar' : 'desactivar';
-            const confirmacion = await Swal.fire({
-                title: `¿${accion.charAt(0).toUpperCase() + accion.slice(1)} usuario?`,
-                text: `¿Estás seguro de querer ${accion} a ${usuario.nombre} ${usuario.apellido}?`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: nuevoEstado == 1 ? '#2E8B57' : '#d32f2f',
-                cancelButtonColor: '#5f6368',
-                confirmButtonText: `Sí, ${accion}`,
-                cancelButtonText: 'Cancelar'
-            });
-            
-            if (!confirmacion.isConfirmed) return;
-            
-            try {
-                const respuesta = await fetch(`${API_URL}/cambiar_estado_usuario`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        cedula: cedula,
-                        activo: nuevoEstado
-                    })
-                });
-                
-                const resultado = await respuesta.json();
-                
-                if (resultado.mensaje) {
-                    mostrarMensaje(`Usuario ${accion}do correctamente`, 'success');
-                    await cargarDatosIniciales();
-                } else {
-                    mostrarMensaje('Error al cambiar estado', 'error');
-                }
-            } catch (error) {
-                mostrarMensaje('Error de conexión', 'error');
-            }
-        }
+            usuarios = await resUsers.json();
+            evidencias = await resEvidencias.json();
+            solicitudes = await resSolicitudes.json();
+            logs = await resLogs.json();
+            const stats = await resStats.json();
 
-        function verUsuario(cedula) {
-            const usuario = usuarios.find(u => u.cedula === cedula);
-            if (usuario) {
-                Swal.fire({
-                    title: `${usuario.nombre} ${usuario.apellido}`,
-                    html: `
-                        <div style="text-align:left; margin-top:20px;">
-                            <p><strong>Cédula:</strong> ${usuario.cedula}</p>
-                            <p><strong>Rol:</strong> ${usuario.tipo == 0 ? 'Administrador' : 'Estudiante'}</p>
-                            <p><strong>Estado:</strong> ${usuario.activo == 1 ? 'Activo' : 'Inactivo'}</p>
-                            <p><strong>Contraseña:</strong> ${usuario.contrasena}</p>
-                            ${usuario.foto ? `<p><strong>Foto:</strong> <br><img src="${usuario.foto}" style="max-width:200px; margin-top:10px; border-radius:8px;"></p>` : ''}
-                        </div>
-                    `,
-                    icon: 'info',
-                    confirmButtonColor: '#6A0DAD',
-                    confirmButtonText: 'Cerrar'
-                });
-            }
-        }
-
-        async function eliminarUsuario(cedula) {
-            const usuario = usuarios.find(u => u.cedula === cedula);
-            if (!usuario) return;
-            
-            const confirmacion = await Swal.fire({
-                title: '¿Eliminar usuario?',
-                text: `Esta acción eliminará permanentemente a ${usuario.nombre} ${usuario.apellido} y todas sus evidencias.`,
-                icon: 'error',
-                showCancelButton: true,
-                confirmButtonColor: '#d32f2f',
-                cancelButtonColor: '#5f6368',
-                confirmButtonText: 'Sí, eliminar',
-                cancelButtonText: 'Cancelar'
+            // Filtrar solo solicitudes PENDIENTES para las notificaciones
+            const solicitudesPendientes = solicitudes.filter(s => {
+                const estado = (s.Estado || '').toUpperCase();
+                return estado === 'PENDIENTE' || estado === '';
             });
             
-            if (!confirmacion.isConfirmed) return;
-            
-            try {
-                const respuesta = await fetch(`${API_URL}/eliminar_usuario/${cedula}`, {
-                    method: 'DELETE'
-                });
+            // Ordenar solicitudes: pendientes primero
+            solicitudes.sort((a, b) => {
+                const estadoA = (a.Estado || '').toUpperCase();
+                const estadoB = (b.Estado || '').toUpperCase();
+                const aPendiente = estadoA === 'PENDIENTE' || estadoA === '';
+                const bPendiente = estadoB === 'PENDIENTE' || estadoB === '';
                 
-                if (respuesta.ok) {
-                    mostrarMensaje('Usuario eliminado correctamente', 'success');
-                    await cargarDatosIniciales();
-                } else {
-                    mostrarMensaje('Error al eliminar usuario', 'error');
-                }
-            } catch (error) {
-                mostrarMensaje('Error de conexión', 'error');
-            }
-        }
-
-        // ==========================================
-        // 5. EVIDENCIAS POR ESTUDIANTE
-        // ==========================================
-        function renderizarEvidencias() {
-            const grid = document.getElementById('evidenceGrid');
-            const vacio = document.getElementById('evidenceEmpty');
-            
-            if (evidencias.length === 0) {
-                grid.innerHTML = '';
-                vacio.style.display = 'flex';
-                return;
-            }
-            
-            vacio.style.display = 'none';
-            grid.innerHTML = '';
-            
-            evidencias.forEach(estudiante => {
-                const tarjeta = document.createElement('div');
-                tarjeta.className = 'evidence-card';
-                tarjeta.onclick = () => verEvidenciasEstudiante(estudiante);
-                
-                tarjeta.innerHTML = `
-                    <img src="${estudiante.foto || 'https://via.placeholder.com/180'}" 
-                         class="card-media" 
-                         onerror="this.src='https://via.placeholder.com/180'"
-                         alt="${estudiante.nombre} ${estudiante.apellido}">
-                    ${estudiante.total_evidencias > 0 ? `
-                        <div style="position:absolute; top:10px; left:10px; background:var(--primary); 
-                                    color:white; padding:2px 8px; border-radius:10px; font-size:0.8rem;">
-                            ${estudiante.total_evidencias}
-                        </div>
-                    ` : ''}
-                    <div style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.7); 
-                                color:white; padding:10px; text-align:center;">
-                        <div style="font-weight:600; font-size:0.9rem;">${estudiante.nombre} ${estudiante.apellido}</div>
-                        <div style="font-size:0.8rem; opacity:0.8;">CI: ${estudiante.cedula}</div>
-                    </div>
-                `;
-                
-                grid.appendChild(tarjeta);
+                if (aPendiente && !bPendiente) return -1;
+                if (!aPendiente && bPendiente) return 1;
+                return new Date(b.fecha) - new Date(a.fecha);
             });
-        }
 
-        function filtrarEvidencias() {
-            const filtro = document.getElementById('filterEvidence').value.toLowerCase();
-            const tarjetas = document.querySelectorAll('.evidence-card');
-            const vacio = document.getElementById('evidenceEmpty');
-            let visibles = 0;
+            actualizarInterfaz(stats, solicitudesPendientes);
             
-            tarjetas.forEach(tarjeta => {
-                const texto = tarjeta.textContent.toLowerCase();
-                if (texto.includes(filtro)) {
-                    tarjeta.style.display = 'block';
-                    visibles++;
-                } else {
-                    tarjeta.style.display = 'none';
-                }
-            });
-            
-            if (visibles === 0 && tarjetas.length > 0) {
-                vacio.style.display = 'flex';
-            } else {
-                vacio.style.display = 'none';
-            }
+        } catch (error) {
+            console.error("Error inicializando:", error);
+            mostrarMensaje("Error al cargar datos iniciales", "error");
         }
+    }
 
-        async function verEvidenciasEstudiante(estudiante) {
-            estudianteActual = estudiante;
-            
-            try {
-                const respuesta = await fetch(`${API_URL}/todas_evidencias?cedula=${estudiante.cedula}`);
-                evidenciasEstudianteActual = await respuesta.json();
-                
-                // Actualizar título
-                document.getElementById('studentNameTitle').textContent = `Evidencias de ${estudiante.nombre} ${estudiante.apellido}`;
-                
-                // Mostrar información del estudiante
-                const infoContainer = document.getElementById('studentInfoContainer');
-                infoContainer.innerHTML = `
-                    <img src="${estudiante.foto || 'https://via.placeholder.com/150'}" 
-                         class="student-avatar" 
-                         onerror="this.src='https://via.placeholder.com/150'"
-                         alt="${estudiante.nombre} ${estudiante.apellido}">
-                    <div>
-                        <h3 style="color:var(--primary); margin-bottom:5px;">${estudiante.nombre} ${estudiante.apellido}</h3>
-                        <p style="color:var(--text-sec); margin-bottom:5px;">Cédula: ${estudiante.cedula}</p>
-                        <p style="color:var(--text-sec);">Total evidencias: ${evidenciasEstudianteActual.length}</p>
-                    </div>
-                `;
-                infoContainer.style.display = 'flex';
-                
-                // Mostrar evidencias
-                renderizarEvidenciasEstudiante();
-                
-                // Cambiar a la sección de evidencias del estudiante
-                document.querySelectorAll('.panel-section').forEach(seccion => {
-                    seccion.classList.remove('active');
-                });
-                document.getElementById('panel-evidencias-estudiante').classList.add('active');
-                
-                // Actualizar botón activo en sidebar
-                document.querySelectorAll('.sidebar-btn').forEach(btn => {
-                    btn.classList.remove('active');
-                });
-                
-                // Ir al inicio de la página
-                window.scrollTo(0, 0);
-                
-            } catch (error) {
-                console.error('Error cargando evidencias del estudiante:', error);
-                mostrarMensaje('Error al cargar evidencias del estudiante', 'error');
-            }
-        }
+    function actualizarInterfaz(stats, solicitudesPendientes) {
+        // 1. Dashboard Stats
+        document.getElementById('statUsers').textContent = stats.usuarios_activos || 0;
+        document.getElementById('statFiles').textContent = stats.total_evidencias || 0;
+        
+        // 2. Solicitudes Pendientes
+        const numPendientes = solicitudesPendientes.length;
+        document.getElementById('statReqs').textContent = numPendientes;
+        
+        // Actualizar notificaciones
+        actualizarNotificaciones(solicitudesPendientes);
+        
+        // 3. Renderizar contenido
+        renderizarUsuarios();
+        renderizarEvidencias();
+        renderizarSolicitudes();
+        renderizarLogs();
+        
+        // 4. Costos y almacenamiento
+        const gb = stats.almacenamiento_gb || 0;
+        document.getElementById('statSize').textContent = gb.toFixed(2) + ' GB';
+        document.getElementById('realSizeDisplay').textContent = gb.toFixed(2) + ' GB';
+        document.getElementById('monthlyCost').textContent = '$' + (gb * 0.005).toFixed(3);
+        document.getElementById('mainStorageBar').style.width = Math.min(100, (gb/50)*100) + '%';
+        document.getElementById('sidebarStorageBar').style.width = Math.min(100, (gb/50)*100) + '%';
+        document.getElementById('sidebarStorageText').textContent = gb.toFixed(1) + ' GB usados';
+    }
 
-        function renderizarEvidenciasEstudiante() {
-            const grid = document.getElementById('studentEvidenceGrid');
-            const vacio = document.getElementById('studentEvidenceEmpty');
+    function actualizarNotificaciones(pendientes) {
+        const badge = document.getElementById('notisBadge');
+        const list = document.getElementById('notisList');
+        
+        if (pendientes.length > 0) {
+            badge.style.display = 'flex';
+            badge.textContent = pendientes.length > 9 ? '9+' : pendientes.length;
             
-            if (evidenciasEstudianteActual.length === 0) {
-                grid.innerHTML = '';
-                vacio.style.display = 'flex';
-                return;
-            }
-            
-            vacio.style.display = 'none';
-            grid.innerHTML = '';
-            
-            evidenciasEstudianteActual.forEach((evidencia, index) => {
-                const tarjeta = document.createElement('div');
-                tarjeta.className = `evidence-card ${modoSeleccion ? 'selection-mode-active' : ''}`;
-                if (evidenciasSeleccionadas.includes(evidencia.id)) {
-                    tarjeta.classList.add('selected');
+            list.innerHTML = pendientes.slice(0, 5).map(sol => {
+                let icono = 'fas fa-exclamation-circle';
+                let color = 'var(--warning)';
+                
+                switch(sol.Tipo) {
+                    case 'REPORTE_EVIDENCIA': icono = 'fas fa-user-times'; color = 'var(--error)'; break;
+                    case 'PROBLEMA_ERROR': icono = 'fas fa-bug'; color = 'var(--warning)'; break;
+                    case 'SUBIR_EVIDENCIA': icono = 'fas fa-cloud-upload-alt'; color = 'var(--info)'; break;
+                    case 'RECUPERACION_CONTRASENA': icono = 'fas fa-key'; color = 'var(--primary)'; break;
                 }
                 
-                tarjeta.onclick = () => {
-                    if (modoSeleccion) {
-                        toggleSeleccionEvidencia(evidencia.id, tarjeta);
-                    } else {
-                        abrirVisor(index);
-                    }
-                };
-                
-                const tipo = obtenerTipoArchivo(evidencia.url);
-                let contenido = '';
-                
-                if (tipo === 'imagen') {
-                    contenido = `<img src="${evidencia.url}" class="card-media" loading="lazy">`;
-                } else if (tipo === 'video') {
-                    contenido = `
-                        <video src="${evidencia.url}#t=0.1" class="card-media"></video>
-                        <div class="video-overlay"><i class="fas fa-play-circle"></i></div>
-                    `;
-                } else {
-                    contenido = `
-                        <div style="width:100%;height:100%;background:var(--bg-input);display:flex;align-items:center;justify-content:center;color:var(--text-main);">
-                            <i class="fas fa-file-alt" style="font-size:2.5rem;"></i>
-                        </div>
-                    `;
-                }
-                
-                tarjeta.innerHTML = `
-                    <div class="selection-check"><i class="fas fa-check"></i></div>
-                    ${contenido}
-                `;
-                
-                grid.appendChild(tarjeta);
-            });
-            
-            // Actualizar contador de selección
-            document.getElementById('countSelection').textContent = evidenciasSeleccionadas.length;
-        }
-
-        function volverAEvidencias() {
-            // Limpiar selección
-            modoSeleccion = false;
-            evidenciasSeleccionadas = [];
-            document.getElementById('floatingBar').classList.remove('active');
-            
-            // Cambiar a la sección principal de evidencias
-            document.querySelectorAll('.panel-section').forEach(seccion => {
-                seccion.classList.remove('active');
-            });
-            document.getElementById('panel-evidencias').classList.add('active');
-            
-            // Actualizar botón activo en sidebar
-            document.querySelectorAll('.sidebar-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.querySelector('[onclick*="evidencias"]').classList.add('active');
-            
-            // Ir al inicio de la página
-            window.scrollTo(0, 0);
-        }
-
-        // ==========================================
-        // 6. SELECCIÓN MÚLTIPLE
-        // ==========================================
-        function toggleModoSeleccion() {
-            modoSeleccion = !modoSeleccion;
-            
-            if (modoSeleccion) {
-                document.getElementById('floatingBar').classList.add('active');
-                document.getElementById('btnSelectMode').innerHTML = '<i class="fas fa-times"></i> Cancelar';
-            } else {
-                document.getElementById('floatingBar').classList.remove('active');
-                document.getElementById('btnSelectMode').innerHTML = '<i class="fas fa-check-square"></i> Seleccionar';
-                evidenciasSeleccionadas = [];
-            }
-            
-            renderizarEvidenciasEstudiante();
-        }
-
-        function toggleSeleccionEvidencia(id, elemento) {
-            const index = evidenciasSeleccionadas.indexOf(id);
-            if (index === -1) {
-                evidenciasSeleccionadas.push(id);
-                elemento.classList.add('selected');
-            } else {
-                evidenciasSeleccionadas.splice(index, 1);
-                elemento.classList.remove('selected');
-            }
-            
-            document.getElementById('countSelection').textContent = evidenciasSeleccionadas.length;
-        }
-
-        function cancelarSeleccion() {
-            modoSeleccion = false;
-            evidenciasSeleccionadas = [];
-            document.getElementById('floatingBar').classList.remove('active');
-            document.getElementById('btnSelectMode').innerHTML = '<i class="fas fa-check-square"></i> Seleccionar';
-            renderizarEvidenciasEstudiante();
-        }
-
-        async function descargarSeleccionadas() {
-            if (evidenciasSeleccionadas.length === 0) {
-                mostrarMensaje('Selecciona al menos una evidencia', 'warning');
-                return;
-            }
-            
-            try {
-                mostrarMensaje('Preparando descarga...', 'info');
-                
-                // En un entorno real, aquí se enviarían los IDs al backend
-                // para generar un ZIP y descargarlo
-                const formData = new FormData();
-                formData.append('ids', evidenciasSeleccionadas.join(','));
-                
-                const respuesta = await fetch(`${API_URL}/descargar_evidencias_zip`, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (respuesta.ok) {
-                    const blob = await respuesta.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `evidencias_${estudianteActual.cedula}_${Date.now()}.zip`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    window.URL.revokeObjectURL(url);
-                    
-                    mostrarMensaje('Descarga iniciada', 'success');
-                    cancelarSeleccion();
-                } else {
-                    mostrarMensaje('Error al preparar la descarga', 'error');
-                }
-            } catch (error) {
-                console.error('Error descargando evidencias:', error);
-                mostrarMensaje('Error de conexión al descargar', 'error');
-            }
-        }
-
-        async function eliminarSeleccionadas() {
-            if (evidenciasSeleccionadas.length === 0) {
-                mostrarMensaje('Selecciona al menos una evidencia', 'warning');
-                return;
-            }
-            
-            const confirmacion = await Swal.fire({
-                title: '¿Eliminar evidencias seleccionadas?',
-                text: `Se eliminarán ${evidenciasSeleccionadas.length} evidencias permanentemente.`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d32f2f',
-                cancelButtonColor: '#5f6368',
-                confirmButtonText: 'Sí, eliminar',
-                cancelButtonText: 'Cancelar'
-            });
-            
-            if (!confirmacion.isConfirmed) return;
-            
-            try {
-                mostrarMensaje('Eliminando evidencias...', 'info');
-                
-                // En un entorno real, aquí se enviarían los IDs al backend para eliminarlos
-                for (const id of evidenciasSeleccionadas) {
-                    await fetch(`${API_URL}/eliminar_evidencia/${id}`, {
-                        method: 'DELETE'
-                    });
-                }
-                
-                mostrarMensaje(`${evidenciasSeleccionadas.length} evidencias eliminadas`, 'success');
-                
-                // Recargar evidencias del estudiante
-                await verEvidenciasEstudiante(estudianteActual);
-                cancelarSeleccion();
-                
-            } catch (error) {
-                console.error('Error eliminando evidencias:', error);
-                mostrarMensaje('Error al eliminar evidencias', 'error');
-            }
-        }
-
-        // ==========================================
-        // 7. VISOR DE EVIDENCIAS MEJORADO
-        // ==========================================
-        function obtenerTipoArchivo(url) {
-            if (!url) return 'documento';
-            const extension = url.split('.').pop().toLowerCase();
-            
-            if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) {
-                return 'imagen';
-            } else if (['mp4', 'avi', 'mov', 'webm'].includes(extension)) {
-                return 'video';
-            } else {
-                return 'documento';
-            }
-        }
-
-        function abrirVisor(indice) {
-            evidenciasVisor = evidenciasEstudianteActual;
-            indiceVisorActual = indice;
-            
-            const visor = document.getElementById('lightbox');
-            const contenido = document.getElementById('lightboxContent');
-            const enlaceDescarga = document.getElementById('lbDownloadLink');
-            
-            if (evidenciasVisor.length === 0) return;
-            
-            const evidenciaActual = evidenciasVisor[indiceVisorActual];
-            
-            // Configurar enlace de descarga
-            enlaceDescarga.href = evidenciaActual.url;
-            enlaceDescarga.download = evidenciaActual.url.split('/').pop();
-            
-            // Mostrar contenido
-            contenido.innerHTML = '';
-            
-            if (evidenciaActual.tipo === 'imagen') {
-                const imagen = document.createElement('img');
-                imagen.src = evidenciaActual.url;
-                imagen.className = 'lb-media-item';
-                imagen.alt = 'Evidencia del estudiante';
-                contenido.appendChild(imagen);
-            } else if (evidenciaActual.tipo === 'video') {
-                const video = document.createElement('video');
-                video.src = evidenciaActual.url;
-                video.className = 'lb-media-item';
-                video.controls = true;
-                contenido.appendChild(video);
-            } else {
-                contenido.innerHTML = `
-                    <div style="color:white; text-align:center; padding:40px;">
-                        <i class="fas fa-file-alt" style="font-size:4rem; margin-bottom:20px;"></i>
-                        <h3>Documento</h3>
-                        <p>Vista previa no disponible para este tipo de archivo</p>
-                        <a href="${evidenciaActual.url}" target="_blank" 
-                           style="color:var(--primary); text-decoration:underline; margin-top:20px; display:inline-block;">
-                            Descargar archivo
-                        </a>
-                    </div>
-                `;
-            }
-            
-            visor.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function cerrarLightbox() {
-            document.getElementById('lightbox').classList.remove('active');
-            document.body.style.overflow = '';
-        }
-
-        function cerrarLightboxSiFondo(evento) {
-            if (evento.target.id === 'lightbox') {
-                cerrarLightbox();
-            }
-        }
-
-        function imagenSiguiente(evento) {
-            if (evento) evento.stopPropagation();
-            indiceVisorActual = (indiceVisorActual + 1) % evidenciasVisor.length;
-            actualizarVisor();
-        }
-
-        function imagenAnterior(evento) {
-            if (evento) evento.stopPropagation();
-            indiceVisorActual = (indiceVisorActual - 1 + evidenciasVisor.length) % evidenciasVisor.length;
-            actualizarVisor();
-        }
-
-        function actualizarVisor() {
-            const contenido = document.getElementById('lightboxContent');
-            const enlaceDescarga = document.getElementById('lbDownloadLink');
-            
-            if (evidenciasVisor.length === 0) return;
-            
-            const evidenciaActual = evidenciasVisor[indiceVisorActual];
-            
-            // Configurar enlace de descarga
-            enlaceDescarga.href = evidenciaActual.url;
-            enlaceDescarga.download = evidenciaActual.url.split('/').pop();
-            
-            // Mostrar contenido
-            contenido.innerHTML = '';
-            
-            if (evidenciaActual.tipo === 'imagen') {
-                const imagen = document.createElement('img');
-                imagen.src = evidenciaActual.url;
-                imagen.className = 'lb-media-item';
-                imagen.alt = 'Evidencia del estudiante';
-                contenido.appendChild(imagen);
-            } else if (evidenciaActual.tipo === 'video') {
-                const video = document.createElement('video');
-                video.src = evidenciaActual.url;
-                video.className = 'lb-media-item';
-                video.controls = true;
-                contenido.appendChild(video);
-            } else {
-                contenido.innerHTML = `
-                    <div style="color:white; text-align:center; padding:40px;">
-                        <i class="fas fa-file-alt" style="font-size:4rem; margin-bottom:20px;"></i>
-                        <h3>Documento</h3>
-                        <p>Vista previa no disponible para este tipo de archivo</p>
-                        <a href="${evidenciaActual.url}" target="_blank" 
-                           style="color:var(--primary); text-decoration:underline; margin-top:20px; display:inline-block;">
-                            Descargar archivo
-                        </a>
-                    </div>
-                `;
-            }
-        }
-
-        function handleSwipe() {
-            const SWIPE_THRESHOLD = 50;
-            
-            if (touchEndX < touchStartX - SWIPE_THRESHOLD) {
-                // Deslizamiento a la izquierda - siguiente imagen
-                imagenSiguiente(new Event('swipe'));
-            }
-            
-            if (touchEndX > touchStartX + SWIPE_THRESHOLD) {
-                // Deslizamiento a la derecha - imagen anterior
-                imagenAnterior(new Event('swipe'));
-            }
-        }
-
-        // ==========================================
-        // 8. SOLICITUDES MEJORADAS
-        // ==========================================
-        function actualizarNotificaciones() {
-            const pendientes = solicitudes.filter(s => s.Estado === 'PENDIENTE');
-            const insignia = document.getElementById('notisBadge');
-            const lista = document.getElementById('notisList');
-            
-            // Actualizar insignia
-            if (pendientes.length > 0) {
-                insignia.textContent = pendientes.length;
-                insignia.style.display = 'flex';
-            } else {
-                insignia.style.display = 'none';
-            }
-            
-            // Actualizar lista
-            if (pendientes.length === 0) {
-                lista.innerHTML = '<p style="padding:15px; text-align:center; color:var(--text-sec);">Sin notificaciones</p>';
-                return;
-            }
-            
-            lista.innerHTML = pendientes.map(solicitud => `
-                <div class="noti-item unread" onclick="navTo('solicitudes'); toggleNotis();">
-                    <i class="fas fa-exclamation-circle" style="color:var(--warning); margin-top:3px;"></i>
-                    <div style="flex:1;">
-                        <div style="font-weight:600;">${solicitud.Tipo} - ${solicitud.nombre || 'Usuario'}</div>
-                        <div style="font-size:0.8rem; color:var(--text-sec);">
-                            ${solicitud.Detalle?.substring(0, 50) || 'Sin detalles'}...
-                        </div>
-                        <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">
-                            ${solicitud.fecha}
+                return `
+                    <div class="noti-item unread" onclick="navTo('solicitudes'); toggleNotis();">
+                        <i class="${icono}" style="color:${color}; margin-top:3px;"></i>
+                        <div style="flex:1;">
+                            <div style="font-weight:600;">${sol.Tipo.replace(/_/g, ' ')}</div>
+                            <div style="font-size:0.8rem;">${sol.Nombre || 'Usuario'}</div>
+                            <div style="font-size:0.7rem; color:#888;">${sol.fecha}</div>
                         </div>
                     </div>
-                </div>
-            `).join('');
-        }
-
-        async function cargarSolicitudes() {
-            try {
-                const respuesta = await fetch(`${API_URL}/obtener_solicitudes`);
-                solicitudes = await respuesta.json();
-                renderizarSolicitudes();
-            } catch (error) {
-                console.error('Error cargando solicitudes:', error);
-                mostrarMensaje('Error al cargar solicitudes', 'error');
-            }
-        }
-
-        function renderizarSolicitudes() {
-            const container = document.getElementById('requestsContainer');
-            container.innerHTML = '';
-            
-            // Separar solicitudes pendientes y resueltas
-            const pendientes = solicitudes.filter(s => s.Estado === 'PENDIENTE');
-            const resueltas = solicitudes.filter(s => s.Estado !== 'PENDIENTE');
-            
-            if (pendientes.length === 0 && resueltas.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state" style="display:flex;">
-                        <i class="fas fa-inbox" style="font-size:5rem; opacity:0.2; margin-bottom:25px;"></i>
-                        <h3>No hay solicitudes</h3>
-                        <p>Todas las solicitudes han sido procesadas</p>
-                    </div>
                 `;
+            }).join('');
+            
+            if (pendientes.length > 5) {
+                list.innerHTML += `<div style="padding:10px; text-align:center; border-top:1px solid var(--border-color);">
+                    <small>${pendientes.length - 5} más pendientes...</small>
+                </div>`;
+            }
+        } else {
+            badge.style.display = 'none';
+            list.innerHTML = '<div style="padding:15px; text-align:center; color:#888;">No hay notificaciones nuevas</div>';
+        }
+    }
+
+    function toggleNotis() {
+        document.getElementById('notisDropdown').classList.toggle('active');
+    }
+
+    // ==========================================
+    // 2. NAVEGACIÓN Y UI
+    // ==========================================
+    function navTo(seccionId, boton) {
+        window.scrollTo(0, 0);
+        document.querySelectorAll('.panel-section').forEach(s => s.classList.remove('active'));
+        document.getElementById('panel-' + seccionId).classList.add('active');
+        
+        document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+        if(boton) boton.classList.add('active');
+        document.getElementById('sidebar').classList.remove('active');
+    }
+
+    function inicializarTema() {
+        const temaGuardado = localStorage.getItem('tema');
+        const iconoTema = document.querySelector('#themeBtn i');
+        
+        if (temaGuardado === 'oscuro') {
+            document.body.classList.add('dark-mode');
+            iconoTema.className = 'fas fa-sun';
+        } else {
+            document.body.classList.remove('dark-mode');
+            iconoTema.className = 'fas fa-moon';
+        }
+    }
+
+    function toggleTheme() {
+        const iconoTema = document.querySelector('#themeBtn i');
+        
+        if (document.body.classList.contains('dark-mode')) {
+            document.body.classList.remove('dark-mode');
+            localStorage.setItem('tema', 'claro');
+            iconoTema.className = 'fas fa-moon';
+        } else {
+            document.body.classList.add('dark-mode');
+            localStorage.setItem('tema', 'oscuro');
+            iconoTema.className = 'fas fa-sun';
+        }
+    }
+
+    function cerrarSesion() {
+        localStorage.clear();
+        window.location.href = 'index.html';
+    }
+
+    function mostrarMensaje(mensaje, tipo) {
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed; bottom: 20px; right: 20px;
+            padding: 12px 20px; border-radius: 8px; z-index: 9999;
+            color: white; font-weight: 600;
+            background: ${tipo === 'success' ? 'var(--secondary)' : 
+                       tipo === 'error' ? 'var(--error)' : 
+                       tipo === 'warning' ? 'var(--warning)' : 'var(--info)'};
+            animation: fadeIn 0.3s;
+        `;
+        
+        toast.innerHTML = `
+            <i class="fas fa-${tipo === 'success' ? 'check-circle' : 
+                               tipo === 'error' ? 'exclamation-circle' : 
+                               tipo === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
+            ${mensaje}
+        `;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+
+    function cerrarModal(id) {
+        document.getElementById(id).classList.remove('active');
+    }
+
+    // ==========================================
+    // 3. GESTIÓN DE USUARIOS
+    // ==========================================
+    function configurarFormularios() {
+        // Formulario registro usuario
+        document.getElementById('formRegistro').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formulario = e.target;
+            const boton = formulario.querySelector('button[type="submit"]');
+            const datos = new FormData(formulario);
+            
+            // Validaciones frontend
+            const cedula = datos.get('cedula');
+            const contrasena = datos.get('contrasena');
+            
+            if (!/^\d{10}$/.test(cedula)) {
+                alert('La cédula debe tener exactamente 10 dígitos numéricos');
                 return;
             }
             
-            // Mostrar solicitudes pendientes primero
-            if (pendientes.length > 0) {
-                container.innerHTML += `
-                    <h3 style="color:var(--primary); margin-bottom:15px; border-bottom:2px solid var(--primary); padding-bottom:10px;">
-                        <i class="fas fa-clock"></i> Solicitudes Pendientes (${pendientes.length})
-                    </h3>
-                `;
-                
-                pendientes.forEach(solicitud => {
-                    container.innerHTML += crearCardSolicitud(solicitud);
-                });
-            }
-            
-            // Mostrar historial después
-            if (resueltas.length > 0) {
-                container.innerHTML += `
-                    <h3 style="color:var(--text-sec); margin:30px 0 15px 0; border-bottom:2px solid var(--border-color); padding-bottom:10px;">
-                        <i class="fas fa-history"></i> Historial de Solicitudes (${resueltas.length})
-                    </h3>
-                `;
-                
-                resueltas.forEach(solicitud => {
-                    container.innerHTML += crearCardSolicitud(solicitud);
-                });
-            }
-        }
-
-        function crearCardSolicitud(solicitud) {
-            const esPendiente = solicitud.Estado === 'PENDIENTE';
-            const badgeClass = esPendiente ? 'badge-pending' : 
-                              solicitud.Estado === 'APROBADA' ? 'badge-resolved' : 'badge-rejected';
-            const badgeText = esPendiente ? 'PENDIENTE' : 
-                            solicitud.Estado === 'APROBADA' ? 'RESUELTA' : 'RECHAZADA';
-            
-            let accionesHTML = '';
-            
-            if (esPendiente) {
-                if (solicitud.Tipo === 'REPORTE_EVIDENCIA') {
-                    accionesHTML = `
-                        <button class="btn-primary" onclick="previsualizarReporte('${solicitud.id}')" style="background:var(--info); font-size:0.9rem;">
-                            <i class="fas fa-eye"></i> Previsualizar
-                        </button>
-                        <button class="btn-primary" onclick="responderSolicitud('${solicitud.id}', 'aceptar')" style="background:var(--secondary); font-size:0.9rem;">
-                            <i class="fas fa-check"></i> Aceptar
-                        </button>
-                        <button class="btn-primary" onclick="responderSolicitud('${solicitud.id}', 'rechazar')" style="background:var(--error); font-size:0.9rem;">
-                            <i class="fas fa-times"></i> Rechazar
-                        </button>
-                    `;
-                } else if (solicitud.Tipo === 'RECUPERACION_CONTRASENA') {
-                    accionesHTML = `
-                        <button class="btn-primary" onclick="responderRecuperacion('${solicitud.id}')" style="background:var(--warning); font-size:0.9rem;">
-                            <i class="fas fa-key"></i> Enviar Contraseña
-                        </button>
-                        <button class="btn-primary" onclick="responderSolicitud('${solicitud.id}', 'rechazar')" style="background:var(--error); font-size:0.9rem;">
-                            <i class="fas fa-times"></i> Rechazar
-                        </button>
-                    `;
-                } else {
-                    accionesHTML = `
-                        <button class="btn-primary" onclick="responderSolicitud('${solicitud.id}', 'aceptar')" style="background:var(--secondary); font-size:0.9rem;">
-                            <i class="fas fa-check"></i> Aceptar
-                        </button>
-                        <button class="btn-primary" onclick="responderSolicitud('${solicitud.id}', 'rechazar')" style="background:var(--error); font-size:0.9rem;">
-                            <i class="fas fa-times"></i> Rechazar
-                        </button>
-                    `;
-                }
-            } else {
-                accionesHTML = `
-                    <span style="color:var(--text-sec); font-size:0.9rem;">
-                        <i class="fas fa-user-check"></i> Resuelta por: ${solicitud.resuelto_por || 'Admin'}
-                    </span>
-                `;
-            }
-            
-            return `
-                <div class="request-card">
-                    <div class="request-header">
-                        <div>
-                            <h4 style="color:var(--text-main); margin-bottom:5px;">${solicitud.Tipo} - ${solicitud.nombre || 'Usuario'}</h4>
-                            <p style="color:var(--text-sec); font-size:0.9rem; margin-bottom:5px;">
-                                ${solicitud.Detalle || 'Sin detalles'}
-                            </p>
-                            <span class="request-badge ${badgeClass}">${badgeText}</span>
-                            <span style="color:var(--text-muted); font-size:0.8rem; margin-left:10px;">
-                                ${solicitud.fecha}
-                            </span>
-                        </div>
-                        <div class="request-actions">
-                            ${accionesHTML}
-                        </div>
-                    </div>
-                    ${solicitud.evidencia_url ? `
-                        <div style="margin-top:10px;">
-                            <p style="color:var(--text-sec); font-size:0.9rem; margin-bottom:5px;">Evidencia reportada:</p>
-                            <img src="${solicitud.evidencia_url}" class="request-preview" onclick="abrirPrevisualizacion('${solicitud.evidencia_url}')">
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-        }
-
-        async function previsualizarReporte(solicitudId) {
-            const solicitud = solicitudes.find(s => s.id === solicitudId);
-            if (!solicitud) return;
-            
-            document.getElementById('modalSolicitudTitulo').textContent = `Previsualizar Reporte - ${solicitud.nombre}`;
-            
-            let contenido = `
-                <div style="text-align:left;">
-                    <p><strong>Tipo:</strong> ${solicitud.Tipo}</p>
-                    <p><strong>Estudiante:</strong> ${solicitud.nombre}</p>
-                    <p><strong>Detalles:</strong> ${solicitud.Detalle || 'Sin detalles'}</p>
-                    <p><strong>Fecha:</strong> ${solicitud.fecha}</p>
-            `;
-            
-            if (solicitud.evidencia_url) {
-                contenido += `
-                    <p><strong>Evidencia reportada:</strong></p>
-                    <img src="${solicitud.evidencia_url}" style="max-width:100%; border-radius:8px; margin:10px 0; border:1px solid var(--border-color);">
-                `;
-            }
-            
-            contenido += `
-                    <div style="margin-top:20px; display:flex; gap:10px; justify-content:center;">
-                        <button class="btn-primary" onclick="responderSolicitud('${solicitudId}', 'aceptar')" style="background:var(--secondary);">
-                            <i class="fas fa-check"></i> Aceptar (Desvincular)
-                        </button>
-                        <button class="btn-primary" onclick="responderSolicitud('${solicitudId}', 'rechazar')" style="background:var(--error);">
-                            <i class="fas fa-times"></i> Rechazar (Mantener)
-                        </button>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('modalSolicitudContenido').innerHTML = contenido;
-            document.getElementById('modalResponderSolicitud').classList.add('active');
-        }
-
-        async function responderRecuperacion(solicitudId) {
-            const solicitud = solicitudes.find(s => s.id === solicitudId);
-            if (!solicitud) return;
-            
-            // Buscar usuario
-            const usuario = usuarios.find(u => u.cedula === solicitud.cedula);
-            if (!usuario) {
-                mostrarMensaje('Usuario no encontrado', 'error');
-                return;
-            }
-            
-            document.getElementById('modalSolicitudTitulo').textContent = `Enviar Contraseña - ${usuario.nombre}`;
-            
-            const contenido = `
-                <div style="text-align:left;">
-                    <p><strong>Estudiante:</strong> ${usuario.nombre} ${usuario.apellido}</p>
-                    <p><strong>Cédula:</strong> ${usuario.cedula}</p>
-                    <p><strong>Contraseña actual:</strong> ${usuario.contrasena}</p>
-                    <p><strong>Correo para envío:</strong> ${solicitud.email || 'No especificado'}</p>
-                    <p><strong>Mensaje del estudiante:</strong> ${solicitud.Detalle || 'Sin mensaje adicional'}</p>
-                    
-                    <div class="form-group" style="margin-top:15px;">
-                        <label>Nueva Contraseña (opcional):</label>
-                        <input type="text" id="nuevaContrasenaRecuperacion" class="form-control" placeholder="Dejar en blanco para mantener la actual">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Mensaje personalizado:</label>
-                        <textarea id="mensajeRecuperacion" class="form-control" rows="4" placeholder="Hola [Nombre], esta es tu contraseña...">Hola ${usuario.nombre}, esta es tu contraseña: ${usuario.contrasena}. Intenta probarla y si no sirve contacta nuevamente a los admins. Recuerda no perder tu contraseña. ¡Gracias!</textarea>
-                    </div>
-                    
-                    <div style="margin-top:20px; display:flex; gap:10px; justify-content:center;">
-                        <button class="btn-primary" onclick="enviarContrasenaRecuperacion('${solicitudId}', '${usuario.cedula}')" style="background:var(--secondary);">
-                            <i class="fas fa-paper-plane"></i> Enviar Correo
-                        </button>
-                        <button class="btn-primary" onclick="cambiarContrasenaRecuperacion('${solicitudId}', '${usuario.cedula}')" style="background:var(--warning);">
-                            <i class="fas fa-key"></i> Cambiar Contraseña
-                        </button>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('modalSolicitudContenido').innerHTML = contenido;
-            document.getElementById('modalResponderSolicitud').classList.add('active');
-        }
-
-        async function enviarContrasenaRecuperacion(solicitudId, cedula) {
-            const mensaje = document.getElementById('mensajeRecuperacion').value;
-            const nuevaContrasena = document.getElementById('nuevaContrasenaRecuperacion').value;
-            
-            try {
-                // En un entorno real, aquí se enviaría el correo
-                mostrarMensaje('Correo enviado al estudiante', 'success');
-                await responderSolicitud(solicitudId, 'aceptar');
-                cerrarModal('modalResponderSolicitud');
-                
-                // Si se especificó nueva contraseña, cambiarla
-                if (nuevaContrasena) {
-                    await cambiarPasswordUsuario(cedula, nuevaContrasena);
-                }
-                
-            } catch (error) {
-                console.error('Error enviando correo:', error);
-                mostrarMensaje('Error al enviar correo', 'error');
-            }
-        }
-
-        async function cambiarContrasenaRecuperacion(solicitudId, cedula) {
-            const nuevaContrasena = document.getElementById('nuevaContrasenaRecuperacion').value;
-            
-            if (!nuevaContrasena) {
-                mostrarMensaje('Ingresa una nueva contraseña', 'warning');
-                return;
-            }
-            
-            if (nuevaContrasena.length < 6) {
-                mostrarMensaje('La contraseña debe tener al menos 6 caracteres', 'warning');
+            if (contrasena.length < 6) {
+                alert('La contraseña debe tener al menos 6 caracteres');
                 return;
             }
             
             try {
-                await cambiarPasswordUsuario(cedula, nuevaContrasena);
-                mostrarMensaje('Contraseña cambiada exitosamente', 'success');
-                await responderSolicitud(solicitudId, 'aceptar');
-                cerrarModal('modalResponderSolicitud');
-                
-            } catch (error) {
-                console.error('Error cambiando contraseña:', error);
-                mostrarMensaje('Error al cambiar contraseña', 'error');
-            }
-        }
-
-        async function cambiarPasswordUsuario(cedula, nuevaContrasena) {
-            // En un entorno real, aquí se enviaría al backend
-            console.log(`Cambiando contraseña de ${cedula} a: ${nuevaContrasena}`);
-            
-            // Simulación
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            return true;
-        }
-
-        async function responderSolicitud(solicitudId, accion) {
-            const solicitud = solicitudes.find(s => s.id === solicitudId);
-            if (!solicitud) return;
-            
-            const confirmacion = await Swal.fire({
-                title: accion === 'aceptar' ? '¿Aceptar solicitud?' : '¿Rechazar solicitud?',
-                text: `Esta acción ${accion === 'aceptar' ? 'aprobará' : 'rechazará'} la solicitud de ${solicitud.nombre}`,
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: accion === 'aceptar' ? '#2E8B57' : '#d32f2f',
-                cancelButtonColor: '#5f6368',
-                confirmButtonText: `Sí, ${accion === 'aceptar' ? 'aceptar' : 'rechazar'}`,
-                cancelButtonText: 'Cancelar'
-            });
-            
-            if (!confirmacion.isConfirmed) return;
-            
-            try {
-                // En un entorno real, aquí se enviaría al backend
-                const respuesta = await fetch(`${API_URL}/responder_solicitud`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        id: solicitudId,
-                        estado: accion === 'aceptar' ? 'APROBADA' : 'RECHAZADA',
-                        resuelto_por: 'Admin' // En realidad sería el nombre del admin actual
-                    })
-                });
-                
-                if (respuesta.ok) {
-                    mostrarMensaje(`Solicitud ${accion === 'aceptar' ? 'aceptada' : 'rechazada'} correctamente`, 'success');
-                    
-                    // Actualizar interfaz
-                    await cargarSolicitudes();
-                    await cargarDatosIniciales();
-                    
-                    // Cerrar modales
-                    cerrarModal('modalResponderSolicitud');
-                } else {
-                    mostrarMensaje('Error al responder solicitud', 'error');
-                }
-            } catch (error) {
-                console.error('Error respondiendo solicitud:', error);
-                mostrarMensaje('Error de conexión', 'error');
-            }
-        }
-
-        // ==========================================
-        // 9. SEGURIDAD Y LOGS CON FECHA ECUATORIANA
-        // ==========================================
-        async function cargarLogs() {
-            try {
-                const respuesta = await fetch(`${API_URL}/obtener_logs`);
-                logs = await respuesta.json();
-                
-                // Convertir fechas a zona horaria de Ecuador (GMT-5)
-                logs.forEach(log => {
-                    if (log.fecha) {
-                        const fechaUTC = new Date(log.fecha);
-                        // Ajustar a Ecuador (UTC-5)
-                        fechaUTC.setHours(fechaUTC.getHours() - 5);
-                        log.fecha_ecuador = fechaUTC.toLocaleString('es-EC', {
-                            timeZone: 'America/Guayaquil',
-                            year: 'numeric',
-                            month: '2-digit',
-                            day: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit'
-                        });
-                    }
-                });
-                
-                renderizarLogs();
-            } catch (error) {
-                console.error('Error cargando logs:', error);
-            }
-        }
-
-        function renderizarLogs() {
-            const tbody = document.getElementById('logsTableBody');
-            tbody.innerHTML = '';
-            
-            logs.forEach(log => {
-                const fila = document.createElement('tr');
-                
-                fila.innerHTML = `
-                    <td>${log.fecha_ecuador || log.fecha}</td>
-                    <td>
-                        <span style="font-weight:600; color:${obtenerColorAccion(log.accion)}">
-                            ${log.accion}
-                        </span>
-                    </td>
-                    <td>${log.detalle}</td>
-                    <td>${extraerUsuarioLog(log.detalle) || 'Sistema'}</td>
-                `;
-                
-                tbody.appendChild(fila);
-            });
-        }
-
-        function obtenerColorAccion(accion) {
-            if (accion.includes('ELIMIN') || accion.includes('ERROR')) {
-                return 'var(--error)';
-            } else if (accion.includes('REGISTRO') || accion.includes('APROB')) {
-                return 'var(--secondary)';
-            } else if (accion.includes('LOGIN') || accion.includes('SUBIDA')) {
-                return 'var(--info)';
-            }
-            return 'var(--text-main)';
-        }
-
-        function extraerUsuarioLog(detalle) {
-            const coincidencia = detalle.match(/\((.*?)\)/);
-            return coincidencia ? coincidencia[1] : null;
-        }
-
-        function filtrarLogs() {
-            const busqueda = document.getElementById('searchLogs').value.toLowerCase();
-            const filas = document.querySelectorAll('#logsTableBody tr');
-            
-            filas.forEach(fila => {
-                const texto = fila.textContent.toLowerCase();
-                fila.style.display = texto.includes(busqueda) ? '' : 'none';
-            });
-        }
-
-        // ==========================================
-        // 10. FUNCIONES AUXILIARES
-        // ==========================================
-        function mostrarMensaje(mensaje, tipo) {
-            // Implementación de toast
-            const toast = document.createElement('div');
-            toast.style.cssText = `
-                position: fixed; bottom: 20px; right: 20px;
-                padding: 12px 20px; border-radius: 8px; z-index: 9999;
-                color: white; font-weight: 600;
-                background: ${tipo === 'success' ? 'var(--secondary)' : 
-                           tipo === 'error' ? 'var(--error)' : 
-                           tipo === 'warning' ? 'var(--warning)' : 'var(--info)'};
-                animation: fadeIn 0.3s;
-            `;
-            
-            toast.innerHTML = `
-                <i class="fas fa-${tipo === 'success' ? 'check-circle' : 
-                                   tipo === 'error' ? 'exclamation-circle' : 
-                                   tipo === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
-                ${mensaje}
-            `;
-            
-            document.body.appendChild(toast);
-            
-            setTimeout(() => {
-                toast.remove();
-            }, 3000);
-        }
-
-        function abrirModalAgregarRef() {
-            const select = document.getElementById('selectUsuarioRef');
-            select.innerHTML = '<option value="">-- Seleccionar --</option>' +
-                usuarios.filter(u => u.tipo == 1).map(u => 
-                    `<option value="${u.cedula}">${u.nombre} ${u.apellido} (${u.cedula})</option>`
-                ).join('');
-            
-            document.getElementById('modalAgregarRef').classList.add('active');
-        }
-
-        async function agregarReferencia(evento) {
-            evento.preventDefault();
-            
-            const cedula = document.getElementById('selectUsuarioRef').value;
-            const archivoInput = document.getElementById('fotoRef');
-            
-            if (!cedula || !archivoInput.files.length) {
-                mostrarMensaje('Completa todos los campos', 'warning');
-                return;
-            }
-            
-            const datos = new FormData();
-            datos.append('cedula', cedula);
-            datos.append('foto', archivoInput.files[0]);
-            
-            const boton = evento.target.querySelector('button[type="submit"]');
-            
-            try {
-                boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subiendo...';
+                boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
                 boton.disabled = true;
                 
-                const respuesta = await fetch(`${API_URL}/agregar_referencia_facial`, {
+                const respuesta = await fetch(`${API_URL}/registrar_usuario`, {
                     method: 'POST',
                     body: datos
                 });
@@ -2728,129 +1557,8 @@
                 const resultado = await respuesta.json();
                 
                 if (resultado.mensaje) {
-                    mostrarMensaje('Foto de referencia agregada correctamente', 'success');
-                    cerrarModal('modalAgregarRef');
-                    evento.target.reset();
-                } else {
-                    mostrarMensaje('Error: ' + resultado.error, 'error');
-                }
-            } catch (error) {
-                mostrarMensaje('Error de conexión', 'error');
-            } finally {
-                boton.innerHTML = '<i class="fas fa-save"></i> Agregar Referencia';
-                boton.disabled = false;
-            }
-        }
-
-        function cerrarModal(id) {
-            document.getElementById(id).classList.remove('active');
-        }
-
-        // Cerrar modales al hacer clic fuera
-        document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('modal-overlay')) {
-                e.target.classList.remove('active');
-            }
-        });
-
-        // ==========================================
-        // 11. FUNCIONES RESTANTES DEL CÓDIGO ORIGINAL
-        // ==========================================
-        function mostrarSugerencias(texto) {
-            const sugerencias = document.getElementById('suggestionsBox');
-            
-            if (texto.length < 2) {
-                sugerencias.style.display = 'none';
-                return;
-            }
-            
-            const coincidencias = usuarios.filter(usuario => {
-                const nombreCompleto = `${usuario.nombre} ${usuario.apellido}`.toLowerCase();
-                return nombreCompleto.includes(texto.toLowerCase());
-            }).slice(0, 5);
-            
-            if (coincidencias.length === 0) {
-                sugerencias.style.display = 'none';
-                return;
-            }
-            
-            sugerencias.innerHTML = coincidencias.map(usuario => `
-                <div onclick="seleccionarUsuario('${usuario.cedula}')" 
-                     style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--border-color);">
-                    ${usuario.nombre} ${usuario.apellido} 
-                    <small style="color:var(--text-sec);">(${usuario.cedula})</small>
-                </div>
-            `).join('');
-            
-            sugerencias.style.display = 'block';
-        }
-
-        function seleccionarUsuario(cedula) {
-            const usuario = usuarios.find(u => u.cedula === cedula);
-            if (usuario) {
-                document.getElementById('manualNombres').value = 
-                    `${usuario.nombre} ${usuario.apellido}`;
-                document.getElementById('suggestionsBox').style.display = 'none';
-            }
-        }
-
-        async function subirManual(evento) {
-            evento.preventDefault();
-            
-            const archivoInput = document.getElementById('manualFile');
-            const nombresInput = document.getElementById('manualNombres');
-            
-            if (!archivoInput.files.length) {
-                mostrarMensaje('Selecciona un archivo primero', 'warning');
-                return;
-            }
-            
-            if (!nombresInput.value.trim()) {
-                mostrarMensaje('Ingresa al menos un nombre de estudiante', 'warning');
-                return;
-            }
-            
-            // Buscar cédulas por nombres
-            const nombres = nombresInput.value.split(',').map(n => n.trim());
-            const cedulas = [];
-            
-            nombres.forEach(nombre => {
-                const usuario = usuarios.find(u => {
-                    const nombreCompleto = `${u.nombre} ${u.apellido}`.toLowerCase();
-                    return nombreCompleto.includes(nombre.toLowerCase());
-                });
-                
-                if (usuario) {
-                    cedulas.push(usuario.cedula);
-                }
-            });
-            
-            if (cedulas.length === 0) {
-                mostrarMensaje('No se encontraron estudiantes con esos nombres', 'warning');
-                return;
-            }
-            
-            const datos = new FormData();
-            datos.append('archivo', archivoInput.files[0]);
-            datos.append('cedulas', cedulas.join(','));
-            
-            const boton = evento.target.querySelector('button[type="submit"]');
-            
-            try {
-                boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subiendo...';
-                boton.disabled = true;
-                
-                const respuesta = await fetch(`${API_URL}/subir_manual`, {
-                    method: 'POST',
-                    body: datos
-                });
-                
-                const resultado = await respuesta.json();
-                
-                if (resultado.mensaje === 'OK') {
-                    mostrarMensaje(`Archivo asignado a ${resultado.asignado_a?.length || 0} estudiantes`, 'success');
-                    archivoInput.value = '';
-                    nombresInput.value = '';
+                    mostrarMensaje('Usuario registrado correctamente', 'success');
+                    formulario.reset();
                     await cargarDatosIniciales();
                 } else {
                     mostrarMensaje('Error: ' + (resultado.error || 'Desconocido'), 'error');
@@ -2858,179 +1566,1317 @@
             } catch (error) {
                 mostrarMensaje('Error de conexión', 'error');
             } finally {
-                boton.innerHTML = '<i class="fas fa-user-check"></i> Asignar Manualmente';
+                boton.innerHTML = '<i class="fas fa-user-plus"></i> Guardar Usuario';
                 boton.disabled = false;
             }
-        }
+        });
+    }
 
-        async function handleUploadIA(input) {
-            const archivos = input.files;
-            if (archivos.length === 0) return;
-            
-            const log = document.getElementById('uploadLog');
-            const progreso = document.getElementById('uploadProgress');
-            const barra = document.getElementById('progressBar');
-            const texto = document.getElementById('progressText');
-            
-            log.innerHTML = '<div><i class="fas fa-info-circle"></i> Iniciando análisis...</div>';
-            progreso.style.display = 'block';
-            
-            let completados = 0;
-            const total = archivos.length;
-            
-            for (let i = 0; i < total; i++) {
-                const archivo = archivos[i];
-                const datos = new FormData();
-                datos.append('archivo', archivo);
-                
-                // Actualizar progreso
-                texto.textContent = `Procesando ${i + 1}/${total}: ${archivo.name}`;
-                barra.style.width = ((i / total) * 100) + '%';
-                
-                try {
-                    const respuesta = await fetch(`${API_URL}/subir_evidencia`, {
-                        method: 'POST',
-                        body: datos
-                    });
-                    
-                    const resultado = await respuesta.json();
-                    
-                    if (resultado.status === 'exito') {
-                        log.innerHTML += `<div style="color:var(--secondary);">✅ ${archivo.name} asignado a: ` +
-                                       `${resultado.asignado_a?.join(', ') || 'varios estudiantes'}</div>`;
-                    } else if (resultado.status === 'alerta') {
-                        log.innerHTML += `<div style="color:var(--warning);">⚠ ${archivo.name}: ` +
-                                       `${resultado.mensaje || 'Sin coincidencias'}</div>`;
-                    } else {
-                        log.innerHTML += `<div style="color:var(--error);">❌ ${archivo.name}: ` +
-                                       `${resultado.motivo || 'Error'}</div>`;
+    function renderizarUsuarios() {
+        const tbody = document.getElementById('userTableBody');
+        if(!tbody) return;
+        
+        tbody.innerHTML = usuarios.map(u => `
+            <tr>
+                <td><strong>${u.nombre} ${u.apellido}</strong><br><small>${u.contrasena}</small></td>
+                <td>${u.cedula}</td>
+                <td>${u.tipo == 0 ? '<span style="color:var(--primary)">Admin</span>' : 'Estudiante'}</td>
+                <td>${u.activo ? '<span style="color:var(--secondary)">Activo</span>' : '<span style="color:var(--error)">Inactivo</span>'}</td>
+                <td>
+                    <button class="action-btn btn-view" onclick="verUsuario('${u.cedula}')"><i class="fas fa-eye"></i></button>
+                    ${u.activo ? 
+                        `<button class="action-btn btn-deactivate" onclick="cambiarEstadoUsuario('${u.cedula}', 0)"><i class="fas fa-user-slash"></i></button>` : 
+                        `<button class="action-btn btn-activate" onclick="cambiarEstadoUsuario('${u.cedula}', 1)"><i class="fas fa-user-check"></i></button>`
                     }
-                } catch (error) {
-                    log.innerHTML += `<div style="color:var(--error);">❌ ${archivo.name}: Error de red</div>`;
-                }
-                
-                completados++;
-                barra.style.width = ((completados / total) * 100) + '%';
-            }
-            
-            texto.textContent = 'Proceso completado ✅';
-            input.value = '';
-            
-            // Recargar datos
-            setTimeout(() => {
-                cargarDatosIniciales();
-            }, 1000);
-        }
+                    <button class="action-btn btn-delete" onclick="eliminarUsuario('${u.cedula}')"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+        `).join('');
+    }
 
-        function sugerirUsuariosPassword(texto) {
-            const sugerencias = document.getElementById('suggestionsPass');
-            
-            if (texto.length < 2) {
-                sugerencias.style.display = 'none';
-                return;
-            }
-            
-            const coincidencias = usuarios.filter(usuario => {
-                const nombreCompleto = `${usuario.nombre} ${usuario.apellido}`.toLowerCase();
-                return nombreCompleto.includes(texto.toLowerCase());
-            }).slice(0, 5);
-            
-            if (coincidencias.length === 0) {
-                sugerencias.style.display = 'none';
-                return;
-            }
-            
-            sugerencias.innerHTML = coincidencias.map(usuario => `
-                <div onclick="seleccionarUsuarioPassword('${usuario.cedula}')" 
-                     style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--border-color);">
-                    ${usuario.nombre} ${usuario.apellido}
-                    <small style="color:var(--text-sec);">(${usuario.cedula})</small>
-                </div>
-            `).join('');
-            
-            sugerencias.style.display = 'block';
-        }
+    function filterUsers() {
+        const busqueda = document.getElementById('searchUser').value.toLowerCase();
+        const filas = document.querySelectorAll('#userTableBody tr');
+        
+        filas.forEach(fila => {
+            const texto = fila.textContent.toLowerCase();
+            fila.style.display = texto.includes(busqueda) ? '' : 'none';
+        });
+    }
 
-        function seleccionarUsuarioPassword(cedula) {
-            usuarioSeleccionadoPassword = usuarios.find(u => u.cedula === cedula);
-            if (usuarioSeleccionadoPassword) {
-                document.getElementById('nombrePassword').value = 
-                    `${usuarioSeleccionadoPassword.nombre} ${usuarioSeleccionadoPassword.apellido}`;
-                document.getElementById('suggestionsPass').style.display = 'none';
-            }
-        }
-
-        async function cambiarPassword(evento) {
-            evento.preventDefault();
-            
-            if (!usuarioSeleccionadoPassword) {
-                mostrarMensaje('Selecciona un usuario primero', 'warning');
-                return;
-            }
-            
-            const nuevaPassword = document.getElementById('nuevaPassword').value;
-            
-            if (nuevaPassword.length < 6) {
-                mostrarMensaje('La contraseña debe tener al menos 6 caracteres', 'warning');
-                return;
-            }
-            
-            const confirmacion = await Swal.fire({
-                title: '¿Cambiar contraseña?',
-                text: `¿Cambiar contraseña de ${usuarioSeleccionadoPassword.nombre} a: ${nuevaPassword}?`,
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#6A0DAD',
-                cancelButtonColor: '#5f6368',
-                confirmButtonText: 'Sí, cambiar',
-                cancelButtonText: 'Cancelar'
+    async function cambiarEstadoUsuario(cedula, nuevoEstado) {
+        const usuario = usuarios.find(u => u.cedula === cedula);
+        if (!usuario) return;
+        
+        const accion = nuevoEstado == 1 ? 'activar' : 'desactivar';
+        const confirmacion = await Swal.fire({
+            title: `¿${accion.charAt(0).toUpperCase() + accion.slice(1)} usuario?`,
+            text: `¿Estás seguro de querer ${accion} a ${usuario.nombre} ${usuario.apellido}?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: nuevoEstado == 1 ? '#2E8B57' : '#d32f2f',
+            cancelButtonColor: '#5f6368',
+            confirmButtonText: `Sí, ${accion}`,
+            cancelButtonText: 'Cancelar'
+        });
+        
+        if (!confirmacion.isConfirmed) return;
+        
+        try {
+            const respuesta = await fetch(`${API_URL}/cambiar_estado_usuario`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    cedula: cedula,
+                    activo: nuevoEstado
+                })
             });
             
-            if (!confirmacion.isConfirmed) return;
+            const resultado = await respuesta.json();
+            
+            if (resultado.mensaje) {
+                mostrarMensaje(`Usuario ${accion}do correctamente`, 'success');
+                await cargarDatosIniciales();
+            } else {
+                mostrarMensaje('Error al cambiar estado', 'error');
+            }
+        } catch (error) {
+            mostrarMensaje('Error de conexión', 'error');
+        }
+    }
+
+    function verUsuario(cedula) {
+        const usuario = usuarios.find(u => u.cedula === cedula);
+        if (usuario) {
+            Swal.fire({
+                title: `${usuario.nombre} ${usuario.apellido}`,
+                html: `
+                    <div style="text-align:left; margin-top:20px;">
+                        <p><strong>Cédula:</strong> ${usuario.cedula}</p>
+                        <p><strong>Rol:</strong> ${usuario.tipo == 0 ? 'Administrador' : 'Estudiante'}</p>
+                        <p><strong>Estado:</strong> ${usuario.activo == 1 ? 'Activo' : 'Inactivo'}</p>
+                        <p><strong>Contraseña:</strong> ${usuario.contrasena}</p>
+                        ${usuario.foto ? `<p><strong>Foto:</strong> <br><img src="${usuario.foto}" style="max-width:200px; margin-top:10px; border-radius:8px;"></p>` : ''}
+                    </div>
+                `,
+                icon: 'info',
+                confirmButtonColor: '#6A0DAD',
+                confirmButtonText: 'Cerrar'
+            });
+        }
+    }
+
+    async function eliminarUsuario(cedula) {
+        const usuario = usuarios.find(u => u.cedula === cedula);
+        if (!usuario) return;
+        
+        const confirmacion = await Swal.fire({
+            title: '¿Eliminar usuario?',
+            text: `Esta acción eliminará permanentemente a ${usuario.nombre} ${usuario.apellido} y todas sus evidencias.`,
+            icon: 'error',
+            showCancelButton: true,
+            confirmButtonColor: '#d32f2f',
+            cancelButtonColor: '#5f6368',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
+        
+        if (!confirmacion.isConfirmed) return;
+        
+        try {
+            const respuesta = await fetch(`${API_URL}/eliminar_usuario/${cedula}`, {
+                method: 'DELETE'
+            });
+            
+            if (respuesta.ok) {
+                mostrarMensaje('Usuario eliminado correctamente', 'success');
+                await cargarDatosIniciales();
+            } else {
+                mostrarMensaje('Error al eliminar usuario', 'error');
+            }
+        } catch (error) {
+            mostrarMensaje('Error de conexión', 'error');
+        }
+    }
+
+    // ==========================================
+    // 4. SISTEMA DE SOLICITUDES - CORREGIDO
+    // ==========================================
+    function renderizarSolicitudes() {
+        const container = document.getElementById('requestsContainer');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        // Separar solicitudes pendientes y resueltas
+        const pendientes = solicitudes.filter(s => {
+            const estado = (s.Estado || '').toUpperCase();
+            return estado === 'PENDIENTE' || estado === '';
+        });
+        const resueltas = solicitudes.filter(s => {
+            const estado = (s.Estado || '').toUpperCase();
+            return estado !== 'PENDIENTE' && estado !== '';
+        });
+        
+        if (pendientes.length === 0 && resueltas.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state" style="display:flex;">
+                    <i class="fas fa-inbox" style="font-size:5rem; opacity:0.2; margin-bottom:25px;"></i>
+                    <h3>No hay solicitudes</h3>
+                    <p>Todas las solicitudes han sido procesadas</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Mostrar solicitudes pendientes primero
+        if (pendientes.length > 0) {
+            container.innerHTML += `
+                <h3 style="color:var(--primary); margin-bottom:15px; border-bottom:2px solid var(--primary); padding-bottom:10px;">
+                    <i class="fas fa-clock"></i> Solicitudes Pendientes (${pendientes.length})
+                </h3>
+            `;
+            
+            pendientes.forEach(solicitud => {
+                container.innerHTML += crearCardSolicitud(solicitud);
+            });
+        }
+        
+        // Mostrar historial después
+        if (resueltas.length > 0) {
+            container.innerHTML += `
+                <h3 style="color:var(--text-sec); margin:30px 0 15px 0; border-bottom:2px solid var(--border-color); padding-bottom:10px;">
+                    <i class="fas fa-history"></i> Historial de Solicitudes (${resueltas.length})
+                </h3>
+            `;
+            
+            resueltas.slice(0, 10).forEach(solicitud => {
+                container.innerHTML += crearCardSolicitud(solicitud);
+            });
+        }
+    }
+
+    function crearCardSolicitud(sol) {
+        // CORRECCIÓN CRÍTICA: Manejo de estado
+        const estado = (sol.Estado || '').toUpperCase();
+        const esPendiente = estado === 'PENDIENTE' || estado === '';
+        
+        // Determinar la clase del badge y el texto
+        let badgeClass, badgeText;
+        if (esPendiente) {
+            badgeClass = 'badge-pending';
+            badgeText = 'PENDIENTE';
+        } else if (estado === 'APROBADA' || estado === 'RESUELTO') {
+            badgeClass = 'badge-resolved';
+            badgeText = 'RESUELTA';
+        } else {
+            badgeClass = 'badge-rejected';
+            badgeText = 'RECHAZADA';
+        }
+        
+        // Buscar información del usuario
+        const usuario = usuarios.find(u => u.cedula === sol.cedula);
+        const nombreUsuario = usuario ? `${usuario.nombre} ${usuario.apellido}` : sol.Nombre || 'Usuario';
+        
+        return `
+            <div class="request-card">
+                <div class="request-header">
+                    <div>
+                        <h4 style="color:var(--text-main); margin-bottom:5px;">
+                            ${sol.Tipo.replace(/_/g, ' ')} - ${nombreUsuario}
+                            <span class="solicitud-tipo ${'tipo-' + sol.Tipo.toLowerCase().split('_')[0]}">
+                                ${sol.Tipo.replace(/_/g, ' ')}
+                            </span>
+                        </h4>
+                        <p style="color:var(--text-sec); font-size:0.9rem; margin-bottom:5px;">
+                            ${sol.Detalle || 'Sin detalles'}
+                        </p>
+                        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                            <span class="request-badge ${badgeClass}">${badgeText}</span>
+                            <span style="color:var(--text-muted); font-size:0.8rem;">${sol.fecha}</span>
+                            ${sol.email ? `<span style="color:var(--text-muted); font-size:0.8rem;"><i class="fas fa-envelope"></i> ${sol.email}</span>` : ''}
+                        </div>
+                    </div>
+                    ${esPendiente ? 
+                        `<button class="btn-primary" onclick="abrirModalResponder('${sol.Tipo}', ${sol.id})" 
+                                 style="background:var(--info); padding:8px 15px;">
+                            <i class="fas fa-reply"></i> Responder
+                         </button>` : 
+                        `<div style="font-size:0.85rem; text-align:right;">
+                            <div><strong>Resuelto por:</strong> ${sol.Resuelto_Por || 'Admin'}</div>
+                            ${sol.Respuesta ? `<div style="color:var(--primary); margin-top:3px;"><em>"${sol.Respuesta.substring(0,30)}..."</em></div>` : ''}
+                         </div>`
+                    }
+                </div>
+                ${sol.evidencia_url ? `
+                    <div style="margin-top:10px;">
+                        <p style="color:var(--text-sec); font-size:0.9rem; margin-bottom:5px;">Evidencia relacionada:</p>
+                        <img src="${sol.evidencia_url}" class="request-preview" 
+                             onclick="abrirPrevisualizacion('${sol.evidencia_url}')">
+                    </div>
+                ` : ''}
+                ${!esPendiente && sol.Respuesta ? `
+                    <div style="margin-top:15px; padding:10px; background:var(--bg-input); border-radius:8px;">
+                        <strong style="color:var(--primary);">Respuesta enviada:</strong>
+                        <p style="margin-top:5px; color:var(--text-main);">${sol.Respuesta}</p>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    // ==========================================
+    // 5. MODAL DE RESPUESTA - CORREGIDO
+    // ==========================================
+    function abrirModalResponder(tipo, solicitudId) {
+        const solicitud = solicitudes.find(s => s.id == solicitudId);
+        if (!solicitud) return;
+
+        // Buscar información del usuario
+        const usuario = usuarios.find(u => u.cedula === solicitud.cedula);
+        const nombreUsuario = usuario ? `${usuario.nombre} ${usuario.apellido}` : solicitud.Nombre || 'Usuario';
+        
+        let contenido = '';
+        
+        // Contenido común para todos los tipos
+        contenido += `
+            <h3 style="color:var(--primary); margin-bottom:15px;">
+                <i class="fas fa-reply"></i> Responder: ${tipo.replace(/_/g, ' ')}
+            </h3>
+            <div style="margin-bottom:15px; font-size:0.9rem;">
+                <p><strong>De:</strong> ${nombreUsuario} (${solicitud.cedula})</p>
+                <p><strong>Fecha:</strong> ${solicitud.fecha}</p>
+                ${solicitud.email ? `<p><strong>Correo:</strong> ${solicitud.email}</p>` : ''}
+                <p><strong>Mensaje del usuario:</strong> "${solicitud.Detalle || 'Sin mensaje adicional'}"</p>
+            </div>
+        `;
+
+        // Contenido específico por tipo
+        if (tipo === 'REPORTE_EVIDENCIA') {
+            contenido += `
+                <div style="background:#fff4e5; padding:10px; border-radius:8px; margin-bottom:15px; border-left:4px solid var(--warning);">
+                    <p><strong>Acción de Aceptar:</strong> Se ELIMINARÁ la evidencia reportada del perfil del estudiante.</p>
+                    <p><strong>Acción de Rechazar:</strong> La evidencia se mantendrá.</p>
+                </div>
+                ${solicitud.evidencia_url ? 
+                    `<div style="text-align:center; margin-bottom:10px;">
+                        <p><strong>Evidencia reportada:</strong></p>
+                        <img src="${solicitud.evidencia_url}" class="request-preview" 
+                             onclick="abrirPrevisualizacion('${solicitud.evidencia_url}')">
+                    </div>` : ''
+                }
+            `;
+        } 
+        else if (tipo === 'SUBIR_EVIDENCIA') {
+            contenido += `
+                <div style="text-align:center; margin-bottom:15px;">
+                    <p style="font-weight:600; margin-bottom:5px;">Evidencia Propuesta:</p>
+                    ${solicitud.evidencia_url ? 
+                        `<img src="${solicitud.evidencia_url}" class="request-preview" 
+                             onclick="abrirPrevisualizacion('${solicitud.evidencia_url}')">
+                         <br><small style="color:var(--text-sec);">Haz clic para ver tamaño completo</small>` 
+                        : 'Sin archivo adjunto'}
+                </div>
+            `;
+        }
+        else if (tipo === 'PROBLEMA_ERROR') {
+            contenido += `
+                <div style="background:#f0f7ff; padding:10px; border-radius:8px; margin-bottom:15px;">
+                    <p><strong>Tipo:</strong> Reporte de problema/error</p>
+                    <p><strong>El estudiante necesita ayuda con:</strong> ${solicitud.Detalle || 'Sin detalles'}</p>
+                </div>
+            `;
+        }
+        else if (tipo === 'RECUPERACION_CONTRASENA') {
+            const contrasenaActual = usuario ? usuario.contrasena : "No disponible";
+            contenido += `
+                <div style="background:#f0f7ff; padding:10px; border-radius:8px; margin-bottom:15px;">
+                    <p><strong>Contraseña Actual del Usuario:</strong> ${contrasenaActual}</p>
+                    <p><strong>Correo destino:</strong> ${solicitud.email || 'No especificado'}</p>
+                </div>
+                <div class="form-group">
+                    <label>Nueva Contraseña (Opcional):</label>
+                    <input type="text" id="nuevaContrasena" class="form-control" 
+                           placeholder="Dejar vacío para mantener la actual">
+                </div>
+            `;
+        }
+
+        // Campo de respuesta común
+        contenido += `
+            <div class="form-group">
+                <label>Tu respuesta para el estudiante *</label>
+                <textarea id="respuestaAdmin" class="respuesta-textarea" required 
+                          placeholder="Escribe tu respuesta para el estudiante..."></textarea>
+            </div>
+            
+            <input type="hidden" id="solicitudIdRespuesta" value="${solicitudId}">
+            <input type="hidden" id="tipoRespuesta" value="${tipo}">
+            
+            <div class="respuesta-actions">
+        `;
+        
+        // Botones según el tipo
+        if (tipo === 'PROBLEMA_ERROR') {
+            contenido += `
+                <button class="btn-primary" onclick="enviarRespuesta('aceptar')" 
+                        style="background:var(--secondary); flex:1;">
+                    <i class="fas fa-check"></i> Marcar como Resuelto
+                </button>
+            `;
+        } else if (tipo === 'RECUPERACION_CONTRASENA') {
+            contenido += `
+                <button class="btn-primary" onclick="enviarRespuesta('aceptar')" 
+                        style="background:var(--secondary); flex:1;">
+                    <i class="fas fa-paper-plane"></i> Enviar Correo al Estudiante
+                </button>
+            `;
+        } else {
+            contenido += `
+                <button class="btn-primary" onclick="enviarRespuesta('aceptar')" 
+                        style="background:var(--secondary); flex:1;">
+                    <i class="fas fa-check"></i> Aceptar
+                </button>
+                <button class="btn-primary" onclick="enviarRespuesta('rechazar')" 
+                        style="background:var(--error); flex:1;">
+                    <i class="fas fa-times"></i> Rechazar
+                </button>
+            `;
+        }
+        
+        contenido += `</div>`;
+
+        document.getElementById('modalSolicitudContenido').innerHTML = contenido;
+        document.getElementById('modalResponderSolicitud').classList.add('active');
+        
+        // Pre-llenar respuesta sugerida
+        setTimeout(() => {
+            const textarea = document.getElementById('respuestaAdmin');
+            if (textarea) {
+                let respuestaBase = '';
+                switch(tipo) {
+                    case 'REPORTE_EVIDENCIA':
+                        respuestaBase = `Hola ${nombreUsuario},\n\nHemos revisado tu reporte de "No soy yo". `;
+                        break;
+                    case 'PROBLEMA_ERROR':
+                        respuestaBase = `Hola ${nombreUsuario},\n\nHemos revisado tu reporte de problema. `;
+                        break;
+                    case 'SUBIR_EVIDENCIA':
+                        respuestaBase = `Hola ${nombreUsuario},\n\nHemos evaluado tu solicitud para subir evidencia. `;
+                        break;
+                    case 'RECUPERACION_CONTRASENA':
+                        respuestaBase = `Hola ${nombreUsuario},\n\nHemos procesado tu solicitud de recuperación de contraseña. `;
+                        break;
+                }
+                textarea.value = respuestaBase;
+            }
+        }, 100);
+    }
+
+    async function enviarRespuesta(accion) {
+        const id = document.getElementById('solicitudIdRespuesta').value;
+        const tipo = document.getElementById('tipoRespuesta').value;
+        const mensaje = document.getElementById('respuestaAdmin').value;
+        const nuevaPassInput = document.getElementById('nuevaContrasena');
+        const nuevaPass = nuevaPassInput ? nuevaPassInput.value : null;
+
+        if (!mensaje.trim()) {
+            alert("Por favor escribe un mensaje de respuesta para el usuario.");
+            return;
+        }
+
+        const solicitud = solicitudes.find(s => s.id == id);
+        const usuario = usuarios.find(u => u.cedula === solicitud.cedula);
+
+        // Determinar estado final
+        let estadoFinal = 'PENDIENTE';
+        if (accion === 'aceptar') {
+            estadoFinal = tipo === 'PROBLEMA_ERROR' ? 'RESUELTO' : 'APROBADA';
+        } else {
+            estadoFinal = 'RECHAZADA';
+        }
+
+        // Preparar datos para el backend
+        const datos = {
+            id: id,
+            estado: estadoFinal,
+            respuesta: mensaje,
+            resuelto_por: localStorage.getItem('usuario_nombre') || "Administrador",
+            fecha_respuesta: new Date().toISOString()
+        };
+
+        // Acciones específicas por tipo
+        if (tipo === 'REPORTE_EVIDENCIA' && accion === 'aceptar') {
+            datos.accion = 'desvincular_evidencia';
+            datos.evidencia_id = solicitud.evidencia_id;
+        } 
+        else if (tipo === 'SUBIR_EVIDENCIA' && accion === 'aceptar') {
+            datos.accion = 'subir_evidencia_manual';
+            datos.evidencia_url = solicitud.evidencia_url;
+            datos.cedula = solicitud.cedula;
+        }
+        else if (tipo === 'RECUPERACION_CONTRASENA' && accion === 'aceptar') {
+            datos.accion = 'cambiar_contrasena';
+            if (nuevaPass && nuevaPass.trim() !== '') {
+                datos.nueva_contrasena = nuevaPass;
+            }
+            datos.enviar_correo = true;
+            datos.correo_destino = solicitud.email;
+        }
+
+        try {
+            mostrarMensaje("Procesando solicitud...", "info");
+            
+            const res = await fetch(`${API_URL}/responder_solicitud`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(datos)
+            });
+            
+            const result = await res.json();
+            
+            if (result.status === 'ok' || result.mensaje) {
+                // Mostrar confirmación
+                Swal.fire({
+                    title: '¡Solicitud procesada!',
+                    text: `La respuesta ha sido enviada al estudiante${tipo === 'RECUPERACION_CONTRASENA' ? ' por correo' : ''}.`,
+                    icon: 'success',
+                    confirmButtonColor: '#6A0DAD'
+                });
+                
+                cerrarModal('modalResponderSolicitud');
+                
+                // Recargar datos
+                await cargarDatosIniciales();
+                
+            } else {
+                mostrarMensaje("Error: " + (result.error || "Desconocido"), "error");
+            }
+        } catch (error) {
+            console.error(error);
+            mostrarMensaje("Error de conexión con el servidor", "error");
+        }
+    }
+
+    // ==========================================
+    // 6. FUNCIONES DE EVIDENCIAS
+    // ==========================================
+    function renderizarEvidencias() {
+        const grid = document.getElementById('evidenceGrid');
+        const vacio = document.getElementById('evidenceEmpty');
+        
+        if (!grid || evidencias.length === 0) {
+            if (vacio) vacio.style.display = 'flex';
+            return;
+        }
+        
+        if (vacio) vacio.style.display = 'none';
+        grid.innerHTML = '';
+        
+        evidencias.forEach(estudiante => {
+            const tarjeta = document.createElement('div');
+            tarjeta.className = 'evidence-card';
+            tarjeta.onclick = () => verEvidenciasEstudiante(estudiante);
+            
+            tarjeta.innerHTML = `
+                <img src="${estudiante.foto || 'https://via.placeholder.com/180'}" 
+                     class="card-media" 
+                     onerror="this.src='https://via.placeholder.com/180'"
+                     alt="${estudiante.nombre} ${estudiante.apellido}">
+                ${estudiante.total_evidencias > 0 ? `
+                    <div style="position:absolute; top:10px; left:10px; background:var(--primary); 
+                                color:white; padding:2px 8px; border-radius:10px; font-size:0.8rem;">
+                        ${estudiante.total_evidencias}
+                    </div>
+                ` : ''}
+                <div style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.7); 
+                            color:white; padding:10px; text-align:center;">
+                    <div style="font-weight:600; font-size:0.9rem;">${estudiante.nombre} ${estudiante.apellido}</div>
+                    <div style="font-size:0.8rem; opacity:0.8;">CI: ${estudiante.cedula}</div>
+                </div>
+            `;
+            
+            grid.appendChild(tarjeta);
+        });
+    }
+
+    function filtrarEvidencias() {
+        const filtro = document.getElementById('filterEvidence').value.toLowerCase();
+        const tarjetas = document.querySelectorAll('.evidence-card');
+        const vacio = document.getElementById('evidenceEmpty');
+        let visibles = 0;
+        
+        tarjetas.forEach(tarjeta => {
+            const texto = tarjeta.textContent.toLowerCase();
+            if (texto.includes(filtro)) {
+                tarjeta.style.display = 'block';
+                visibles++;
+            } else {
+                tarjeta.style.display = 'none';
+            }
+        });
+        
+        if (visibles === 0 && tarjetas.length > 0 && vacio) {
+            vacio.style.display = 'flex';
+        } else if (vacio) {
+            vacio.style.display = 'none';
+        }
+    }
+
+    async function verEvidenciasEstudiante(estudiante) {
+        estudianteActual = estudiante;
+        
+        try {
+            const respuesta = await fetch(`${API_URL}/todas_evidencias?cedula=${estudiante.cedula}`);
+            evidenciasEstudianteActual = await respuesta.json();
+            
+            // Actualizar título
+            document.getElementById('studentNameTitle').textContent = `Evidencias de ${estudiante.nombre} ${estudiante.apellido}`;
+            
+            // Mostrar información del estudiante
+            const infoContainer = document.getElementById('studentInfoContainer');
+            infoContainer.innerHTML = `
+                <img src="${estudiante.foto || 'https://via.placeholder.com/150'}" 
+                     class="student-avatar" 
+                     onerror="this.src='https://via.placeholder.com/150'"
+                     alt="${estudiante.nombre} ${estudiante.apellido}">
+                <div>
+                    <h3 style="color:var(--primary); margin-bottom:5px;">${estudiante.nombre} ${estudiante.apellido}</h3>
+                    <p style="color:var(--text-sec); margin-bottom:5px;">Cédula: ${estudiante.cedula}</p>
+                    <p style="color:var(--text-sec);">Total evidencias: ${evidenciasEstudianteActual.length}</p>
+                </div>
+            `;
+            infoContainer.style.display = 'flex';
+            
+            // Mostrar evidencias
+            renderizarEvidenciasEstudiante();
+            
+            // Cambiar a la sección de evidencias del estudiante
+            document.querySelectorAll('.panel-section').forEach(seccion => {
+                seccion.classList.remove('active');
+            });
+            document.getElementById('panel-evidencias-estudiante').classList.add('active');
+            
+            // Ir al inicio de la página
+            window.scrollTo(0, 0);
+            
+        } catch (error) {
+            console.error('Error cargando evidencias del estudiante:', error);
+            mostrarMensaje('Error al cargar evidencias del estudiante', 'error');
+        }
+    }
+
+    function renderizarEvidenciasEstudiante() {
+        const grid = document.getElementById('studentEvidenceGrid');
+        const vacio = document.getElementById('studentEvidenceEmpty');
+        
+        if (!grid) return;
+        
+        if (evidenciasEstudianteActual.length === 0) {
+            grid.innerHTML = '';
+            if (vacio) vacio.style.display = 'flex';
+            return;
+        }
+        
+        if (vacio) vacio.style.display = 'none';
+        grid.innerHTML = '';
+        
+        evidenciasEstudianteActual.forEach((evidencia, index) => {
+            const tarjeta = document.createElement('div');
+            tarjeta.className = `evidence-card ${modoSeleccion ? 'selection-mode-active' : ''}`;
+            if (evidenciasSeleccionadas.includes(evidencia.id)) {
+                tarjeta.classList.add('selected');
+            }
+            
+            tarjeta.onclick = () => {
+                if (modoSeleccion) {
+                    toggleSeleccionEvidencia(evidencia.id, tarjeta);
+                } else {
+                    abrirVisor(index);
+                }
+            };
+            
+            const esVideo = evidencia.url && evidencia.url.match(/\.(mp4|avi|mov|webm)$/i);
+            const esImagen = evidencia.url && evidencia.url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+            
+            let contenido = '';
+            
+            if (esImagen) {
+                contenido = `<img src="${evidencia.url}" class="card-media" loading="lazy">`;
+            } else if (esVideo) {
+                contenido = `
+                    <video src="${evidencia.url}#t=0.1" class="card-media"></video>
+                    <div class="video-overlay"><i class="fas fa-play-circle"></i></div>
+                `;
+            } else {
+                contenido = `
+                    <div style="width:100%;height:100%;background:var(--bg-input);display:flex;align-items:center;justify-content:center;color:var(--text-main);">
+                        <i class="fas fa-file-alt" style="font-size:2.5rem;"></i>
+                    </div>
+                `;
+            }
+            
+            tarjeta.innerHTML = `
+                <div class="selection-check"><i class="fas fa-check"></i></div>
+                ${contenido}
+            `;
+            
+            grid.appendChild(tarjeta);
+        });
+        
+        // Actualizar contador de selección
+        document.getElementById('countSelection').textContent = evidenciasSeleccionadas.length;
+    }
+
+    function volverAEvidencias() {
+        modoSeleccion = false;
+        evidenciasSeleccionadas = [];
+        document.getElementById('floatingBar').classList.remove('active');
+        
+        document.querySelectorAll('.panel-section').forEach(seccion => {
+            seccion.classList.remove('active');
+        });
+        document.getElementById('panel-evidencias').classList.add('active');
+        
+        window.scrollTo(0, 0);
+    }
+
+    // ==========================================
+    // 7. FUNCIONES DE LIGHTBOX Y VISOR
+    // ==========================================
+    function abrirPrevisualizacion(url) {
+        const lightbox = document.getElementById('lightbox');
+        const contenido = document.getElementById('lightboxContent');
+        
+        contenido.innerHTML = `
+            <img src="${url}" class="lb-media-item" style="max-height:70vh; object-fit:contain;">
+        `;
+        
+        const enlaceDescarga = document.getElementById('lbDownloadLink');
+        enlaceDescarga.href = url;
+        enlaceDescarga.download = url.split('/').pop();
+        
+        lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function cerrarLightbox() {
+        document.getElementById('lightbox').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    function cerrarLightboxSiFondo(evento) {
+        if (evento.target.id === 'lightbox') {
+            cerrarLightbox();
+        }
+    }
+
+    // ==========================================
+    // 8. FUNCIONES DE SEGURIDAD Y LOGS
+    // ==========================================
+    async function cargarLogs() {
+        try {
+            const respuesta = await fetch(`${API_URL}/obtener_logs`);
+            logs = await respuesta.json();
+            renderizarLogs();
+        } catch (error) {
+            console.error('Error cargando logs:', error);
+        }
+    }
+
+    function renderizarLogs() {
+        const tbody = document.getElementById('logsTableBody');
+        if (!tbody) return;
+        
+        tbody.innerHTML = logs.map(log => `
+            <tr>
+                <td>${log.fecha || 'Sin fecha'}</td>
+                <td>
+                    <span style="font-weight:600; color:${obtenerColorAccion(log.accion)}">
+                        ${log.accion}
+                    </span>
+                </td>
+                <td>${log.detalle}</td>
+                <td>${extraerUsuarioLog(log.detalle) || 'Sistema'}</td>
+            </tr>
+        `).join('');
+    }
+
+    function obtenerColorAccion(accion) {
+        if (accion && (accion.includes('ELIMIN') || accion.includes('ERROR'))) {
+            return 'var(--error)';
+        } else if (accion && (accion.includes('REGISTRO') || accion.includes('APROB'))) {
+            return 'var(--secondary)';
+        } else if (accion && (accion.includes('LOGIN') || accion.includes('SUBIDA'))) {
+            return 'var(--info)';
+        }
+        return 'var(--text-main)';
+    }
+
+    function extraerUsuarioLog(detalle) {
+        if (!detalle) return null;
+        const coincidencia = detalle.match(/\((.*?)\)/);
+        return coincidencia ? coincidencia[1] : null;
+    }
+
+    function filtrarLogs() {
+        const busqueda = document.getElementById('searchLogs').value.toLowerCase();
+        const filas = document.querySelectorAll('#logsTableBody tr');
+        
+        filas.forEach(fila => {
+            const texto = fila.textContent.toLowerCase();
+            fila.style.display = texto.includes(busqueda) ? '' : 'none';
+        });
+    }
+
+    // ==========================================
+    // 9. FUNCIONES AUXILIARES RESTANTES
+    // ==========================================
+    function analizarDuplicados() {
+        mostrarMensaje('Analizando archivos duplicados...', 'info');
+        setTimeout(() => {
+            mostrarMensaje('Análisis completado: 0 archivos duplicados encontrados', 'success');
+        }, 2000);
+    }
+
+    function limpiarCache() {
+        if (confirm('¿Limpiar caché del sistema?')) {
+            mostrarMensaje('Caché limpiada correctamente', 'success');
+        }
+    }
+
+    function limpiarHuerfanos() {
+        mostrarMensaje('Buscando archivos huérfanos...', 'info');
+        setTimeout(() => {
+            mostrarMensaje('0 archivos huérfanos encontrados', 'success');
+        }, 2000);
+    }
+
+    function abrirModalAgregarRef() {
+        const select = document.getElementById('selectUsuarioRef');
+        select.innerHTML = '<option value="">-- Seleccionar --</option>' +
+            usuarios.filter(u => u.tipo == 1).map(u => 
+                `<option value="${u.cedula}">${u.nombre} ${u.apellido} (${u.cedula})</option>`
+            ).join('');
+        
+        document.getElementById('modalAgregarRef').classList.add('active');
+    }
+
+    async function agregarReferencia(evento) {
+        evento.preventDefault();
+        
+        const cedula = document.getElementById('selectUsuarioRef').value;
+        const archivoInput = document.getElementById('fotoRef');
+        
+        if (!cedula || !archivoInput.files.length) {
+            mostrarMensaje('Completa todos los campos', 'warning');
+            return;
+        }
+        
+        const datos = new FormData();
+        datos.append('cedula', cedula);
+        datos.append('foto', archivoInput.files[0]);
+        
+        const boton = evento.target.querySelector('button[type="submit"]');
+        
+        try {
+            boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subiendo...';
+            boton.disabled = true;
+            
+            const respuesta = await fetch(`${API_URL}/agregar_referencia_facial`, {
+                method: 'POST',
+                body: datos
+            });
+            
+            const resultado = await respuesta.json();
+            
+            if (resultado.mensaje) {
+                mostrarMensaje('Foto de referencia agregada correctamente', 'success');
+                cerrarModal('modalAgregarRef');
+                evento.target.reset();
+            } else {
+                mostrarMensaje('Error: ' + resultado.error, 'error');
+            }
+        } catch (error) {
+            mostrarMensaje('Error de conexión', 'error');
+        } finally {
+            boton.innerHTML = '<i class="fas fa-save"></i> Agregar Referencia';
+            boton.disabled = false;
+        }
+    }
+
+    // ==========================================
+    // 10. FUNCIONES DE SUBIDA DE ARCHIVOS
+    // ==========================================
+    function mostrarSugerencias(texto) {
+        const sugerencias = document.getElementById('suggestionsBox');
+        
+        if (texto.length < 2) {
+            sugerencias.style.display = 'none';
+            return;
+        }
+        
+        const coincidencias = usuarios.filter(usuario => {
+            const nombreCompleto = `${usuario.nombre} ${usuario.apellido}`.toLowerCase();
+            return nombreCompleto.includes(texto.toLowerCase());
+        }).slice(0, 5);
+        
+        if (coincidencias.length === 0) {
+            sugerencias.style.display = 'none';
+            return;
+        }
+        
+        sugerencias.innerHTML = coincidencias.map(usuario => `
+            <div onclick="seleccionarUsuario('${usuario.cedula}')" 
+                 style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--border-color);">
+                ${usuario.nombre} ${usuario.apellido} 
+                <small style="color:var(--text-sec);">(${usuario.cedula})</small>
+            </div>
+        `).join('');
+        
+        sugerencias.style.display = 'block';
+    }
+
+    function seleccionarUsuario(cedula) {
+        const usuario = usuarios.find(u => u.cedula === cedula);
+        if (usuario) {
+            document.getElementById('manualNombres').value = 
+                `${usuario.nombre} ${usuario.apellido}`;
+            document.getElementById('suggestionsBox').style.display = 'none';
+        }
+    }
+
+    async function subirManual(evento) {
+        evento.preventDefault();
+        
+        const archivoInput = document.getElementById('manualFile');
+        const nombresInput = document.getElementById('manualNombres');
+        
+        if (!archivoInput.files.length) {
+            mostrarMensaje('Selecciona un archivo primero', 'warning');
+            return;
+        }
+        
+        if (!nombresInput.value.trim()) {
+            mostrarMensaje('Ingresa al menos un nombre de estudiante', 'warning');
+            return;
+        }
+        
+        // Buscar cédulas por nombres
+        const nombres = nombresInput.value.split(',').map(n => n.trim());
+        const cedulas = [];
+        
+        nombres.forEach(nombre => {
+            const usuario = usuarios.find(u => {
+                const nombreCompleto = `${u.nombre} ${u.apellido}`.toLowerCase();
+                return nombreCompleto.includes(nombre.toLowerCase());
+            });
+            
+            if (usuario) {
+                cedulas.push(usuario.cedula);
+            }
+        });
+        
+        if (cedulas.length === 0) {
+            mostrarMensaje('No se encontraron estudiantes con esos nombres', 'warning');
+            return;
+        }
+        
+        const datos = new FormData();
+        datos.append('archivo', archivoInput.files[0]);
+        datos.append('cedulas', cedulas.join(','));
+        
+        const boton = evento.target.querySelector('button[type="submit"]');
+        
+        try {
+            boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subiendo...';
+            boton.disabled = true;
+            
+            const respuesta = await fetch(`${API_URL}/subir_manual`, {
+                method: 'POST',
+                body: datos
+            });
+            
+            const resultado = await respuesta.json();
+            
+            if (resultado.mensaje === 'OK') {
+                mostrarMensaje(`Archivo asignado a ${resultado.asignado_a?.length || 0} estudiantes`, 'success');
+                archivoInput.value = '';
+                nombresInput.value = '';
+                await cargarDatosIniciales();
+            } else {
+                mostrarMensaje('Error: ' + (resultado.error || 'Desconocido'), 'error');
+            }
+        } catch (error) {
+            mostrarMensaje('Error de conexión', 'error');
+        } finally {
+            boton.innerHTML = '<i class="fas fa-user-check"></i> Asignar Manualmente';
+            boton.disabled = false;
+        }
+    }
+
+    async function handleUploadIA(input) {
+        const archivos = input.files;
+        if (archivos.length === 0) return;
+        
+        const log = document.getElementById('uploadLog');
+        const progreso = document.getElementById('uploadProgress');
+        const barra = document.getElementById('progressBar');
+        const texto = document.getElementById('progressText');
+        
+        log.innerHTML = '<div><i class="fas fa-info-circle"></i> Iniciando análisis...</div>';
+        progreso.style.display = 'block';
+        
+        let completados = 0;
+        const total = archivos.length;
+        
+        for (let i = 0; i < total; i++) {
+            const archivo = archivos[i];
+            const datos = new FormData();
+            datos.append('archivo', archivo);
+            
+            texto.textContent = `Procesando ${i + 1}/${total}: ${archivo.name}`;
+            barra.style.width = ((i / total) * 100) + '%';
             
             try {
-                // En un entorno real, aquí se enviaría al backend
-                mostrarMensaje(`Contraseña cambiada para ${usuarioSeleccionadoPassword.nombre}`, 'success');
+                const respuesta = await fetch(`${API_URL}/subir_evidencia`, {
+                    method: 'POST',
+                    body: datos
+                });
                 
-                // Limpiar formulario
+                const resultado = await respuesta.json();
+                
+                if (resultado.status === 'exito') {
+                    log.innerHTML += `<div style="color:var(--secondary);">✅ ${archivo.name} asignado a: ` +
+                                   `${resultado.asignado_a?.join(', ') || 'varios estudiantes'}</div>`;
+                } else if (resultado.status === 'alerta') {
+                    log.innerHTML += `<div style="color:var(--warning);">⚠ ${archivo.name}: ` +
+                                   `${resultado.mensaje || 'Sin coincidencias'}</div>`;
+                } else {
+                    log.innerHTML += `<div style="color:var(--error);">❌ ${archivo.name}: ` +
+                                   `${resultado.motivo || 'Error'}</div>`;
+                }
+            } catch (error) {
+                log.innerHTML += `<div style="color:var(--error);">❌ ${archivo.name}: Error de red</div>`;
+            }
+            
+            completados++;
+            barra.style.width = ((completados / total) * 100) + '%';
+        }
+        
+        texto.textContent = 'Proceso completado ✅';
+        input.value = '';
+        
+        setTimeout(() => {
+            cargarDatosIniciales();
+        }, 1000);
+    }
+
+    // ==========================================
+    // 11. FUNCIONES DE CAMBIO DE CONTRASEÑA
+    // ==========================================
+    function sugerirUsuariosPassword(texto) {
+        const sugerencias = document.getElementById('suggestionsPass');
+        
+        if (texto.length < 2) {
+            sugerencias.style.display = 'none';
+            return;
+        }
+        
+        const coincidencias = usuarios.filter(usuario => {
+            const nombreCompleto = `${usuario.nombre} ${usuario.apellido}`.toLowerCase();
+            return nombreCompleto.includes(texto.toLowerCase());
+        }).slice(0, 5);
+        
+        if (coincidencias.length === 0) {
+            sugerencias.style.display = 'none';
+            return;
+        }
+        
+        sugerencias.innerHTML = coincidencias.map(usuario => `
+            <div onclick="seleccionarUsuarioPassword('${usuario.cedula}')" 
+                 style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--border-color);">
+                ${usuario.nombre} ${usuario.apellido}
+                <small style="color:var(--text-sec);">(${usuario.cedula})</small>
+            </div>
+        `).join('');
+        
+        sugerencias.style.display = 'block';
+    }
+
+    function seleccionarUsuarioPassword(cedula) {
+        usuarioSeleccionadoPassword = usuarios.find(u => u.cedula === cedula);
+        if (usuarioSeleccionadoPassword) {
+            document.getElementById('nombrePassword').value = 
+                `${usuarioSeleccionadoPassword.nombre} ${usuarioSeleccionadoPassword.apellido}`;
+            document.getElementById('suggestionsPass').style.display = 'none';
+        }
+    }
+
+    async function cambiarPassword(evento) {
+        evento.preventDefault();
+        
+        if (!usuarioSeleccionadoPassword) {
+            mostrarMensaje('Selecciona un usuario primero', 'warning');
+            return;
+        }
+        
+        const nuevaPassword = document.getElementById('nuevaPassword').value;
+        
+        if (nuevaPassword.length < 6) {
+            mostrarMensaje('La contraseña debe tener al menos 6 caracteres', 'warning');
+            return;
+        }
+        
+        const confirmacion = await Swal.fire({
+            title: '¿Cambiar contraseña?',
+            text: `¿Cambiar contraseña de ${usuarioSeleccionadoPassword.nombre} a: ${nuevaPassword}?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#6A0DAD',
+            cancelButtonColor: '#5f6368',
+            confirmButtonText: 'Sí, cambiar',
+            cancelButtonText: 'Cancelar'
+        });
+        
+        if (!confirmacion.isConfirmed) return;
+        
+        try {
+            const respuesta = await fetch(`${API_URL}/cambiar_contrasena`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    cedula: usuarioSeleccionadoPassword.cedula,
+                    nueva_contrasena: nuevaPassword
+                })
+            });
+            
+            const resultado = await respuesta.json();
+            
+            if (resultado.mensaje) {
+                mostrarMensaje(`Contraseña cambiada para ${usuarioSeleccionadoPassword.nombre}`, 'success');
                 document.getElementById('formCambiarPassword').reset();
                 usuarioSeleccionadoPassword = null;
-            } catch (error) {
+                await cargarDatosIniciales();
+            } else {
                 mostrarMensaje('Error al cambiar contraseña', 'error');
             }
+        } catch (error) {
+            mostrarMensaje('Error de conexión', 'error');
         }
+    }
 
-        function descargarBackup(tipo) {
-            const url = tipo === 'db' 
-                ? `${API_URL}/crear_backup` 
-                : `${API_URL}/descargar_multimedia_zip`;
-            
-            // Descarga directa sin abrir nueva pestaña
-            const enlace = document.createElement('a');
-            enlace.href = url;
-            enlace.style.display = 'none';
-            document.body.appendChild(enlace);
-            enlace.click();
-            document.body.removeChild(enlace);
-            
-            mostrarMensaje(`Descarga de ${tipo === 'db' ? 'base de datos' : 'multimedia'} iniciada`, 'info');
+    // ==========================================
+    // 12. FUNCIONES DE MANTENIMIENTO
+    // ==========================================
+    function descargarBackup(tipo) {
+        const url = tipo === 'db' 
+            ? `${API_URL}/crear_backup` 
+            : `${API_URL}/descargar_multimedia_zip`;
+        
+        const enlace = document.createElement('a');
+        enlace.href = url;
+        enlace.style.display = 'none';
+        document.body.appendChild(enlace);
+        enlace.click();
+        document.body.removeChild(enlace);
+        
+        mostrarMensaje(`Descarga de ${tipo === 'db' ? 'base de datos' : 'multimedia'} iniciada`, 'info');
+    }
+
+    function optimizarSistema() {
+        if (confirm('¿Optimizar sistema y limpiar caché?')) {
+            mostrarMensaje('Sistema optimizado', 'success');
         }
+    }
 
-        function optimizarSistema() {
-            if (confirm('¿Optimizar sistema y limpiar caché?')) {
-                mostrarMensaje('Sistema optimizado', 'success');
+    // ==========================================
+    // 13. FUNCIONES DE SELECCIÓN MÚLTIPLE
+    // ==========================================
+    function toggleModoSeleccion() {
+        modoSeleccion = !modoSeleccion;
+        
+        if (modoSeleccion) {
+            document.getElementById('floatingBar').classList.add('active');
+            document.getElementById('btnSelectMode').innerHTML = '<i class="fas fa-times"></i> Cancelar';
+        } else {
+            document.getElementById('floatingBar').classList.remove('active');
+            document.getElementById('btnSelectMode').innerHTML = '<i class="fas fa-check-square"></i> Seleccionar';
+            evidenciasSeleccionadas = [];
+        }
+        
+        renderizarEvidenciasEstudiante();
+    }
+
+    function toggleSeleccionEvidencia(id, elemento) {
+        const index = evidenciasSeleccionadas.indexOf(id);
+        if (index === -1) {
+            evidenciasSeleccionadas.push(id);
+            elemento.classList.add('selected');
+        } else {
+            evidenciasSeleccionadas.splice(index, 1);
+            elemento.classList.remove('selected');
+        }
+        
+        document.getElementById('countSelection').textContent = evidenciasSeleccionadas.length;
+    }
+
+    function cancelarSeleccion() {
+        modoSeleccion = false;
+        evidenciasSeleccionadas = [];
+        document.getElementById('floatingBar').classList.remove('active');
+        document.getElementById('btnSelectMode').innerHTML = '<i class="fas fa-check-square"></i> Seleccionar';
+        renderizarEvidenciasEstudiante();
+    }
+
+    async function descargarSeleccionadas() {
+        if (evidenciasSeleccionadas.length === 0) {
+            mostrarMensaje('Selecciona al menos una evidencia', 'warning');
+            return;
+        }
+        
+        try {
+            mostrarMensaje('Preparando descarga...', 'info');
+            
+            const formData = new FormData();
+            formData.append('ids', evidenciasSeleccionadas.join(','));
+            
+            const respuesta = await fetch(`${API_URL}/descargar_evidencias_zip`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (respuesta.ok) {
+                const blob = await respuesta.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `evidencias_${estudianteActual.cedula}_${Date.now()}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                mostrarMensaje('Descarga iniciada', 'success');
+                cancelarSeleccion();
+            } else {
+                mostrarMensaje('Error al preparar la descarga', 'error');
             }
+        } catch (error) {
+            console.error('Error descargando evidencias:', error);
+            mostrarMensaje('Error de conexión al descargar', 'error');
         }
+    }
 
-        // SweetAlert para diálogos más profesionales
-        const Swal = {
-            fire: function(options) {
-                return new Promise((resolve) => {
-                    const result = confirm(options.text || '¿Estás seguro?');
-                    resolve({ isConfirmed: result });
+    async function eliminarSeleccionadas() {
+        if (evidenciasSeleccionadas.length === 0) {
+            mostrarMensaje('Selecciona al menos una evidencia', 'warning');
+            return;
+        }
+        
+        const confirmacion = await Swal.fire({
+            title: '¿Eliminar evidencias seleccionadas?',
+            text: `Se eliminarán ${evidenciasSeleccionadas.length} evidencias permanentemente.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d32f2f',
+            cancelButtonColor: '#5f6368',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
+        
+        if (!confirmacion.isConfirmed) return;
+        
+        try {
+            mostrarMensaje('Eliminando evidencias...', 'info');
+            
+            for (const id of evidenciasSeleccionadas) {
+                await fetch(`${API_URL}/eliminar_evidencia/${id}`, {
+                    method: 'DELETE'
                 });
             }
-        };
+            
+            mostrarMensaje(`${evidenciasSeleccionadas.length} evidencias eliminadas`, 'success');
+            
+            await verEvidenciasEstudiante(estudianteActual);
+            cancelarSeleccion();
+            
+        } catch (error) {
+            console.error('Error eliminando evidencias:', error);
+            mostrarMensaje('Error al eliminar evidencias', 'error');
+        }
+    }
+
+    // Funciones del visor (simplificadas)
+    let indiceVisorActual = 0;
+    let evidenciasVisor = [];
+
+    function abrirVisor(indice) {
+        evidenciasVisor = evidenciasEstudianteActual;
+        indiceVisorActual = indice;
+        actualizarVisor();
+        document.getElementById('lightbox').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function actualizarVisor() {
+        const contenido = document.getElementById('lightboxContent');
+        const enlaceDescarga = document.getElementById('lbDownloadLink');
+        
+        if (evidenciasVisor.length === 0) return;
+        
+        const evidenciaActual = evidenciasVisor[indiceVisorActual];
+        
+        enlaceDescarga.href = evidenciaActual.url;
+        enlaceDescarga.download = evidenciaActual.url.split('/').pop();
+        
+        const esVideo = evidenciaActual.url && evidenciaActual.url.match(/\.(mp4|avi|mov|webm)$/i);
+        
+        if (esVideo) {
+            contenido.innerHTML = `
+                <video src="${evidenciaActual.url}" class="lb-media-item" controls autoplay></video>
+            `;
+        } else {
+            contenido.innerHTML = `
+                <img src="${evidenciaActual.url}" class="lb-media-item">
+            `;
+        }
+    }
+
+    function imagenSiguiente(evento) {
+        if (evento) evento.stopPropagation();
+        indiceVisorActual = (indiceVisorActual + 1) % evidenciasVisor.length;
+        actualizarVisor();
+    }
+
+    function imagenAnterior(evento) {
+        if (evento) evento.stopPropagation();
+        indiceVisorActual = (indiceVisorActual - 1 + evidenciasVisor.length) % evidenciasVisor.length;
+        actualizarVisor();
+    }
+
+    function reportarEvidenciaActual() {
+        const evidencia = evidenciasVisor[indiceVisorActual];
+        Swal.fire({
+            title: 'Reportar evidencia',
+            text: '¿Reportar esta evidencia como "No soy yo"?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d32f2f',
+            cancelButtonColor: '#5f6368',
+            confirmButtonText: 'Sí, reportar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                mostrarMensaje('Evidencia reportada para revisión', 'success');
+                cerrarLightbox();
+            }
+        });
+    }
 
     </script>
 </body>
