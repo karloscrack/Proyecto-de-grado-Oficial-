@@ -372,7 +372,7 @@ async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
                 "nombre": user["Nombre"] or "",
                 "apellido": user["Apellido"] or "",
                 "cedula": user["CI"],
-                "tipo": user["Tipo"] or 1,
+                "tipo": user["Tipo"] if user["Tipo"] is not None else 1,
                 "url_foto": user["Foto"] if user["Foto"] else "",
                 "galeria": evs,
                 "notificaciones": notis

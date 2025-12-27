@@ -1145,7 +1145,7 @@
             if (data.autenticado) {
                 localStorage.setItem('usuario_cedula', cedula);
                 localStorage.setItem('usuario_contrasena', contrasena);
-                localStorage.setItem('usuario_tipo', data.datos.tipo || 1);
+                localStorage.setItem('usuario_tipo', (data.datos.tipo !== undefined && data.datos.tipo !== null) ? data.datos.tipo : 1);
                 
                 // Redireccionar según tipo de usuario
                 if (data.datos.tipo === 0) {
