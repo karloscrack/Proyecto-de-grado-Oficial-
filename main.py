@@ -81,33 +81,52 @@ class EstadoUsuarioRequest(BaseModel):
     cedula: str
     activo: int
 
-# --- 2. INICIALIZACIÓN DE BASE DE DATOS ---
+# --- 2. INICIALIZACIÓN DE BASE DE DATOS - CORREGIDA ---
 def init_db_completa():
     try:
         conn = sqlite3.connect(DB_NAME)
         c = conn.cursor()
         
+        # Tabla Usuarios con compatibilidad hacia atrás
         c.execute('''CREATE TABLE IF NOT EXISTS Usuarios (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            Nombre TEXT NOT NULL,
-            Apellido TEXT NOT NULL,
-            CI TEXT UNIQUE NOT NULL,
-            Password TEXT NOT NULL,
-            Tipo INTEGER DEFAULT 1,
+            ID INTEGER PRIMARY KEY,
+            Nombre TEXT,
+            Apellido TEXT,
+            CI TEXT UNIQUE,
+            Password TEXT,
+            Tipo INTEGER,
             Foto TEXT,
             Activo INTEGER DEFAULT 1,
-            TutorialVisto INTEGER DEFAULT 0,
-            Fecha_Registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            Face_Encoding TEXT
+            Fecha_Desactivacion TIMESTAMP NULL,
+            Ultimo_Acceso TIMESTAMP NULL
         )''')
+        
+        # Mantener columnas nuevas si existen, pero no forzar estructura incompatible
+        columnas_compatibilidad = [
+            ("Usuarios", "TutorialVisto", "INTEGER DEFAULT 0"),
+            ("Usuarios", "Face_Encoding", "TEXT"),
+            ("Usuarios", "Fecha_Registro", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+        ]
+        
+        for tabla, columna, tipo in columnas_compatibilidad:
+            try:
+                c.execute(f"SELECT {columna} FROM {tabla} LIMIT 1")
+            except sqlite3.OperationalError:
+                try:
+                    c.execute(f"ALTER TABLE {tabla} ADD COLUMN {columna} {tipo}")
+                    print(f"✅ Columna {columna} agregada a tabla {tabla}")
+                except Exception as e:
+                    print(f"⚠️ No se pudo agregar columna {columna} a {tabla}: {e}")
+                    # Continuar sin esta columna
 
+        # Crear tablas adicionales
         c.execute('''CREATE TABLE IF NOT EXISTS Evidencias (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             CI_Estudiante TEXT,
             Url_Archivo TEXT NOT NULL,
             Hash TEXT,
             Estado INTEGER DEFAULT 1,
-            Tipo_Archivo TEXT,
+            Tipo_Archivo TEXT DEFAULT 'documento',
             Fecha_Subida TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(CI_Estudiante) REFERENCES Usuarios(CI)
         )''')
@@ -126,11 +145,6 @@ def init_db_completa():
             Estado TEXT DEFAULT 'PENDIENTE'
         )''')
         
-        try:
-            c.execute("ALTER TABLE Solicitudes ADD COLUMN Respuesta TEXT")
-        except:
-            pass
-
         c.execute('''CREATE TABLE IF NOT EXISTS Auditoria (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             Accion TEXT,
@@ -139,45 +153,62 @@ def init_db_completa():
             Fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )''')
         
+        # Crear usuario admin si no existe (usando estructura compatible)
         c.execute("SELECT CI FROM Usuarios WHERE Tipo=0")
         if not c.fetchone():
-            c.execute("INSERT INTO Usuarios (Nombre, Apellido, CI, Password, Tipo, Activo) VALUES (?,?,?,?,?,?)", 
+            # Usar nombres de columnas exactos de la estructura real
+            c.execute('''INSERT INTO Usuarios (Nombre, Apellido, CI, Password, Tipo, Activo) 
+                         VALUES (?,?,?,?,?,?)''', 
                      ('Admin', 'Sistema', '9999999999', 'admin123', 0, 1))
+            print("✅ Usuario admin creado")
 
         conn.commit()
         conn.close()
-        print("✅ Base de datos inicializada correctamente")
+        print("✅ Base de datos inicializada correctamente (compatibilidad total)")
     except Exception as e:
         print(f"❌ Error inicializando DB: {e}")
 
+# Ejecutar inicialización
 init_db_completa()
 
 # =========================================================================
-# 3. CONFIGURACIÓN DE CORS - A PRUEBA DE FALLOS
+# 3. CONFIGURACIÓN DE CORS
 # =========================================================================
 app = FastAPI()
 
-# ✅ CONFIGURACIÓN CORS PERMISIVA PERO SEGURA
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permite TODOS los orígenes
-    allow_credentials=True,  # IMPORTANTE: Cambié a True para permitir cookies si las usas
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],  # Métodos explícitos
-    allow_headers=["*"],  # Permite todos los headers
-    expose_headers=["*"]  # Expone todos los headers
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 # --- FUNCIONES AUXILIARES ---
 def get_db_connection():
+    """Conexión a DB con compatibilidad de nombres de columna"""
     conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
+    
+    # Hacer que las filas se comporten como diccionarios
+    def dict_factory(cursor, row):
+        d = {}
+        for idx, col in enumerate(cursor.description):
+            # Asegurar que los nombres de columna sean consistentes
+            column_name = col[0].replace('"', '')  # Remover comillas si existen
+            d[column_name] = row[idx]
+        return d
+    
+    conn.row_factory = dict_factory
     return conn
+
 
 def registrar_auditoria(accion, detalle):
     try:
         conn = get_db_connection()
         conn.execute("INSERT INTO Auditoria (Accion, Detalle) VALUES (?, ?)", (accion, detalle))
-        conn.commit(); conn.close()
+        conn.commit()
+        conn.close()
     except Exception as e:
         print(f"Error auditoria: {e}")
 
@@ -211,23 +242,20 @@ def calcular_hash(ruta):
     return h.hexdigest()
 
 # =========================================================================
-# 4. MIDDLEWARE PERSONALIZADO PARA HEADERS CORS (GARANTIZADO)
+# 4. MIDDLEWARE PERSONALIZADO PARA CORS
 # =========================================================================
 @app.middleware("http")
 async def add_cors_headers(request, call_next):
     response = await call_next(request)
-    
-    # ✅ AÑADIR HEADERS CORS A TODAS LAS RESPUESTAS
     response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["Access-Control-Allow-Credentials"] = "true"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
     response.headers["Access-Control-Allow-Headers"] = "*"
     response.headers["Access-Control-Expose-Headers"] = "*"
-    
     return response
 
 # =========================================================================
-# 5. MANEJAR SOLICITUDES OPTIONS (PREFLIGHT) MANUALMENTE
+# 5. MANEJAR SOLICITUDES OPTIONS
 # =========================================================================
 @app.options("/{rest_of_path:path}")
 async def preflight_handler(request, rest_of_path: str):
@@ -238,28 +266,30 @@ async def preflight_handler(request, rest_of_path: str):
     response.headers["Access-Control-Allow-Headers"] = "*"
     return response
 
-# --- ENDPOINTS PRINCIPALES ---
+# =========================================================================
+# ENDPOINTS PRINCIPALES
+# =========================================================================
 @app.get("/")
 def home():
     return {
         "status": "online", 
-        "backend": "Sistema Educativo Despertar V5.0 (CORS FIXED)",
+        "backend": "Sistema Educativo Despertar V6.0",
         "cors_enabled": True,
         "timestamp": datetime.datetime.now().isoformat()
     }
 
 # =========================================================================
-# ENDPOINT DE LOGIN - CORREGIDO Y OPTIMIZADO
+# ENDPOINT DE LOGIN - COMPLETAMENTE CORREGIDO
 # =========================================================================
 @app.post("/iniciar_sesion")
 async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
-    """Endpoint específico para login (autenticación)"""
+    """Endpoint de login con compatibilidad total"""
     try:
-        # SANITIZACIÓN: Eliminar espacios en blanco alrededor
+        # Sanitización exhaustiva
         cedula = cedula.strip()
         contrasena = contrasena.strip()
         
-        # Validar que no estén vacíos después del strip
+        # Validación
         if not cedula or not contrasena:
             return JSONResponse(content={
                 "autenticado": False, 
@@ -269,8 +299,15 @@ async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
         conn = get_db_connection()
         c = conn.cursor()
         
-        # Buscar usuario por CI (con TRIM para compatibilidad con datos existentes)
-        c.execute("SELECT * FROM Usuarios WHERE TRIM(CI)=?", (cedula,))
+        # CONSULTA CORREGIDA: Usar nombres de columna exactos de la estructura real
+        # Buscar por CI, con manejo de mayúsculas/minúsculas y espacios
+        c.execute("""
+            SELECT 
+                ID, Nombre, Apellido, CI, Password, Tipo, Foto, Activo
+            FROM Usuarios 
+            WHERE TRIM(UPPER(CI)) = TRIM(UPPER(?))
+        """, (cedula,))
+        
         user = c.fetchone()
         
         if not user:
@@ -280,74 +317,98 @@ async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
                 "mensaje": "Usuario no encontrado"
             })
         
-        # DEBUG: Mostrar contraseñas para verificación
-        print(f"🔍 DEBUG LOGIN - Cédula: '{cedula}'")
-        print(f"   Contraseña recibida: '{contrasena}'")
-        print(f"   Contraseña en DB: '{user['Password']}'")
-        print(f"   ¿Son iguales?: {contrasena == user['Password'].strip()}")
+        # DEBUG: Registrar datos encontrados
+        print(f"🔍 LOGIN - Usuario encontrado:")
+        print(f"   - CI en DB: '{user['CI']}'")
+        print(f"   - Contraseña DB: '{user['Password']}'")
+        print(f"   - Contraseña recibida: '{contrasena}'")
+        print(f"   - Activo: {user['Activo']}")
         
-        # Comparar contraseñas (aplicando strip a la de la BD por si acaso)
-        if user["Password"].strip() != contrasena:
+        # Comparación EXACTA de contraseña (case-sensitive como estaba)
+        if user["Password"] != contrasena:
             conn.close()
             return JSONResponse(content={
                 "autenticado": False, 
                 "mensaje": "Contraseña incorrecta"
             })
         
-        if user["Activo"] == 0:
+        # Verificar estado activo (1 = activo, 0 = inactivo)
+        if user.get("Activo", 1) == 0:
             conn.close()
             return JSONResponse(content={
                 "autenticado": False, 
                 "mensaje": "Cuenta desactivada por administración"
             })
         
-        # Obtener datos adicionales para el login
-        c.execute("SELECT id, Url_Archivo as url, Tipo_Archivo as tipo, Fecha_Subida FROM Evidencias WHERE CI_Estudiante=? AND Estado=1 ORDER BY Fecha_Subida DESC", (user['CI'],))
+        # Obtener evidencias (con fallback si Tipo_Archivo no existe)
+        try:
+            c.execute("""
+                SELECT id, Url_Archivo as url, 
+                       COALESCE(Tipo_Archivo, 'documento') as tipo, 
+                       Fecha_Subida 
+                FROM Evidencias 
+                WHERE CI_Estudiante=? AND Estado=1 
+                ORDER BY Fecha_Subida DESC
+            """, (user['CI'],))
+        except sqlite3.OperationalError:
+            c.execute("""
+                SELECT id, Url_Archivo as url, 'documento' as tipo, Fecha_Subida 
+                FROM Evidencias 
+                WHERE CI_Estudiante=? AND Estado=1 
+                ORDER BY Fecha_Subida DESC
+            """, (user['CI'],))
+        
         evs = [dict(row) for row in c.fetchall()]
 
-        c.execute("""SELECT Tipo, Estado, Respuesta, Fecha FROM Solicitudes 
-                     WHERE CI_Solicitante=? AND Estado != 'PENDIENTE' 
-                     ORDER BY Fecha DESC LIMIT 5""", (user['CI'],))
+        # Notificaciones
+        c.execute("""
+            SELECT Tipo, Estado, Respuesta, Fecha 
+            FROM Solicitudes 
+            WHERE CI_Solicitante=? AND Estado != 'PENDIENTE' 
+            ORDER BY Fecha DESC LIMIT 5
+        """, (user['CI'],))
+        
         notis = [dict(row) for row in c.fetchall()]
-
         conn.close()
         
-        # Registrar auditoría de login exitoso
-        registrar_auditoria("LOGIN_EXITOSO", f"Usuario {cedula} autenticado correctamente")
+        # Auditoría
+        registrar_auditoria("LOGIN_EXITOSO", f"Usuario {cedula} autenticado")
         
+        # Respuesta estructurada que el frontend espera
         return JSONResponse(content={
             "autenticado": True,
             "mensaje": "Autenticación exitosa",
             "datos": {
-                "nombre": user["Nombre"],
-                "apellido": user["Apellido"],
+                "nombre": user["Nombre"] or "",
+                "apellido": user["Apellido"] or "",
                 "cedula": user["CI"],
-                "tipo": user["Tipo"],
-                "url_foto": user["Foto"],
+                "tipo": user["Tipo"] or 1,
+                "url_foto": user["Foto"] if user["Foto"] else "",
                 "galeria": evs,
                 "notificaciones": notis
             }
         })
+        
     except Exception as e:
-        print(f"❌ Error en iniciar_sesion: {e}")
-        registrar_auditoria("LOGIN_ERROR", f"Error: {str(e)}")
+        print(f"❌ ERROR CRÍTICO en iniciar_sesion: {e}")
+        import traceback
+        traceback.print_exc()
+        
         return JSONResponse(content={
             "autenticado": False, 
-            "mensaje": f"Error del servidor: {str(e)}"
+            "mensaje": "Error interno del servidor"
         })
-
+    
 @app.post("/buscar_estudiante")
 async def buscar_estudiante(cedula: Optional[str] = Form(None)):
-    """Endpoint solo para búsqueda (sin autenticación) - Compatible con frontend"""
+    """Endpoint solo para búsqueda (sin autenticación)"""
     try:
-        # Validar que se envió la cédula
         if not cedula:
             return JSONResponse(content={
                 "encontrado": False, 
                 "mensaje": "La cédula es requerida"
             })
         
-        # Sanitizar espacios en blanco
         cedula = cedula.strip()
         
         if not cedula:
@@ -359,7 +420,6 @@ async def buscar_estudiante(cedula: Optional[str] = Form(None)):
         conn = get_db_connection()
         c = conn.cursor()
         
-        # Buscar con TRIM para compatibilidad
         c.execute("SELECT * FROM Usuarios WHERE TRIM(CI)=?", (cedula,))
         user = c.fetchone()
         
@@ -370,7 +430,6 @@ async def buscar_estudiante(cedula: Optional[str] = Form(None)):
                 "mensaje": "Estudiante no encontrado"
             })
         
-        # Verificar que sea estudiante (tipo 1)
         if user["Tipo"] != 1:
             conn.close()
             return JSONResponse(content={
@@ -385,11 +444,15 @@ async def buscar_estudiante(cedula: Optional[str] = Form(None)):
                 "mensaje": "Cuenta desactivada por administración"
             })
             
-        # Obtener evidencias del estudiante
-        c.execute("SELECT id, Url_Archivo as url, Tipo_Archivo as tipo, Fecha_Subida FROM Evidencias WHERE CI_Estudiante=? AND Estado=1 ORDER BY Fecha_Subida DESC", (user['CI'],))
-        evs = [dict(row) for row in c.fetchall()]
+        # Obtener evidencias - CORREGIDO
+        try:
+            c.execute("SELECT id, Url_Archivo as url, Tipo_Archivo as tipo, Fecha_Subida FROM Evidencias WHERE CI_Estudiante=? AND Estado=1 ORDER BY Fecha_Subida DESC", (user['CI'],))
+            evs = [dict(row) for row in c.fetchall()]
+        except sqlite3.OperationalError:
+            # Fallback si Tipo_Archivo no existe
+            c.execute("SELECT id, Url_Archivo as url, 'documento' as tipo, Fecha_Subida FROM Evidencias WHERE CI_Estudiante=? AND Estado=1 ORDER BY Fecha_Subida DESC", (user['CI'],))
+            evs = [dict(row) for row in c.fetchall()]
 
-        # Obtener notificaciones recientes
         c.execute("""SELECT Tipo, Estado, Respuesta, Fecha FROM Solicitudes 
                      WHERE CI_Solicitante=? AND Estado != 'PENDIENTE' 
                      ORDER BY Fecha DESC LIMIT 5""", (user['CI'],))
@@ -404,7 +467,7 @@ async def buscar_estudiante(cedula: Optional[str] = Form(None)):
                 "apellido": user["Apellido"],
                 "cedula": user["CI"],
                 "tipo": user["Tipo"],
-                "url_foto": user["Foto"],
+                "url_foto": user["Foto"] if user["Foto"] else "",
                 "galeria": evs,
                 "notificaciones": notis
             }
@@ -420,91 +483,169 @@ async def buscar_estudiante(cedula: Optional[str] = Form(None)):
 # ENDPOINT DE REGISTRO - CORREGIDO
 # =========================================================================
 @app.post("/registrar_usuario")
-async def registrar_usuario(nombre: str=Form(...), apellido: str=Form(...), cedula: str=Form(...), 
-                          contrasena: str=Form(...), tipo_usuario: int=Form(...), foto: UploadFile=UploadFile(...)):
+async def registrar_usuario(
+    nombre: str = Form(...), 
+    apellido: str = Form(...), 
+    cedula: str = Form(...), 
+    contrasena: str = Form(...), 
+    tipo_usuario: int = Form(...), 
+    foto: UploadFile = UploadFile(...)
+):
     try:
-        # SANITIZACIÓN: Eliminar espacios en blanco alrededor de cédula y contraseña
+        # Sanitización
         cedula = cedula.strip()
         contrasena = contrasena.strip()
         
-        # Validar campos requeridos
+        # Validación
         if not cedula or not contrasena:
             return JSONResponse(content={"error": "La cédula y contraseña son requeridas"})
         
         conn = get_db_connection()
         c = conn.cursor()
+        
+        # Verificar si usuario ya existe
         c.execute("SELECT CI FROM Usuarios WHERE CI=?", (cedula,))
         if c.fetchone(): 
             conn.close()
             return JSONResponse(content={"error": "Usuario ya existe"})
         
+        # Manejar archivo de foto
         temp_dir = tempfile.mkdtemp()
         path = os.path.join(temp_dir, foto.filename)
-        with open(path, "wb") as f: shutil.copyfileobj(foto.file, f)
         
+        with open(path, "wb") as f:
+            shutil.copyfileobj(foto.file, f)
+        
+        # Subir a almacenamiento en la nube o local
         nombre_nube = f"perfiles/p_{cedula}_{foto.filename}"
         if s3_client:
-            s3_client.upload_file(path, BUCKET_NAME, nombre_nube)
-            url = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nombre_nube}"
+            try:
+                s3_client.upload_file(path, BUCKET_NAME, nombre_nube)
+                url = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nombre_nube}"
+            except:
+                url = f"/datos_persistentes/local_{foto.filename}"
         else:
             url = f"/datos_persistentes/local_{foto.filename}"
         
-        c.execute("INSERT INTO Usuarios (Nombre,Apellido,CI,Password,Tipo,Foto,Activo) VALUES (?,?,?,?,?,?,1)", 
+        # Insertar usuario
+        c.execute("""INSERT INTO Usuarios (Nombre, Apellido, CI, Password, Tipo, Foto, Activo) 
+                    VALUES (?,?,?,?,?,?,1)""", 
                  (nombre.strip(), apellido.strip(), cedula, contrasena, tipo_usuario, url))
+        
         conn.commit()
         conn.close()
+        
+        # Limpiar archivos temporales
         shutil.rmtree(temp_dir)
         
-        registrar_auditoria("REGISTRO_USUARIO", f"Usuario {cedula} registrado exitosamente")
+        registrar_auditoria("REGISTRO_USUARIO", f"Usuario {cedula} registrado")
         
-        return JSONResponse(content={"mensaje": "Registrado exitosamente", "url": url})
+        return JSONResponse(content={
+            "mensaje": "Registrado exitosamente", 
+            "url": url,
+            "cedula": cedula
+        })
     except Exception as e:
         print(f"❌ Error en registrar_usuario: {e}")
         return JSONResponse(content={"error": str(e)})
 
+# =========================================================================
+# ENDPOINTS DE SOLICITUDES
+# =========================================================================
 @app.post("/solicitar_recuperacion")
-async def solicitar_recuperacion(cedula: str = Form(None), email: str = Form(...), mensaje: str = Form(None)):
+async def solicitar_recuperacion(
+    cedula: Optional[str] = Form(None), 
+    email: str = Form(...), 
+    mensaje: Optional[str] = Form(None)
+):
     try:
         ci_final = cedula if cedula else (email.split('@')[0] if '@' in email else email)
         conn = get_db_connection()
-        user = conn.execute("SELECT Nombre, Apellido FROM Usuarios WHERE CI=?", (ci_final,)).fetchone()
+        
+        user = conn.execute(
+            "SELECT Nombre, Apellido FROM Usuarios WHERE CI=?", 
+            (ci_final,)
+        ).fetchone()
+        
         nombre_usuario = f"{user['Nombre']} {user['Apellido']}" if user else "Usuario Desconocido"
         
-        conn.execute("INSERT INTO Solicitudes (Tipo, CI_Solicitante, Email, Detalle, Estado) VALUES (?,?,?,?,?)",
-                  ("RECUPERACION", ci_final, email, mensaje or f"Solicitud de: {nombre_usuario}", "PENDIENTE"))
-        conn.commit(); conn.close()
-        return JSONResponse(content={"status": "ok", "mensaje": "Solicitud enviada a los administradores."})
+        conn.execute("""INSERT INTO Solicitudes (Tipo, CI_Solicitante, Email, Detalle, Estado) 
+                     VALUES (?,?,?,?,?)""",
+                  ("RECUPERACION", ci_final, email, 
+                   mensaje or f"Solicitud de: {nombre_usuario}", 
+                   "PENDIENTE"))
+        
+        conn.commit()
+        conn.close()
+        
+        return JSONResponse(content={
+            "status": "ok", 
+            "mensaje": "Solicitud enviada a los administradores."
+        })
     except Exception as e:
         return JSONResponse(content={"status": "error", "mensaje": str(e)})
 
 @app.post("/reportar_evidencia")
-async def reportar_evidencia(cedula: str = Form(...), id_evidencia: int = Form(...), motivo: str = Form(...)):
-    conn = get_db_connection()
-    ev = conn.execute("SELECT Url_Archivo FROM Evidencias WHERE id=?", (id_evidencia,)).fetchone()
-    url = ev['Url_Archivo'] if ev else ""
-    
-    conn.execute("INSERT INTO Solicitudes (Tipo, CI_Solicitante, Id_Evidencia, Evidencia_Reportada_Url, Detalle, Estado) VALUES (?,?,?,?,?,?)",
-              ("REPORTE", cedula, id_evidencia, url, motivo, "PENDIENTE"))
-    conn.commit(); conn.close()
-    return JSONResponse(content={"status": "ok", "mensaje": "Reporte enviado."})
+async def reportar_evidencia(
+    cedula: str = Form(...), 
+    id_evidencia: int = Form(...), 
+    motivo: str = Form(...)
+):
+    try:
+        conn = get_db_connection()
+        ev = conn.execute(
+            "SELECT Url_Archivo FROM Evidencias WHERE id=?", 
+            (id_evidencia,)
+        ).fetchone()
+        
+        url = ev['Url_Archivo'] if ev else ""
+        
+        conn.execute("""INSERT INTO Solicitudes (Tipo, CI_Solicitante, Id_Evidencia, 
+                     Evidencia_Reportada_Url, Detalle, Estado) 
+                     VALUES (?,?,?,?,?,?)""",
+                  ("REPORTE", cedula, id_evidencia, url, motivo, "PENDIENTE"))
+        
+        conn.commit()
+        conn.close()
+        
+        return JSONResponse(content={"status": "ok", "mensaje": "Reporte enviado."})
+    except Exception as e:
+        return JSONResponse(content={"status": "error", "mensaje": str(e)})
 
 @app.post("/reportar_problema")
-async def reportar_problema(cedula: str = Form(...), mensaje: str = Form(...)):
-    conn = get_db_connection()
-    conn.execute("INSERT INTO Solicitudes (Tipo, CI_Solicitante, Detalle, Estado) VALUES (?,?,?,?)",
-              ("PROBLEMA", cedula, mensaje, "PENDIENTE"))
-    conn.commit(); conn.close()
-    return JSONResponse(content={"status": "ok", "mensaje": "Problema reportado."})
+async def reportar_problema(
+    cedula: str = Form(...), 
+    mensaje: str = Form(...)
+):
+    try:
+        conn = get_db_connection()
+        conn.execute("""INSERT INTO Solicitudes (Tipo, CI_Solicitante, Detalle, Estado) 
+                     VALUES (?,?,?,?)""",
+                  ("PROBLEMA", cedula, mensaje, "PENDIENTE"))
+        
+        conn.commit()
+        conn.close()
+        
+        return JSONResponse(content={"status": "ok", "mensaje": "Problema reportado."})
+    except Exception as e:
+        return JSONResponse(content={"status": "error", "mensaje": str(e)})
 
 @app.post("/solicitar_subida")
-async def solicitar_subida(cedula: str = Form(...), archivo: UploadFile = UploadFile(...), comentario: str = Form(None)):
+async def solicitar_subida(
+    cedula: str = Form(...), 
+    archivo: UploadFile = UploadFile(...), 
+    comentario: Optional[str] = Form(None)
+):
     try:
         temp_dir = tempfile.mkdtemp()
         path = os.path.join(temp_dir, archivo.filename)
-        with open(path, "wb") as f: shutil.copyfileobj(archivo.file, f)
+        
+        with open(path, "wb") as f:
+            shutil.copyfileobj(archivo.file, f)
         
         import uuid
         nombre_nube = f"evidencias/pend_{uuid.uuid4().hex}_{archivo.filename}"
+        
         if s3_client:
             s3_client.upload_file(path, BUCKET_NAME, nombre_nube)
             url = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nombre_nube}"
@@ -515,36 +656,55 @@ async def solicitar_subida(cedula: str = Form(...), archivo: UploadFile = Upload
         shutil.rmtree(temp_dir)
         
         conn = get_db_connection()
-        cursor = conn.execute("INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo) VALUES (?,?,?,0,?)", 
-                     (cedula, url, fhash, "documento"))
+        cursor = conn.execute("""INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, 
+                               Estado, Tipo_Archivo) 
+                               VALUES (?,?,?,0,?)""", 
+                         (cedula, url, fhash, "documento"))
+        
         id_evidencia = cursor.lastrowid
         
         detalle = f"Subida solicitada: {archivo.filename}. " + (comentario if comentario else "")
-        conn.execute("INSERT INTO Solicitudes (Tipo, CI_Solicitante, Id_Evidencia, Evidencia_Reportada_Url, Detalle, Estado) VALUES (?,?,?,?,?,?)",
+        
+        conn.execute("""INSERT INTO Solicitudes (Tipo, CI_Solicitante, Id_Evidencia, 
+                     Evidencia_Reportada_Url, Detalle, Estado) 
+                     VALUES (?,?,?,?,?,?)""",
                   ("SUBIDA", cedula, id_evidencia, url, detalle, "PENDIENTE"))
-        conn.commit(); conn.close()
-        return JSONResponse(content={"status": "ok", "mensaje": "Archivo enviado a aprobación."})
+        
+        conn.commit()
+        conn.close()
+        
+        return JSONResponse(content={
+            "status": "ok", 
+            "mensaje": "Archivo enviado a aprobación.",
+            "id_evidencia": id_evidencia
+        })
     except Exception as e:
         return JSONResponse(content={"status": "error", "mensaje": str(e)})
 
-# --- GESTIÓN DE ADMIN ---
-
+# =========================================================================
+# GESTIÓN DE ADMIN
+# =========================================================================
 @app.get("/obtener_solicitudes")
 async def obtener_solicitudes():
-    conn = get_db_connection()
-    c = conn.cursor()
-    query = """
-        SELECT s.id, s.Tipo, s.CI_Solicitante, s.Detalle, s.Id_Evidencia, s.Fecha, s.Estado, s.Email, s.Evidencia_Reportada_Url,
-               IFNULL(u.Nombre, 'Usuario') as Nombre, IFNULL(u.Apellido, 'Desconocido') as Apellido
-        FROM Solicitudes s
-        LEFT JOIN Usuarios u ON s.CI_Solicitante = u.CI
-        WHERE s.Estado = 'PENDIENTE'
-        ORDER BY s.Fecha DESC
-    """
-    c.execute(query)
-    data = [dict(row) for row in c.fetchall()]
-    conn.close()
-    return JSONResponse(content=data)
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        query = """
+            SELECT s.id, s.Tipo, s.CI_Solicitante, s.Detalle, s.Id_Evidencia, 
+                   s.Fecha, s.Estado, s.Email, s.Evidencia_Reportada_Url,
+                   IFNULL(u.Nombre, 'Usuario') as Nombre, 
+                   IFNULL(u.Apellido, 'Desconocido') as Apellido
+            FROM Solicitudes s
+            LEFT JOIN Usuarios u ON s.CI_Solicitante = u.CI
+            WHERE s.Estado = 'PENDIENTE'
+            ORDER BY s.Fecha DESC
+        """
+        c.execute(query)
+        data = [dict(row) for row in c.fetchall()]
+        conn.close()
+        return JSONResponse(content=data)
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)})
 
 @app.post("/gestionar_solicitud")
 async def gestionar_solicitud(
@@ -553,63 +713,90 @@ async def gestionar_solicitud(
     mensaje: str = Form(""), 
     id_admin: str = Form("Admin")
 ):
-    accion_norm = "APROBADA" if accion in ['APROBAR', 'ACEPTAR'] else "RECHAZADA"
-    conn = get_db_connection()
-    sol = conn.execute("SELECT Tipo, Id_Evidencia, CI_Solicitante, Email, Evidencia_Reportada_Url FROM Solicitudes WHERE id=?", (id_solicitud,)).fetchone()
-    
-    if not sol: 
-        conn.close()
-        return JSONResponse(content={"error": "Solicitud no encontrada"})
-        
-    tipo = sol['Tipo']
-    id_evidencia = sol['Id_Evidencia']
-    email_usuario = sol['Email']
-    
-    if tipo == 'SUBIDA':
-        if accion_norm == 'APROBADA':
-            conn.execute("UPDATE Evidencias SET Estado=1 WHERE id=?", (id_evidencia,))
-        else:
-            conn.execute("DELETE FROM Evidencias WHERE id=?", (id_evidencia,))
-            if sol['Evidencia_Reportada_Url']: eliminar_archivo_nube(sol['Evidencia_Reportada_Url'])
-
-    elif tipo == 'REPORTE':
-        if accion_norm == 'APROBADA':
-            conn.execute("DELETE FROM Evidencias WHERE id=?", (id_evidencia,))
-            if sol['Evidencia_Reportada_Url']: eliminar_archivo_nube(sol['Evidencia_Reportada_Url'])
-
-    elif tipo == 'RECUPERACION':
-        if mensaje and email_usuario:
-            asunto = "Respuesta a tu solicitud de Recuperación - U.E. Despertar"
-            cuerpo = f"Hola,\n\nEl administrador ha respondido a tu solicitud:\n\n'{mensaje}'\n\nAtentamente,\nSoporte U.E. Despertar"
-            enviar_correo_real(email_usuario, asunto, cuerpo)
-
-    conn.execute("UPDATE Solicitudes SET Estado=?, Resuelto_Por=?, Respuesta=? WHERE id=?", 
-                 (accion_norm, id_admin, mensaje, id_solicitud))
-    conn.commit()
-    conn.close()
-    return JSONResponse(content={"status": "ok", "mensaje": "Solicitud procesada correctamente"})
-
-def eliminar_archivo_nube(url):
     try:
-        if s3_client and BUCKET_NAME in url:
-            key = url.split(f"{BUCKET_NAME}/")[-1]
-            s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
-    except: pass
+        accion_norm = "APROBADA" if accion in ['APROBAR', 'ACEPTAR'] else "RECHAZADA"
+        conn = get_db_connection()
+        
+        sol = conn.execute("""SELECT Tipo, Id_Evidencia, CI_Solicitante, Email, 
+                            Evidencia_Reportada_Url FROM Solicitudes WHERE id=?""", 
+                         (id_solicitud,)).fetchone()
+        
+        if not sol: 
+            conn.close()
+            return JSONResponse(content={"error": "Solicitud no encontrada"})
+            
+        tipo = sol['Tipo']
+        id_evidencia = sol['Id_Evidencia']
+        email_usuario = sol['Email']
+        
+        if tipo == 'SUBIDA':
+            if accion_norm == 'APROBADA':
+                conn.execute("UPDATE Evidencias SET Estado=1 WHERE id=?", (id_evidencia,))
+            else:
+                conn.execute("DELETE FROM Evidencias WHERE id=?", (id_evidencia,))
+                # Función para eliminar archivo en la nube
+                if sol['Evidencia_Reportada_Url'] and s3_client:
+                    try:
+                        key = sol['Evidencia_Reportada_Url'].split(f"{BUCKET_NAME}/")[-1]
+                        s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
+                    except:
+                        pass
+
+        elif tipo == 'REPORTE':
+            if accion_norm == 'APROBADA':
+                conn.execute("DELETE FROM Evidencias WHERE id=?", (id_evidencia,))
+                if sol['Evidencia_Reportada_Url'] and s3_client:
+                    try:
+                        key = sol['Evidencia_Reportada_Url'].split(f"{BUCKET_NAME}/")[-1]
+                        s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
+                    except:
+                        pass
+
+        elif tipo == 'RECUPERACION':
+            if mensaje and email_usuario:
+                asunto = "Respuesta a tu solicitud de Recuperación - U.E. Despertar"
+                cuerpo = f"""Hola,
+
+El administrador ha respondido a tu solicitud:
+
+'{mensaje}'
+
+Atentamente,
+Soporte U.E. Despertar"""
+                enviar_correo_real(email_usuario, asunto, cuerpo)
+
+        conn.execute("""UPDATE Solicitudes SET Estado=?, Resuelto_Por=?, Respuesta=? 
+                     WHERE id=?""", 
+                 (accion_norm, id_admin, mensaje, id_solicitud))
+        
+        conn.commit()
+        conn.close()
+        
+        return JSONResponse(content={
+            "status": "ok", 
+            "mensaje": "Solicitud procesada correctamente"
+        })
+    except Exception as e:
+        return JSONResponse(content={"status": "error", "mensaje": str(e)})
 
 @app.get("/listar_usuarios")
 async def listar():
-    conn = get_db_connection()
-    res = [dict(row) for row in conn.execute("SELECT Nombre, Apellido, CI, Tipo, Password, Activo, Foto FROM Usuarios").fetchall()]
-    conn.close()
-    return JSONResponse(content=res)
+    try:
+        conn = get_db_connection()
+        res = [dict(row) for row in conn.execute(
+            "SELECT Nombre, Apellido, CI, Tipo, Password, Activo, Foto FROM Usuarios"
+        ).fetchall()]
+        conn.close()
+        return JSONResponse(content=res)
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)})
 
 @app.get("/cors-test")
 async def cors_test():
     return JSONResponse(content={
-            "message": "CORS está funcionando correctamente",
-            "timestamp": datetime.datetime.now().isoformat(),
-            "headers_received": "Access-Control-Allow-Origin: *"
-        })
+        "message": "CORS está funcionando correctamente",
+        "timestamp": datetime.datetime.now().isoformat()
+    })
 
 @app.get("/static/{file_path:path}")
 async def serve_static_file(file_path: str):
@@ -620,30 +807,46 @@ async def serve_static_file(file_path: str):
 
 @app.get("/health")
 async def health_check():
+    try:
+        conn = get_db_connection()
+        conn.execute("SELECT 1")
+        conn.close()
+        db_status = "connected"
+    except:
+        db_status = "disconnected"
+    
     return JSONResponse(content={
-            "status": "healthy",
-            "timestamp": datetime.datetime.now().isoformat(),
-            "cors": "enabled",
-            "database": "connected" if os.path.exists(DB_NAME) else "disconnected"
-        })
+        "status": "healthy",
+        "timestamp": datetime.datetime.now().isoformat(),
+        "cors": "enabled",
+        "database": db_status
+    })
 
 @app.get("/todas_evidencias")
 async def todas_evidencias(cedula: str):
     try:
         conn = get_db_connection()
         c = conn.cursor()
-        c.execute("""
-            SELECT id, Url_Archivo as url, Tipo_Archivo as tipo, 
-                   Fecha_Subida, Estado, Hash 
-            FROM Evidencias 
-            WHERE CI_Estudiante=? 
-            ORDER BY Fecha_Subida DESC
-        """, (cedula,))
+        
+        try:
+            c.execute("""SELECT id, Url_Archivo as url, Tipo_Archivo as tipo, 
+                        Fecha_Subida, Estado, Hash 
+                        FROM Evidencias 
+                        WHERE CI_Estudiante=? 
+                        ORDER BY Fecha_Subida DESC""", (cedula,))
+        except sqlite3.OperationalError:
+            # Fallback si Tipo_Archivo no existe
+            c.execute("""SELECT id, Url_Archivo as url, 'documento' as tipo, 
+                        Fecha_Subida, Estado, Hash 
+                        FROM Evidencias 
+                        WHERE CI_Estudiante=? 
+                        ORDER BY Fecha_Subida DESC""", (cedula,))
+        
         evs = [dict(row) for row in c.fetchall()]
         conn.close()
         return JSONResponse(content=evs)
     except Exception as e:
-        return JSONResponse(content=[])
+        return JSONResponse(content={"error": str(e)})
 
 @app.get("/resumen_estudiantes_con_evidencias")
 async def resumen_estudiantes():
@@ -651,8 +854,8 @@ async def resumen_estudiantes():
         conn = get_db_connection()
         c = conn.cursor()
         query = """
-            SELECT u.Nombre as nombre, u.Apellido as apellido, u.CI as cedula, u.Foto as foto,
-                   COUNT(e.id) as total_evidencias
+            SELECT u.Nombre as nombre, u.Apellido as apellido, u.CI as cedula, 
+                   u.Foto as foto, COUNT(e.id) as total_evidencias
             FROM Usuarios u
             LEFT JOIN Evidencias e ON u.CI = e.CI_Estudiante
             WHERE u.Tipo = 1
@@ -664,8 +867,7 @@ async def resumen_estudiantes():
         conn.close()
         return JSONResponse(content=data)
     except Exception as e:
-        print(f"Error resumen: {e}")
-        return JSONResponse(content=[])
+        return JSONResponse(content={"error": str(e)})
 
 @app.get("/estadisticas_almacenamiento")
 async def stats_storage():
@@ -676,12 +878,12 @@ async def stats_storage():
         gb_aprox = (files * 2.5) / 1024 
         conn.close()
         return JSONResponse(content={
-                "usuarios_activos": users,
-                "total_evidencias": files,
-                "almacenamiento_gb": gb_aprox
-            })
+            "usuarios_activos": users,
+            "total_evidencias": files,
+            "almacenamiento_gb": round(gb_aprox, 2)
+        })
     except Exception as e:
-        return JSONResponse(content={})
+        return JSONResponse(content={"error": str(e)})
 
 @app.get("/obtener_logs")
 async def obtener_logs():
@@ -691,19 +893,31 @@ async def obtener_logs():
         data = [dict(row) for row in logs]
         conn.close()
         return JSONResponse(content=data)
-    except:
-        return JSONResponse(content=[])
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)})
 
 @app.delete("/eliminar_evidencia/{id_evidencia}")
 async def eliminar_evidencia_endpoint(id_evidencia: int):
     try:
         conn = get_db_connection()
-        ev = conn.execute("SELECT Url_Archivo FROM Evidencias WHERE id=?", (id_evidencia,)).fetchone()
+        ev = conn.execute(
+            "SELECT Url_Archivo FROM Evidencias WHERE id=?", 
+            (id_evidencia,)
+        ).fetchone()
+        
         if ev:
             url = ev['Url_Archivo']
-            eliminar_archivo_nube(url)
+            # Intentar eliminar de la nube
+            if s3_client and BUCKET_NAME in url:
+                try:
+                    key = url.split(f"{BUCKET_NAME}/")[-1]
+                    s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
+                except:
+                    pass
+            
             conn.execute("DELETE FROM Evidencias WHERE id=?", (id_evidencia,))
             conn.commit()
+        
         conn.close()
         return JSONResponse(content={"status": "ok"})
     except Exception as e:
@@ -713,36 +927,45 @@ async def eliminar_evidencia_endpoint(id_evidencia: int):
 async def cambiar_estado_usuario(datos: EstadoUsuarioRequest):
     try:
         conn = get_db_connection()
-        conn.execute("UPDATE Usuarios SET Activo=? WHERE CI=?", (datos.activo, datos.cedula))
+        conn.execute(
+            "UPDATE Usuarios SET Activo=? WHERE CI=?", 
+            (datos.activo, datos.cedula)
+        )
         conn.commit()
         conn.close()
         return JSONResponse(content={"mensaje": "Estado actualizado"})
     except Exception as e:
         return JSONResponse(content={"error": str(e)})
 
-# =========================================================================
-# 6. DIAGNÓSTICO DE CORS
-# =========================================================================
 @app.get("/cors-debug")
 async def cors_debug():
-    """Endpoint para debuggear problemas de CORS"""
     return JSONResponse(content={
         "message": "CORS Debug Endpoint",
         "allow_origin": "*",
         "allow_methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
         "allow_headers": "*",
         "allow_credentials": "true",
-        "expose_headers": "*",
         "timestamp": datetime.datetime.now().isoformat()
     })
+
+# =========================================================================
+# ENDPOINT DE RESET DE BASE DE DATOS (SOLO PARA DESARROLLO)
+# =========================================================================
+@app.get("/reset-db")
+async def reset_database():
+    """Endpoint para reiniciar la base de datos (solo desarrollo)"""
+    try:
+        init_db_completa()
+        return JSONResponse(content={
+            "status": "ok",
+            "message": "Base de datos reinicializada"
+        })
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)})
 
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    print(f"🚀 Servidor con CORS 100% GARANTIZADO iniciado en puerto {port}")
-    print(f"✅ Endpoints disponibles:")
-    print(f"   - https://proyecto-de-grado-oficial-production.up.railway.app/")
-    print(f"   - https://proyecto-de-grado-oficial-production.up.railway.app/health")
-    print(f"   - https://proyecto-de-grado-oficial-production.up.railway.app/cors-test")
-    print(f"   - https://proyecto-de-grado-oficial-production.up.railway.app/cors-debug")
+    print(f"🚀 Servidor iniciado en puerto {port}")
+    print(f"✅ Usuario admin: 9999999999 / admin123")
     uvicorn.run(app, host="0.0.0.0", port=port)
