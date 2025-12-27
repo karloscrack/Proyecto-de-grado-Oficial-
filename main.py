@@ -127,7 +127,7 @@ def init_db_completa():
             Hash TEXT,
             Estado INTEGER DEFAULT 1,
             Tipo_Archivo TEXT DEFAULT 'documento',
-            Fecha_Subida TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            Fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(CI_Estudiante) REFERENCES Usuarios(CI)
         )''')
 
@@ -318,16 +318,16 @@ async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
             return JSONResponse(content={"autenticado": False, "mensaje": "Cuenta desactivada"})
         
         # 4. Obtener Evidencias (CORRECCIÓN CRÍTICA AQUÍ)
-        # Intentamos leer 'Fecha' (nombre antiguo) o 'Fecha_Subida' (nombre nuevo)
+        # Intentamos leer 'Fecha' (nombre antiguo) o 'Fecha' (nombre nuevo)
         try:
             # Intento 1: Estructura nueva
             c.execute("""
                 SELECT id, Url_Archivo as url, 
                        COALESCE(Tipo_Archivo, 'documento') as tipo, 
-                       Fecha_Subida as fecha
+                       Fecha as fecha
                 FROM Evidencias 
                 WHERE CI_Estudiante=? AND Estado=1 
-                ORDER BY Fecha_Subida DESC
+                ORDER BY Fecha DESC
             """, (user['CI'],))
         except sqlite3.OperationalError:
             try:
@@ -435,11 +435,11 @@ async def buscar_estudiante(cedula: Optional[str] = Form(None)):
             
         # Obtener evidencias - CORREGIDO
         try:
-            c.execute("SELECT id, Url_Archivo as url, Tipo_Archivo as tipo, Fecha_Subida FROM Evidencias WHERE CI_Estudiante=? AND Estado=1 ORDER BY Fecha_Subida DESC", (user['CI'],))
+            c.execute("SELECT id, Url_Archivo as url, Tipo_Archivo as tipo, Fecha FROM Evidencias WHERE CI_Estudiante=? AND Estado=1 ORDER BY Fecha DESC", (user['CI'],))
             evs = [dict(row) for row in c.fetchall()]
         except sqlite3.OperationalError:
             # Fallback si Tipo_Archivo no existe
-            c.execute("SELECT id, Url_Archivo as url, 'documento' as tipo, Fecha_Subida FROM Evidencias WHERE CI_Estudiante=? AND Estado=1 ORDER BY Fecha_Subida DESC", (user['CI'],))
+            c.execute("SELECT id, Url_Archivo as url, 'documento' as tipo, Fecha FROM Evidencias WHERE CI_Estudiante=? AND Estado=1 ORDER BY Fecha DESC", (user['CI'],))
             evs = [dict(row) for row in c.fetchall()]
 
         c.execute("""SELECT Tipo, Estado, Respuesta, Fecha FROM Solicitudes 
@@ -819,17 +819,17 @@ async def todas_evidencias(cedula: str):
         
         try:
             c.execute("""SELECT id, Url_Archivo as url, Tipo_Archivo as tipo, 
-                        Fecha_Subida, Estado, Hash 
+                        Fecha, Estado, Hash 
                         FROM Evidencias 
                         WHERE CI_Estudiante=? 
-                        ORDER BY Fecha_Subida DESC""", (cedula,))
+                        ORDER BY Fecha DESC""", (cedula,))
         except sqlite3.OperationalError:
             # Fallback si Tipo_Archivo no existe
             c.execute("""SELECT id, Url_Archivo as url, 'documento' as tipo, 
-                        Fecha_Subida, Estado, Hash 
+                        Fecha, Estado, Hash 
                         FROM Evidencias 
                         WHERE CI_Estudiante=? 
-                        ORDER BY Fecha_Subida DESC""", (cedula,))
+                        ORDER BY Fecha DESC""", (cedula,))
         
         evs = [dict(row) for row in c.fetchall()]
         conn.close()
