@@ -962,6 +962,57 @@ async def reset_database():
         })
     except Exception as e:
         return JSONResponse(content={"error": str(e)})
+@app.get("/reset-db")
+async def reset_database():
+    """Endpoint para reiniciar la base de datos (solo desarrollo)"""
+    try:
+        init_db_completa()
+        return JSONResponse(content={
+            "status": "ok",
+            "message": "Base de datos reinicializada"
+        })
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)})
+
+# =========================================================================
+# ENDPOINT DE DIAGNÓSTICO (OPCIONAL, PARA DEBUG) - AL FINAL
+# =========================================================================
+@app.get("/diagnostico_usuario/{cedula}")
+async def diagnostico_usuario(cedula: str):
+    """Endpoint para diagnosticar problemas de usuario"""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        # 1. Verificar si la tabla existe
+        c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='Usuarios'")
+        tabla_existe = c.fetchone()
+        
+        # 2. Verificar estructura de la tabla
+        c.execute("PRAGMA table_info(Usuarios)")
+        columnas = c.fetchall()
+        
+        # 3. Buscar usuario específico
+        c.execute("SELECT * FROM Usuarios WHERE CI = ?", (cedula,))
+        usuario = c.fetchone()
+        
+        # 4. Contar usuarios totales
+        c.execute("SELECT COUNT(*) as total FROM Usuarios")
+        total = c.fetchone()['total']
+        
+        conn.close()
+        
+        return JSONResponse(content={
+            "tabla_existe": bool(tabla_existe),
+            "columnas": columnas,
+            "usuario_encontrado": bool(usuario),
+            "usuario_detalle": usuario,
+            "total_usuarios": total,
+            "cedula_buscada": cedula
+        })
+        
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)})
 
 if __name__ == "__main__":
     import uvicorn
