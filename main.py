@@ -102,6 +102,19 @@ class EstadoUsuarioRequest(BaseModel):
 class BackupRequest(BaseModel):
     tipo: str = "completo"
 
+# --- INICIO DEL CÓDIGO A PEGAR ---
+def optimizar_sistema_db():
+    """Ejecuta mantenimiento VACUUM en la base de datos"""
+    try:
+        # Usamos DB_ORIGINAL_PATH que ya definiste arriba
+        conn = sqlite3.connect(DB_ORIGINAL_PATH)
+        conn.execute("VACUUM")
+        conn.close()
+        print("✅ Sistema optimizado (VACUUM ejecutado)")
+    except Exception as e:
+        print(f"⚠️ Alerta menor: No se pudo optimizar DB: {e}")
+# --- FIN DEL CÓDIGO A PEGAR ---
+
 # --- 2. INICIALIZACIÓN DE BASE DE DATOS - MEJORADA ---
 def init_db_completa():
     """Inicialización robusta de la base de datos con compatibilidad hacia atrás"""
@@ -429,7 +442,12 @@ app = FastAPI(title="Sistema Educativo Despertar", version="7.0")
 # Configuración CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "*",                                         # Permite todo (útil para desarrollo)
+        "https://proyecto-grado-karlos.vercel.app",  # TU FRONTEND EN VERCEL
+        "http://localhost:5500",                     # Por si pruebas en local
+        "http://127.0.0.1:5500"
+    ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
