@@ -106,15 +106,15 @@ class BackupRequest(BaseModel):
 def optimizar_sistema_db():
     """Ejecuta mantenimiento VACUUM en la base de datos"""
     try:
-        # ❌ CAMBIA ESTO: conn = sqlite3.connect(DB_ORIGINAL_PATH)
-        # ✅ POR ESTO (Usamos el nombre directo para evitar errores de variable):
-        conn = sqlite3.connect("Bases_de_datos.db") 
+        # CORRECCIÓN: Usamos DB_NAME (que es la variable global segura)
+        conn = sqlite3.connect(DB_NAME)
         conn.execute("VACUUM")
         conn.close()
         print("✅ Sistema optimizado (VACUUM ejecutado)")
+        return True
     except Exception as e:
         print(f"⚠️ Alerta menor: No se pudo optimizar DB: {e}")
-# --- FIN DEL CÓDIGO A PEGAR ---
+        return False
 
 # --- 2. INICIALIZACIÓN DE BASE DE DATOS - MEJORADA ---
 def init_db_completa():
@@ -203,7 +203,7 @@ def init_db_completa():
             ("Evidencias", "Asignado_Automaticamente", "INTEGER DEFAULT 0"),
             ("Solicitudes", "Fecha_Resolucion", "TIMESTAMP NULL"),
             ("Auditoria", "Usuario", "TEXT"),
-            # 👇 AGREGA ESTA LÍNEA PARA ARREGLAR EL ERROR DE AUDITORÍA 👇
+            # 👇👇 ESTA ES LA LÍNEA NUEVA QUE DEBES PEGAR AL FINAL 👇👇
             ("Auditoria", "IP", "TEXT")
         ]
         
@@ -395,30 +395,41 @@ def identificar_rostro_aws(imagen_path: str, confidence_threshold: float = 90.0)
         return None
 
 def calcular_estadisticas_reales() -> dict:
-    """Calcula estadísticas reales del sistema"""
+    """Calcula estadísticas REALES sumando el peso exacto de la base de datos"""
     try:
         conn = get_db_connection()
         c = conn.cursor()
         
         # Contar usuarios activos
-        c.execute("SELECT COUNT(*) as count FROM Usuarios WHERE Activo = 1")
-        usuarios_activos = c.fetchone()['count']
+        c.execute("SELECT COUNT(*) FROM Usuarios WHERE Activo = 1")
+        usuarios_activos = c.fetchone()[0]
         
         # Contar evidencias
-        c.execute("SELECT COUNT(*) as count FROM Evidencias")
-        total_evidencias = c.fetchone()['count']
+        c.execute("SELECT COUNT(*) FROM Evidencias")
+        total_evidencias = c.fetchone()[0]
         
-        # Calcular tamaño total aproximado (promedio 2.5MB por archivo)
-        tamanio_total_mb = (total_evidencias * 2.5)
+        # CORRECCIÓN: Sumar el peso REAL (Tamanio_KB) de todas las evidencias
+        c.execute("SELECT SUM(Tamanio_KB) FROM Evidencias")
+        resultado_kb = c.fetchone()[0]
+        total_kb = resultado_kb if resultado_kb else 0
         
-        # Calcular costo simulado AWS (si no hay datos reales)
-        # Precios aproximados: Rekognition $1/1000 imágenes, S3 $0.023/GB
-        costo_rekognition = (total_evidencias / 1000) * 1.0  # USD
-        costo_almacenamiento = (tamanio_total_mb / 1024) * 0.023  # USD
+        # Si la suma es 0 pero hay evidencias (archivos viejos sin peso registrado), usamos estimación
+        # Esto corregirá tu problema de 0.17GB vs 1GB conforme subas archivos nuevos o se actualicen
+        if total_kb == 0 and total_evidencias > 0:
+            total_kb = total_evidencias * 2500 # Estimado 2.5MB solo si no hay datos
+            nota_almacenamiento = "Estimado (sube archivos nuevos para corregir)"
+        else:
+            nota_almacenamiento = "Calculado exacto de DB"
+
+        tamanio_total_mb = total_kb / 1024
+        
+        # Costos aproximados (Rekognition + S3)
+        costo_rekognition = (total_evidencias / 1000) * 1.0
+        costo_almacenamiento = (tamanio_total_mb / 1024) * 0.023
         
         # Solicitudes pendientes
-        c.execute("SELECT COUNT(*) as count FROM Solicitudes WHERE Estado = 'PENDIENTE'")
-        solicitudes_pendientes = c.fetchone()['count']
+        c.execute("SELECT COUNT(*) FROM Solicitudes WHERE Estado = 'PENDIENTE'")
+        solicitudes_pendientes = c.fetchone()[0]
         
         conn.close()
         
@@ -426,18 +437,17 @@ def calcular_estadisticas_reales() -> dict:
             "usuarios_activos": usuarios_activos,
             "total_evidencias": total_evidencias,
             "almacenamiento_mb": round(tamanio_total_mb, 2),
-            "almacenamiento_gb": round(tamanio_total_mb / 1024, 2),
+            "almacenamiento_gb": round(tamanio_total_mb / 1024, 4), # 4 decimales para precisión
             "costo_estimado_usd": {
                 "rekognition": round(costo_rekognition, 2),
-                "almacenamiento": round(costo_almacenamiento, 2),
+                "almacenamiento": round(costo_almacenamiento, 4),
                 "total": round(costo_rekognition + costo_almacenamiento, 2)
             },
             "solicitudes_pendientes": solicitudes_pendientes,
-            "fecha_actualizacion": ahora_ecuador().isoformat()
+            "nota": nota_almacenamiento
         }
-        
     except Exception as e:
-        print(f"Error calculando estadísticas: {e}")
+        print(f"Error estadisticas: {e}")
         return {}
 
 # =========================================================================
