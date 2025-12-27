@@ -960,8 +960,7 @@
                         <div style="flex:1; min-width:200px;">
                             <label class="form-group" style="display:block;">
                                 <div style="margin-bottom:8px; font-weight:600; font-size:0.9rem; color:var(--text-main);">
-                                    Archivo *
-                                </div>
+                                    Archivo *</div>
                                 <input type="file" id="manualFile" class="form-control" 
                                        accept="image/*,video/*,.pdf,.doc,.docx,.mp3,.mp4" required>
                             </label>
@@ -969,8 +968,7 @@
                         <div style="flex:2; min-width:300px; position:relative;">
                             <label class="form-group" style="display:block;">
                                 <div style="margin-bottom:8px; font-weight:600; font-size:0.9rem; color:var(--text-main);">
-                                    Nombre(s) del Estudiante *
-                                </div>
+                                    Nombre(s) del Estudiante *</div>
                                 <input type="text" id="manualNombres" 
                                        placeholder="Ej: Juan Pérez, María Gómez" 
                                        class="form-control" required 
@@ -1081,8 +1079,7 @@
                         <div style="flex:1; min-width:250px; position:relative;">
                             <label class="form-group" style="display:block;">
                                 <div style="margin-bottom:8px; font-weight:600; font-size:0.9rem; color:var(--text-main);">
-                                    Nombre del Estudiante *
-                                </div>
+                                    Nombre del Estudiante *</div>
                                 <input type="text" id="nombrePassword" class="form-control" 
                                        placeholder="Buscar por nombre" 
                                        onkeyup="sugerirUsuariosPassword(this.value)">
@@ -1095,8 +1092,7 @@
                         <div style="flex:1; min-width:250px;">
                             <label class="form-group" style="display:block;">
                                 <div style="margin-bottom:8px; font-weight:600; font-size:0.9rem; color:var(--text-main);">
-                                    Nueva Contraseña *
-                                </div>
+                                    Nueva Contraseña *</div>
                                 <input type="password" id="nuevaPassword" class="form-control" 
                                        minlength="6" required>
                             </label>
@@ -1338,7 +1334,18 @@
                 fetch(`${API_URL}/estadisticas_almacenamiento`)
             ]);
 
-            usuarios = await resUsers.json();
+            // CORRECCIÓN: Mapear usuarios desde la DB (mayúsculas a minúsculas)
+            const usuariosData = await resUsers.json();
+            usuarios = usuariosData.map(u => ({
+                nombre: u.Nombre || u.nombre || '',
+                apellido: u.Apellido || u.apellido || '',
+                cedula: u.CI || u.cedula || u.Cedula || '',
+                tipo: u.Tipo || u.tipo || 1,
+                activo: u.Activo || u.activo || 1,
+                contrasena: u.Contrasena || u.contrasena || '',
+                foto: u.Foto || u.foto || ''
+            }));
+
             evidencias = await resEvidencias.json();
             solicitudes = await resSolicitudes.json();
             logs = await resLogs.json();
@@ -1388,11 +1395,18 @@
         renderizarSolicitudes();
         renderizarLogs();
         
-        // 4. Costos y almacenamiento
+        // 4. Costos y almacenamiento - CORRECCIÓN: Calcular costo estimado
         const gb = stats.almacenamiento_gb || 0;
         document.getElementById('statSize').textContent = gb.toFixed(2) + ' GB';
         document.getElementById('realSizeDisplay').textContent = gb.toFixed(2) + ' GB';
-        document.getElementById('monthlyCost').textContent = '$' + (gb * 0.005).toFixed(3);
+        
+        // Calcular costo estimado: GB * 0.005
+        const costoMensual = (gb * 0.005).toFixed(3);
+        const costoAnual = (gb * 0.005 * 12).toFixed(3);
+        
+        document.getElementById('monthlyCost').textContent = '$' + costoMensual;
+        document.getElementById('yearlyCost').textContent = '$' + costoAnual;
+        
         document.getElementById('mainStorageBar').style.width = Math.min(100, (gb/50)*100) + '%';
         document.getElementById('sidebarStorageBar').style.width = Math.min(100, (gb/50)*100) + '%';
         document.getElementById('sidebarStorageText').textContent = gb.toFixed(1) + ' GB usados';
@@ -1520,7 +1534,7 @@
     }
 
     // ==========================================
-    // 3. GESTIÓN DE USUARIOS
+    // 3. GESTIÓN DE USUARIOS - CORREGIDA
     // ==========================================
     function configurarFormularios() {
         // Formulario registro usuario
@@ -1576,6 +1590,7 @@
         const tbody = document.getElementById('userTableBody');
         if(!tbody) return;
         
+        // CORRECCIÓN: Usar propiedades mapeadas correctamente
         tbody.innerHTML = usuarios.map(u => `
             <tr>
                 <td><strong>${u.nombre} ${u.apellido}</strong><br><small>${u.contrasena}</small></td>
@@ -1702,7 +1717,7 @@
     }
 
     // ==========================================
-    // 4. SISTEMA DE SOLICITUDES - CORREGIDO
+    // 4. SISTEMA DE SOLICITUDES - COMPLETAMENTE REESCRITO
     // ==========================================
     function renderizarSolicitudes() {
         const container = document.getElementById('requestsContainer');
@@ -1800,7 +1815,7 @@
                         </div>
                     </div>
                     ${esPendiente ? 
-                        `<button class="btn-primary" onclick="abrirModalResponder('${sol.Tipo}', ${sol.id})" 
+                        `<button class="btn-primary" onclick="verDetalleSolicitud('${sol.Tipo}', ${sol.id})" 
                                  style="background:var(--info); padding:8px 15px;">
                             <i class="fas fa-reply"></i> Responder
                          </button>` : 
@@ -1828,9 +1843,9 @@
     }
 
     // ==========================================
-    // 5. MODAL DE RESPUESTA - CORREGIDO
+    // 5. GESTIÓN COMPLETA DE SOLICITUDES - REESCRITA
     // ==========================================
-    function abrirModalResponder(tipo, solicitudId) {
+    async function verDetalleSolicitud(tipo, solicitudId) {
         const solicitud = solicitudes.find(s => s.id == solicitudId);
         if (!solicitud) return;
 
@@ -1921,25 +1936,25 @@
         // Botones según el tipo
         if (tipo === 'PROBLEMA_ERROR') {
             contenido += `
-                <button class="btn-primary" onclick="enviarRespuesta('aceptar')" 
+                <button class="btn-primary" onclick="procesarSolicitud('aceptar')" 
                         style="background:var(--secondary); flex:1;">
                     <i class="fas fa-check"></i> Marcar como Resuelto
                 </button>
             `;
         } else if (tipo === 'RECUPERACION_CONTRASENA') {
             contenido += `
-                <button class="btn-primary" onclick="enviarRespuesta('aceptar')" 
+                <button class="btn-primary" onclick="procesarSolicitud('aceptar')" 
                         style="background:var(--secondary); flex:1;">
                     <i class="fas fa-paper-plane"></i> Enviar Correo al Estudiante
                 </button>
             `;
         } else {
             contenido += `
-                <button class="btn-primary" onclick="enviarRespuesta('aceptar')" 
+                <button class="btn-primary" onclick="procesarSolicitud('aceptar')" 
                         style="background:var(--secondary); flex:1;">
                     <i class="fas fa-check"></i> Aceptar
                 </button>
-                <button class="btn-primary" onclick="enviarRespuesta('rechazar')" 
+                <button class="btn-primary" onclick="procesarSolicitud('rechazar')" 
                         style="background:var(--error); flex:1;">
                     <i class="fas fa-times"></i> Rechazar
                 </button>
@@ -1975,7 +1990,7 @@
         }, 100);
     }
 
-    async function enviarRespuesta(accion) {
+    async function procesarSolicitud(accion) {
         const id = document.getElementById('solicitudIdRespuesta').value;
         const tipo = document.getElementById('tipoRespuesta').value;
         const mensaje = document.getElementById('respuestaAdmin').value;
@@ -1990,49 +2005,63 @@
         const solicitud = solicitudes.find(s => s.id == id);
         const usuario = usuarios.find(u => u.cedula === solicitud.cedula);
 
-        // Determinar estado final
+        // Determinar estado final según el tipo de solicitud y acción
         let estadoFinal = 'PENDIENTE';
+        let accionBackend = '';
+        
         if (accion === 'aceptar') {
-            estadoFinal = tipo === 'PROBLEMA_ERROR' ? 'RESUELTO' : 'APROBADA';
+            if (tipo === 'PROBLEMA_ERROR') {
+                estadoFinal = 'RESUELTO';
+                accionBackend = 'marcar_resuelto';
+            } else if (tipo === 'RECUPERACION_CONTRASENA') {
+                estadoFinal = 'APROBADA';
+                accionBackend = 'enviar_correo_contrasena';
+            } else {
+                estadoFinal = 'APROBADA';
+                
+                if (tipo === 'REPORTE_EVIDENCIA') {
+                    accionBackend = 'eliminar_evidencia';
+                } else if (tipo === 'SUBIR_EVIDENCIA') {
+                    accionBackend = 'subir_evidencia';
+                }
+            }
         } else {
             estadoFinal = 'RECHAZADA';
+            accionBackend = 'rechazar_solicitud';
         }
 
-        // Preparar datos para el backend
-        const datos = {
-            id: id,
-            estado: estadoFinal,
-            respuesta: mensaje,
-            resuelto_por: localStorage.getItem('usuario_nombre') || "Administrador",
-            fecha_respuesta: new Date().toISOString()
-        };
+        // Crear FormData para enviar al endpoint
+        const formData = new FormData();
+        formData.append('id', id);
+        formData.append('tipo', tipo);
+        formData.append('accion', accionBackend);
+        formData.append('estado', estadoFinal);
+        formData.append('respuesta', mensaje);
+        formData.append('resuelto_por', localStorage.getItem('usuario_nombre') || "Administrador");
+        formData.append('fecha_respuesta', new Date().toISOString());
 
-        // Acciones específicas por tipo
+        // Agregar campos específicos según el tipo
         if (tipo === 'REPORTE_EVIDENCIA' && accion === 'aceptar') {
-            datos.accion = 'desvincular_evidencia';
-            datos.evidencia_id = solicitud.evidencia_id;
+            formData.append('evidencia_id', solicitud.evidencia_id || '');
         } 
         else if (tipo === 'SUBIR_EVIDENCIA' && accion === 'aceptar') {
-            datos.accion = 'subir_evidencia_manual';
-            datos.evidencia_url = solicitud.evidencia_url;
-            datos.cedula = solicitud.cedula;
+            formData.append('evidencia_url', solicitud.evidencia_url || '');
+            formData.append('cedula', solicitud.cedula || '');
         }
         else if (tipo === 'RECUPERACION_CONTRASENA' && accion === 'aceptar') {
-            datos.accion = 'cambiar_contrasena';
             if (nuevaPass && nuevaPass.trim() !== '') {
-                datos.nueva_contrasena = nuevaPass;
+                formData.append('nueva_contrasena', nuevaPass);
             }
-            datos.enviar_correo = true;
-            datos.correo_destino = solicitud.email;
+            formData.append('correo_destino', solicitud.email || '');
         }
 
         try {
             mostrarMensaje("Procesando solicitud...", "info");
             
-            const res = await fetch(`${API_URL}/responder_solicitud`, {
+            // CORRECCIÓN: Usar FormData y endpoint correcto
+            const res = await fetch(`${API_URL}/gestionar_solicitud`, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(datos)
+                body: formData
             });
             
             const result = await res.json();
