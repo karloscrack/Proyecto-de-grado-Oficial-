@@ -270,15 +270,22 @@
         .cost-display { display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--text-sec); }
         .cost-highlight { color: var(--text-main); font-weight: bold; font-size: 1.1rem; }
 
-        /* Tablas */
+        /* Tablas - MEJORADO con responsive */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-bottom: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-soft);
+        }
         .modern-table-wrapper {
             background: var(--bg-card); border-radius: var(--border-radius);
             overflow: hidden; border: 1px solid var(--border-color);
             box-shadow: var(--shadow-soft);
             width: 100%;
-            overflow-x: auto;
         }
-        .modern-table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        .modern-table { width: 100%; border-collapse: collapse; min-width: 800px; }
         .modern-table th {
             background: var(--primary); color: white; padding: 15px; text-align: left;
             font-weight: 600; font-size: 0.9rem; position: sticky; top: 0;
@@ -363,7 +370,7 @@
             min-height: 300px;
         }
 
-        /* Lightbox mejorado */
+        /* Lightbox mejorado - CON BOTÓN ELIMINAR */
         .lightbox-modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); z-index: 5000; display: none;
@@ -410,11 +417,11 @@
             border: none; font-size: 1rem; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
         .btn-lb-action:hover { transform: translateY(-3px); }
-        .btn-lb-report {
+        .btn-lb-delete {
             background: var(--error); color: white; border: none;
         }
 
-        /* Barra flotante para selección múltiple */
+        /* Barra flotante para selección múltiple - MEJORADA */
         .floating-bar {
             position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(150px);
             background: #222; color: white; padding: 15px 30px; border-radius: 50px;
@@ -431,6 +438,16 @@
         }
         .btn-float:hover { transform: translateY(-2px); filter: brightness(1.1); }
         .btn-float.danger { background: var(--error); }
+        
+        .btn-float-cancel {
+            background: transparent; color: white; border: 2px solid white;
+            width: 40px; height: 40px; border-radius: 50%; font-size: 1.5rem;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: 0.3s; margin-left: 10px;
+        }
+        .btn-float-cancel:hover {
+            background: white; color: #222; transform: rotate(90deg);
+        }
 
         /* Botón de retroceso */
         .btn-back {
@@ -492,7 +509,7 @@
 
         /* Dropdown para acciones móviles */
         .mobile-actions-dropdown {
-            position: relative;
+            position: relative; display: none;
         }
         .mobile-actions-btn {
             background: var(--primary); color: white; border: none;
@@ -536,6 +553,22 @@
             margin-top: 10px; cursor: pointer; border: 1px solid var(--border-color);
         }
 
+        /* Estilos para SweetAlert modal personalizado */
+        .swal2-popup .swal2-content {
+            color: #333 !important;
+            text-align: left !important;
+        }
+        
+        .swal2-popup .swal2-content div {
+            margin-bottom: 10px;
+        }
+        
+        .swal2-popup .swal2-content img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
         /* ==========================================================================
            6. RESPONSIVE (MEJORADO)
            ========================================================================== */
@@ -560,7 +593,7 @@
             .cost-display { flex-direction: column; gap: 10px; }
             
             /* Tablas responsivas */
-            .modern-table-wrapper {
+            .table-responsive {
                 overflow-x: auto;
                 -webkit-overflow-scrolling: touch;
             }
@@ -581,9 +614,13 @@
             .floating-bar.active { transform: translateY(0); }
             .floating-bar div { text-align: center; width: 100%; margin-bottom: 5px; }
             .btn-float { width: 100%; justify-content: center; }
+            .btn-float-cancel { align-self: flex-end; margin-top: 10px; }
             
             /* Botón de retroceso en móvil */
             .btn-back.desktop-only { display: none; }
+            
+            /* Mostrar dropdown de acciones en móvil */
+            .mobile-actions-dropdown { display: block; }
         }
 
         @media (max-width: 480px) {
@@ -785,15 +822,14 @@
                 </div>
             </div>
 
-            <!-- CALCULADORA REAL CON DATOS PRECISOS - CORREGIDA -->
+            <!-- CALCULADORA REAL CON DATOS PRECISOS -->
             <div class="storage-calc">
                 <h3 style="font-size:1.1rem; margin-bottom:10px;"><i class="fas fa-calculator"></i> Estimación de Costos (Backblaze B2)</h3>
                 <p style="font-size:0.9rem; color:var(--text-sec); margin-bottom:15px;">
-                    Datos reales de Backblaze: <br>
-                    • Evidencias: 1.0 GB<br>
-                    • Fotos usuarios: 12.2 MB<br>
-                    • Perfiles: 34.8 MB<br>
-                    Total: <strong>~1.047 GB</strong>
+                    Datos reales de Backblaze:<br>
+                    • $0.005/GB al mes<br>
+                    • Primeros 10GB gratuitos<br>
+                    • Transferencia saliente: $0.01/GB
                 </p>
                 
                 <div class="storage-bar-bg">
@@ -852,12 +888,6 @@
                 </div>
             </div>
 
-            <!-- BUSCADOR CERCANO A LA TABLA -->
-            <div style="margin-bottom:20px;">
-                <input type="text" id="searchUser" placeholder="Buscar por cédula o nombre..." 
-                       class="form-control" style="max-width:400px;" onkeyup="filterUsers()">
-            </div>
-
             <!-- FORMULARIO REGISTRO -->
             <div class="storage-calc" style="margin-bottom:30px;">
                 <h4 style="margin-bottom:15px; color:var(--primary);">Registrar Nuevo Usuario</h4>
@@ -880,6 +910,7 @@
                             <label>Contraseña * (Mínimo 6 caracteres)</label>
                             <input type="password" name="contrasena" class="form-control" 
                                    minlength="6" required>
+                            <small style="color:var(--text-sec); font-size:0.85rem;">La contraseña debe tener al menos 6 caracteres</small>
                         </div>
                         <div class="form-group">
                             <label>Rol *</label>
@@ -899,22 +930,48 @@
                 </form>
             </div>
 
-            <!-- TABLA USUARIOS MEJORADA -->
-            <div class="modern-table-wrapper">
-                <table class="modern-table">
-                    <thead>
-                        <tr>
-                            <th>Usuario</th>
-                            <th>Cédula</th>
-                            <th>Rol</th>
-                            <th>Estado</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="userTableBody">
-                        <!-- Datos cargados por JavaScript -->
-                    </tbody>
-                </table>
+            <!-- BUSCADOR CERCANO A LA TABLA -->
+            <div style="margin-bottom:15px;">
+                <input type="text" id="searchUser" placeholder="Buscar por cédula o nombre..." 
+                       class="form-control" style="max-width:400px;" onkeyup="filterUsers()">
+            </div>
+
+            <!-- TABLA USUARIOS MEJORADA CON RESPONSIVE -->
+            <div class="table-responsive">
+                <div class="modern-table-wrapper">
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th>Usuario</th>
+                                <th>Cédula</th>
+                                <th>Rol</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userTableBody">
+                            <!-- Datos cargados por JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Dropdown para acciones móviles -->
+            <div class="mobile-actions-dropdown">
+                <button class="mobile-actions-btn">
+                    <i class="fas fa-ellipsis-v"></i> Acciones
+                </button>
+                <div class="mobile-actions-menu">
+                    <div class="mobile-action-item" onclick="navTo('dashboard')">
+                        <i class="fas fa-chart-line"></i> Dashboard
+                    </div>
+                    <div class="mobile-action-item" onclick="navTo('solicitudes')">
+                        <i class="fas fa-inbox"></i> Solicitudes
+                    </div>
+                    <div class="mobile-action-item" onclick="navTo('seguridad')">
+                        <i class="fas fa-shield-alt"></i> Seguridad
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -1105,20 +1162,22 @@
             </div>
 
             <!-- LOGS DE ACTIVIDAD -->
-            <div class="modern-table-wrapper">
-                <table class="modern-table">
-                    <thead>
-                        <tr>
-                            <th>Fecha (EC)</th>
-                            <th>Acción</th>
-                            <th>Detalle</th>
-                            <th>Usuario</th>
-                        </tr>
-                    </thead>
-                    <tbody id="logsTableBody">
-                        <!-- Logs cargados por JavaScript -->
-                    </tbody>
-                </table>
+            <div class="table-responsive">
+                <div class="modern-table-wrapper">
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha (EC)</th>
+                                <th>Acción</th>
+                                <th>Detalle</th>
+                                <th>Usuario</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logsTableBody">
+                            <!-- Logs cargados por JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </section>
 
@@ -1177,7 +1236,7 @@
 
     </main>
 
-    <!-- BARRA FLOTANTE PARA SELECCIÓN MÚLTIPLE -->
+    <!-- BARRA FLOTANTE PARA SELECCIÓN MÚLTIPLE - MEJORADA -->
     <div id="floatingBar" class="floating-bar">
         <div style="flex:1;">
             <span style="color:#aaa; font-size:0.8rem; letter-spacing:1px;">SELECCIONADOS</span><br>
@@ -1209,7 +1268,7 @@
         </div>
     </footer>
 
-    <!-- LIGHTBOX MEJORADO -->
+    <!-- LIGHTBOX MEJORADO CON BOTÓN ELIMINAR -->
     <div class="lightbox-modal" id="lightbox" onclick="cerrarLightboxSiFondo(event)">
         <button class="lb-close-fixed" onclick="cerrarLightbox()">
             <i class="fas fa-times"></i> Cerrar
@@ -1226,8 +1285,8 @@
                style="background:white; color:#333;">
                 <i class="fas fa-download"></i> Descargar
             </a>
-            <button class="btn-lb-action btn-lb-report" onclick="reportarEvidenciaActual()">
-                <i class="fas fa-flag"></i> Reportar / No soy yo
+            <button class="btn-lb-action btn-lb-delete" onclick="eliminarEvidenciaActual()">
+                <i class="fas fa-trash"></i> Eliminar Evidencia
             </button>
         </div>
     </div>
@@ -1290,19 +1349,31 @@
     let estudianteActual = null;
     let evidenciasEstudianteActual = [];
     let usuarioSeleccionadoPassword = null;
+    let intervaloActualizaciones = null;
+    let indiceVisorActual = 0;
+    let evidenciasVisor = [];
 
     // Inicializar al cargar
     document.addEventListener('DOMContentLoaded', function() {
         // Verificar Admin
         const tipoUsuario = localStorage.getItem('usuario_tipo');
         if (tipoUsuario !== "0") {
-            alert("Acceso restringido. Solo administradores.");
-            window.location.href = "index.html";
+            Swal.fire({
+                title: 'Acceso restringido',
+                text: 'Solo administradores pueden acceder a esta sección',
+                icon: 'error',
+                confirmButtonColor: '#6A0DAD'
+            }).then(() => {
+                window.location.href = "index.html";
+            });
             return;
         }
 
         inicializarTema();
         cargarDatosIniciales();
+        
+        // Iniciar actualizaciones automáticas
+        iniciarActualizacionesAutomaticas();
         
         // Eventos Globales
         document.getElementById('menuToggle').addEventListener('click', () => {
@@ -1321,20 +1392,94 @@
         
         // Configurar formularios
         configurarFormularios();
+        
+        // Configurar eventos del teclado para el lightbox
+        configurarEventosTeclado();
     });
+
+    function iniciarActualizacionesAutomaticas() {
+        // Actualizar dashboard y notificaciones cada 10 segundos
+        intervaloActualizaciones = setInterval(() => {
+            actualizarDatosDashboard();
+            cargarSolicitudesPendientes();
+        }, 10000);
+        
+        // Actualizar solicitudes cada 15 segundos
+        setInterval(() => {
+            if (document.getElementById('panel-solicitudes').classList.contains('active')) {
+                cargarSolicitudes();
+            }
+        }, 15000);
+    }
+
+    async function actualizarDatosDashboard() {
+    try {
+        const res = await fetch(`${API_URL}/estadisticas_almacenamiento`);
+        const stats = await res.json();
+        
+        document.getElementById('statUsers').textContent = stats.usuarios_activos || 0;
+        document.getElementById('statFiles').textContent = stats.total_evidencias || 0;
+        
+        const gb = stats.almacenamiento_gb || 0;
+        document.getElementById('statSize').textContent = gb.toFixed(2) + ' GB';
+        document.getElementById('realSizeDisplay').textContent = gb.toFixed(2) + ' GB';
+        
+        const costoMensual = (gb * 0.005).toFixed(3);
+        const costoAnual = (gb * 0.005 * 12).toFixed(3);
+        
+        document.getElementById('monthlyCost').textContent = '$' + costoMensual;
+        document.getElementById('yearlyCost').textContent = '$' + costoAnual;
+        
+        document.getElementById('mainStorageBar').style.width = Math.min(100, (gb/50)*100) + '%';
+        document.getElementById('sidebarStorageBar').style.width = Math.min(100, (gb/50)*100) + '%';
+        document.getElementById('sidebarStorageText').textContent = gb.toFixed(1) + ' GB usados';
+        
+        // ==========================================
+        // AGREGADO: Actualizar tarjeta de costos AWS Rekognition en Mantenimiento
+        // ==========================================
+        if(document.getElementById('rekognitionCount')) {
+            // Usamos el total de evidencias como proxy de imágenes procesadas
+            document.getElementById('rekognitionCount').textContent = stats.total_evidencias || 0;
+            
+            // Si el backend envía el detalle de costos, lo usamos
+            if (stats.costo_estimado_usd && stats.costo_estimado_usd.rekognition) {
+                document.getElementById('rekognitionCost').textContent = '$' + parseFloat(stats.costo_estimado_usd.rekognition).toFixed(2);
+                
+                // Calcular total mensual (almacenamiento + IA)
+                const almacenamientoCost = parseFloat(costoMensual);
+                const rekognitionCost = parseFloat(stats.costo_estimado_usd.rekognition);
+                const totalMensual = (almacenamientoCost + rekognitionCost).toFixed(2);
+                document.getElementById('totalCost').textContent = '$' + totalMensual;
+            } else {
+                // Calculo manual si no viene del backend
+                // AWS Rekognition: $1.00 por 1000 imágenes
+                const rekogCost = ((stats.total_evidencias || 0) / 1000).toFixed(2);
+                document.getElementById('rekognitionCost').textContent = '$' + rekogCost;
+                
+                // Calcular total mensual (almacenamiento + IA)
+                const almacenamientoCost = parseFloat(costoMensual);
+                const iaCost = parseFloat(rekogCost);
+                const totalMensual = (almacenamientoCost + iaCost).toFixed(2);
+                document.getElementById('totalCost').textContent = '$' + totalMensual;
+            }
+        }
+        
+    } catch (error) {
+        console.error("Error actualizando dashboard:", error);
+    }
+}
 
     async function cargarDatosIniciales() {
         try {
             // Cargar datos en paralelo
-            const [resUsers, resEvidencias, resSolicitudes, resLogs, resStats] = await Promise.all([
+            const [resUsers, resEvidencias, resSolicitudes, resLogs] = await Promise.all([
                 fetch(`${API_URL}/listar_usuarios`),
                 fetch(`${API_URL}/resumen_estudiantes_con_evidencias`),
                 fetch(`${API_URL}/obtener_solicitudes`),
-                fetch(`${API_URL}/obtener_logs`),
-                fetch(`${API_URL}/estadisticas_almacenamiento`)
+                fetch(`${API_URL}/obtener_logs`)
             ]);
 
-            // CORRECCIÓN: Mapear usuarios desde la DB (mayúsculas a minúsculas)
+            // Procesar usuarios
             const usuariosData = await resUsers.json();
             usuarios = usuariosData.map(u => ({
                 nombre: u.Nombre || u.nombre || '',
@@ -1349,27 +1494,18 @@
             evidencias = await resEvidencias.json();
             solicitudes = await resSolicitudes.json();
             logs = await resLogs.json();
-            const stats = await resStats.json();
 
-            // Filtrar solo solicitudes PENDIENTES para las notificaciones
-            const solicitudesPendientes = solicitudes.filter(s => {
-                const estado = (s.Estado || '').toUpperCase();
-                return estado === 'PENDIENTE' || estado === '';
-            });
+            // Cargar estadísticas
+            await actualizarDatosDashboard();
             
-            // Ordenar solicitudes: pendientes primero
-            solicitudes.sort((a, b) => {
-                const estadoA = (a.Estado || '').toUpperCase();
-                const estadoB = (b.Estado || '').toUpperCase();
-                const aPendiente = estadoA === 'PENDIENTE' || estadoA === '';
-                const bPendiente = estadoB === 'PENDIENTE' || estadoB === '';
-                
-                if (aPendiente && !bPendiente) return -1;
-                if (!aPendiente && bPendiente) return 1;
-                return new Date(b.fecha) - new Date(a.fecha);
-            });
-
-            actualizarInterfaz(stats, solicitudesPendientes);
+            // Filtrar y actualizar notificaciones
+            await cargarSolicitudesPendientes();
+            
+            // Renderizar contenido
+            renderizarUsuarios();
+            renderizarEvidencias();
+            renderizarSolicitudes();
+            renderizarLogs();
             
         } catch (error) {
             console.error("Error inicializando:", error);
@@ -1377,39 +1513,22 @@
         }
     }
 
-    function actualizarInterfaz(stats, solicitudesPendientes) {
-        // 1. Dashboard Stats
-        document.getElementById('statUsers').textContent = stats.usuarios_activos || 0;
-        document.getElementById('statFiles').textContent = stats.total_evidencias || 0;
-        
-        // 2. Solicitudes Pendientes
-        const numPendientes = solicitudesPendientes.length;
-        document.getElementById('statReqs').textContent = numPendientes;
-        
-        // Actualizar notificaciones
-        actualizarNotificaciones(solicitudesPendientes);
-        
-        // 3. Renderizar contenido
-        renderizarUsuarios();
-        renderizarEvidencias();
-        renderizarSolicitudes();
-        renderizarLogs();
-        
-        // 4. Costos y almacenamiento - CORRECCIÓN: Calcular costo estimado
-        const gb = stats.almacenamiento_gb || 0;
-        document.getElementById('statSize').textContent = gb.toFixed(2) + ' GB';
-        document.getElementById('realSizeDisplay').textContent = gb.toFixed(2) + ' GB';
-        
-        // Calcular costo estimado: GB * 0.005
-        const costoMensual = (gb * 0.005).toFixed(3);
-        const costoAnual = (gb * 0.005 * 12).toFixed(3);
-        
-        document.getElementById('monthlyCost').textContent = '$' + costoMensual;
-        document.getElementById('yearlyCost').textContent = '$' + costoAnual;
-        
-        document.getElementById('mainStorageBar').style.width = Math.min(100, (gb/50)*100) + '%';
-        document.getElementById('sidebarStorageBar').style.width = Math.min(100, (gb/50)*100) + '%';
-        document.getElementById('sidebarStorageText').textContent = gb.toFixed(1) + ' GB usados';
+    async function cargarSolicitudesPendientes() {
+        try {
+            const res = await fetch(`${API_URL}/obtener_solicitudes?limit=50`);
+            const todasSolicitudes = await res.json();
+            
+            const solicitudesPendientes = todasSolicitudes.filter(s => {
+                const estado = (s.Estado || '').toUpperCase();
+                return estado === 'PENDIENTE' || estado === '';
+            });
+            
+            actualizarNotificaciones(solicitudesPendientes);
+            document.getElementById('statReqs').textContent = solicitudesPendientes.length;
+            
+        } catch (error) {
+            console.error("Error cargando solicitudes pendientes:", error);
+        }
     }
 
     function actualizarNotificaciones(pendientes) {
@@ -1423,21 +1542,41 @@
             list.innerHTML = pendientes.slice(0, 5).map(sol => {
                 let icono = 'fas fa-exclamation-circle';
                 let color = 'var(--warning)';
+                let tipoTexto = 'Solicitud';
                 
                 switch(sol.Tipo) {
-                    case 'REPORTE_EVIDENCIA': icono = 'fas fa-user-times'; color = 'var(--error)'; break;
-                    case 'PROBLEMA_ERROR': icono = 'fas fa-bug'; color = 'var(--warning)'; break;
-                    case 'SUBIR_EVIDENCIA': icono = 'fas fa-cloud-upload-alt'; color = 'var(--info)'; break;
-                    case 'RECUPERACION_CONTRASENA': icono = 'fas fa-key'; color = 'var(--primary)'; break;
+                    case 'REPORTE_EVIDENCIA': 
+                        icono = 'fas fa-user-times'; 
+                        color = 'var(--error)';
+                        tipoTexto = 'Reporte de evidencia';
+                        break;
+                    case 'PROBLEMA_ERROR': 
+                        icono = 'fas fa-bug'; 
+                        color = 'var(--warning)';
+                        tipoTexto = 'Problema/Error';
+                        break;
+                    case 'SUBIR_EVIDENCIA': 
+                        icono = 'fas fa-cloud-upload-alt'; 
+                        color = 'var(--info)';
+                        tipoTexto = 'Subir evidencia';
+                        break;
+                    case 'RECUPERACION_CONTRASENA': 
+                        icono = 'fas fa-key'; 
+                        color = 'var(--primary)';
+                        tipoTexto = 'Recuperar contraseña';
+                        break;
                 }
+                
+                const usuario = usuarios.find(u => u.cedula === sol.CI_Solicitante);
+                const nombreUsuario = usuario ? `${usuario.nombre} ${usuario.apellido}` : sol.CI_Solicitante || 'Usuario';
                 
                 return `
                     <div class="noti-item unread" onclick="navTo('solicitudes'); toggleNotis();">
                         <i class="${icono}" style="color:${color}; margin-top:3px;"></i>
                         <div style="flex:1;">
-                            <div style="font-weight:600;">${sol.Tipo.replace(/_/g, ' ')}</div>
-                            <div style="font-size:0.8rem;">${sol.Nombre || 'Usuario'}</div>
-                            <div style="font-size:0.7rem; color:#888;">${sol.fecha}</div>
+                            <div style="font-weight:600;">${tipoTexto}</div>
+                            <div style="font-size:0.8rem;">${nombreUsuario}</div>
+                            <div style="font-size:0.7rem; color:#888;">${formatearFecha(sol.Fecha)}</div>
                         </div>
                     </div>
                 `;
@@ -1452,6 +1591,18 @@
             badge.style.display = 'none';
             list.innerHTML = '<div style="padding:15px; text-align:center; color:#888;">No hay notificaciones nuevas</div>';
         }
+    }
+
+    function formatearFecha(fechaStr) {
+        if (!fechaStr) return 'Fecha no disponible';
+        const fecha = new Date(fechaStr);
+        return fecha.toLocaleDateString('es-EC', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
     }
 
     function toggleNotis() {
@@ -1499,6 +1650,9 @@
     }
 
     function cerrarSesion() {
+        if (intervaloActualizaciones) {
+            clearInterval(intervaloActualizaciones);
+        }
         localStorage.clear();
         window.location.href = 'index.html';
     }
@@ -1550,12 +1704,22 @@
             const contrasena = datos.get('contrasena');
             
             if (!/^\d{10}$/.test(cedula)) {
-                alert('La cédula debe tener exactamente 10 dígitos numéricos');
+                Swal.fire({
+                    title: 'Error de validación',
+                    text: 'La cédula debe tener exactamente 10 dígitos numéricos',
+                    icon: 'error',
+                    confirmButtonColor: '#6A0DAD'
+                });
                 return;
             }
             
             if (contrasena.length < 6) {
-                alert('La contraseña debe tener al menos 6 caracteres');
+                Swal.fire({
+                    title: 'Error de validación',
+                    text: 'La contraseña debe tener al menos 6 caracteres',
+                    icon: 'error',
+                    confirmButtonColor: '#6A0DAD'
+                });
                 return;
             }
             
@@ -1578,7 +1742,7 @@
                     mostrarMensaje('Error: ' + (resultado.error || 'Desconocido'), 'error');
                 }
             } catch (error) {
-                mostrarMensaje('Error de conexión', 'error');
+                mostrarMensaje('Error de conexión: ' + error.message, 'error');
             } finally {
                 boton.innerHTML = '<i class="fas fa-user-plus"></i> Guardar Usuario';
                 boton.disabled = false;
@@ -1590,23 +1754,40 @@
         const tbody = document.getElementById('userTableBody');
         if(!tbody) return;
         
-        // CORRECCIÓN: Usar propiedades mapeadas correctamente
-        tbody.innerHTML = usuarios.map(u => `
-            <tr>
-                <td><strong>${u.nombre} ${u.apellido}</strong><br><small>${u.contrasena}</small></td>
-                <td>${u.cedula}</td>
-                <td>${u.tipo == 0 ? '<span style="color:var(--primary)">Admin</span>' : 'Estudiante'}</td>
-                <td>${u.activo ? '<span style="color:var(--secondary)">Activo</span>' : '<span style="color:var(--error)">Inactivo</span>'}</td>
-                <td>
-                    <button class="action-btn btn-view" onclick="verUsuario('${u.cedula}')"><i class="fas fa-eye"></i></button>
-                    ${u.activo ? 
-                        `<button class="action-btn btn-deactivate" onclick="cambiarEstadoUsuario('${u.cedula}', 0)"><i class="fas fa-user-slash"></i></button>` : 
-                        `<button class="action-btn btn-activate" onclick="cambiarEstadoUsuario('${u.cedula}', 1)"><i class="fas fa-user-check"></i></button>`
-                    }
-                    <button class="action-btn btn-delete" onclick="eliminarUsuario('${u.cedula}')"><i class="fas fa-trash"></i></button>
-                </td>
-            </tr>
-        `).join('');
+        tbody.innerHTML = usuarios.map(u => {
+            // CORRECCIÓN: Manejo de tipos mixtos (string o número)
+            const tipoUsuario = parseInt(u.tipo) === 0 ? 'Admin' : 'Estudiante';
+            const estadoUsuario = parseInt(u.activo) === 1 ? 'Activo' : 'Inactivo';
+            
+            return `
+                <tr id="user-row-${u.cedula}">
+                    <td>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            ${u.foto ? `<img src="${u.foto}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">` : ''}
+                            <div>
+                                <strong>${u.nombre} ${u.apellido}</strong><br>
+                                <small style="color:var(--text-sec);">${u.contrasena || 'Sin contraseña'}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td>${u.cedula}</td>
+                    <td><span class="${tipoUsuario === 'Admin' ? 'solicitud-tipo tipo-contrasena' : 'solicitud-tipo tipo-subida'}" style="margin-left:0;">${tipoUsuario}</span></td>
+                    <td>
+                        <span id="user-status-${u.cedula}" class="${estadoUsuario === 'Activo' ? 'badge-resolved' : 'badge-rejected'}" style="font-size:0.75rem; padding:3px 8px;">
+                            ${estadoUsuario}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="action-btn btn-view" onclick="verUsuario('${u.cedula}')" title="Ver detalles"><i class="fas fa-eye"></i></button>
+                        ${parseInt(u.activo) === 1 ? 
+                            `<button class="action-btn btn-deactivate" onclick="cambiarEstadoUsuario('${u.cedula}', 0)" title="Desactivar usuario"><i class="fas fa-user-slash"></i></button>` : 
+                            `<button class="action-btn btn-activate" onclick="cambiarEstadoUsuario('${u.cedula}', 1)" title="Activar usuario"><i class="fas fa-user-check"></i></button>`
+                        }
+                        <button class="action-btn btn-delete" onclick="eliminarUsuario('${u.cedula}')" title="Eliminar usuario"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
     }
 
     function filterUsers() {
@@ -1652,8 +1833,37 @@
             const resultado = await respuesta.json();
             
             if (resultado.mensaje) {
+                // Actualización inmediata en el DOM sin recargar
+                const statusBadge = document.getElementById(`user-status-${cedula}`);
+                if (statusBadge) {
+                    statusBadge.textContent = nuevoEstado == 1 ? 'Activo' : 'Inactivo';
+                    statusBadge.className = nuevoEstado == 1 ? 'badge-resolved' : 'badge-rejected';
+                    statusBadge.style.fontSize = '0.75rem';
+                    statusBadge.style.padding = '3px 8px';
+                }
+                
+                // Actualizar botones
+                const fila = document.getElementById(`user-row-${cedula}`);
+                if (fila) {
+                    const botonesCell = fila.cells[4];
+                    if (nuevoEstado == 1) {
+                        botonesCell.innerHTML = botonesCell.innerHTML.replace('btn-activate', 'btn-deactivate')
+                            .replace('fa-user-check', 'fa-user-slash')
+                            .replace('Activar usuario', 'Desactivar usuario');
+                    } else {
+                        botonesCell.innerHTML = botonesCell.innerHTML.replace('btn-deactivate', 'btn-activate')
+                            .replace('fa-user-slash', 'fa-user-check')
+                            .replace('Desactivar usuario', 'Activar usuario');
+                    }
+                }
+                
+                // Actualizar el objeto usuario en memoria
+                const usuarioIndex = usuarios.findIndex(u => u.cedula === cedula);
+                if (usuarioIndex !== -1) {
+                    usuarios[usuarioIndex].activo = nuevoEstado;
+                }
+                
                 mostrarMensaje(`Usuario ${accion}do correctamente`, 'success');
-                await cargarDatosIniciales();
             } else {
                 mostrarMensaje('Error al cambiar estado', 'error');
             }
@@ -1668,17 +1878,19 @@
             Swal.fire({
                 title: `${usuario.nombre} ${usuario.apellido}`,
                 html: `
-                    <div style="text-align:left; margin-top:20px;">
+                    <div style="text-align:left; color:#333 !important;">
                         <p><strong>Cédula:</strong> ${usuario.cedula}</p>
-                        <p><strong>Rol:</strong> ${usuario.tipo == 0 ? 'Administrador' : 'Estudiante'}</p>
-                        <p><strong>Estado:</strong> ${usuario.activo == 1 ? 'Activo' : 'Inactivo'}</p>
-                        <p><strong>Contraseña:</strong> ${usuario.contrasena}</p>
+                        <p><strong>Rol:</strong> ${parseInt(usuario.tipo) === 0 ? 'Administrador' : 'Estudiante'}</p>
+                        <p><strong>Estado:</strong> ${parseInt(usuario.activo) === 1 ? 'Activo' : 'Inactivo'}</p>
+                        <p><strong>Contraseña:</strong> ${usuario.contrasena || 'No disponible'}</p>
                         ${usuario.foto ? `<p><strong>Foto:</strong> <br><img src="${usuario.foto}" style="max-width:200px; margin-top:10px; border-radius:8px;"></p>` : ''}
                     </div>
                 `,
                 icon: 'info',
                 confirmButtonColor: '#6A0DAD',
-                confirmButtonText: 'Cerrar'
+                confirmButtonText: 'Cerrar',
+                background: 'var(--bg-card)',
+                color: 'var(--text-main)'
             });
         }
     }
@@ -1706,8 +1918,19 @@
             });
             
             if (respuesta.ok) {
+                // Eliminar del DOM inmediatamente
+                const fila = document.getElementById(`user-row-${cedula}`);
+                if (fila) {
+                    fila.remove();
+                }
+                
+                // Eliminar del array en memoria
+                const usuarioIndex = usuarios.findIndex(u => u.cedula === cedula);
+                if (usuarioIndex !== -1) {
+                    usuarios.splice(usuarioIndex, 1);
+                }
+                
                 mostrarMensaje('Usuario eliminado correctamente', 'success');
-                await cargarDatosIniciales();
             } else {
                 mostrarMensaje('Error al eliminar usuario', 'error');
             }
@@ -1719,6 +1942,16 @@
     // ==========================================
     // 4. SISTEMA DE SOLICITUDES - COMPLETAMENTE REESCRITO
     // ==========================================
+    async function cargarSolicitudes() {
+        try {
+            const respuesta = await fetch(`${API_URL}/obtener_solicitudes?limit=100`);
+            solicitudes = await respuesta.json();
+            renderizarSolicitudes();
+        } catch (error) {
+            console.error("Error cargando solicitudes:", error);
+        }
+    }
+
     function renderizarSolicitudes() {
         const container = document.getElementById('requestsContainer');
         if (!container) return;
@@ -1774,7 +2007,7 @@
     }
 
     function crearCardSolicitud(sol) {
-        // CORRECCIÓN CRÍTICA: Manejo de estado
+        // Manejo de estado
         const estado = (sol.Estado || '').toUpperCase();
         const esPendiente = estado === 'PENDIENTE' || estado === '';
         
@@ -1792,17 +2025,17 @@
         }
         
         // Buscar información del usuario
-        const usuario = usuarios.find(u => u.cedula === sol.cedula);
-        const nombreUsuario = usuario ? `${usuario.nombre} ${usuario.apellido}` : sol.Nombre || 'Usuario';
+        const usuario = usuarios.find(u => u.cedula === sol.CI_Solicitante);
+        const nombreUsuario = usuario ? `${usuario.nombre} ${usuario.apellido}` : sol.CI_Solicitante || 'Usuario';
         
         return `
             <div class="request-card">
                 <div class="request-header">
                     <div>
                         <h4 style="color:var(--text-main); margin-bottom:5px;">
-                            ${sol.Tipo.replace(/_/g, ' ')} - ${nombreUsuario}
-                            <span class="solicitud-tipo ${'tipo-' + sol.Tipo.toLowerCase().split('_')[0]}">
-                                ${sol.Tipo.replace(/_/g, ' ')}
+                            ${sol.Tipo ? sol.Tipo.replace(/_/g, ' ') : 'Solicitud'} - ${nombreUsuario}
+                            <span class="solicitud-tipo ${sol.Tipo ? 'tipo-' + sol.Tipo.toLowerCase().split('_')[0] : 'tipo-reporte'}">
+                                ${sol.Tipo ? sol.Tipo.replace(/_/g, ' ') : 'General'}
                             </span>
                         </h4>
                         <p style="color:var(--text-sec); font-size:0.9rem; margin-bottom:5px;">
@@ -1810,26 +2043,26 @@
                         </p>
                         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                             <span class="request-badge ${badgeClass}">${badgeText}</span>
-                            <span style="color:var(--text-muted); font-size:0.8rem;">${sol.fecha}</span>
-                            ${sol.email ? `<span style="color:var(--text-muted); font-size:0.8rem;"><i class="fas fa-envelope"></i> ${sol.email}</span>` : ''}
+                            <span style="color:var(--text-muted); font-size:0.8rem;">${formatearFecha(sol.Fecha)}</span>
+                            ${sol.Email ? `<span style="color:var(--text-muted); font-size:0.8rem;"><i class="fas fa-envelope"></i> ${sol.Email}</span>` : ''}
                         </div>
                     </div>
                     ${esPendiente ? 
-                        `<button class="btn-primary" onclick="verDetalleSolicitud('${sol.Tipo}', ${sol.id})" 
+                        `<button class="btn-primary" onclick="procesarSolicitudDesdeCard('${sol.Tipo}', ${sol.id})" 
                                  style="background:var(--info); padding:8px 15px;">
                             <i class="fas fa-reply"></i> Responder
                          </button>` : 
-                        `<div style="font-size:0.85rem; text-align:right;">
+                        `<div style="font-size:0.85rem; text-align:right; color:var(--text-main);">
                             <div><strong>Resuelto por:</strong> ${sol.Resuelto_Por || 'Admin'}</div>
                             ${sol.Respuesta ? `<div style="color:var(--primary); margin-top:3px;"><em>"${sol.Respuesta.substring(0,30)}..."</em></div>` : ''}
                          </div>`
                     }
                 </div>
-                ${sol.evidencia_url ? `
+                ${sol.Evidencia_Reportada_Url ? `
                     <div style="margin-top:10px;">
                         <p style="color:var(--text-sec); font-size:0.9rem; margin-bottom:5px;">Evidencia relacionada:</p>
-                        <img src="${sol.evidencia_url}" class="request-preview" 
-                             onclick="abrirPrevisualizacion('${sol.evidencia_url}')">
+                        <img src="${sol.Evidencia_Reportada_Url}" class="request-preview" 
+                             onclick="abrirPrevisualizacion('${sol.Evidencia_Reportada_Url}')">
                     </div>
                 ` : ''}
                 ${!esPendiente && sol.Respuesta ? `
@@ -1843,15 +2076,15 @@
     }
 
     // ==========================================
-    // 5. GESTIÓN COMPLETA DE SOLICITUDES - REESCRITA
+    // 5. GESTIÓN COMPLETA DE SOLICITUDES
     // ==========================================
-    async function verDetalleSolicitud(tipo, solicitudId) {
+    function procesarSolicitudDesdeCard(tipo, solicitudId) {
         const solicitud = solicitudes.find(s => s.id == solicitudId);
         if (!solicitud) return;
 
         // Buscar información del usuario
-        const usuario = usuarios.find(u => u.cedula === solicitud.cedula);
-        const nombreUsuario = usuario ? `${usuario.nombre} ${usuario.apellido}` : solicitud.Nombre || 'Usuario';
+        const usuario = usuarios.find(u => u.cedula === solicitud.CI_Solicitante);
+        const nombreUsuario = usuario ? `${usuario.nombre} ${usuario.apellido}` : solicitud.CI_Solicitante || 'Usuario';
         
         let contenido = '';
         
@@ -1860,10 +2093,10 @@
             <h3 style="color:var(--primary); margin-bottom:15px;">
                 <i class="fas fa-reply"></i> Responder: ${tipo.replace(/_/g, ' ')}
             </h3>
-            <div style="margin-bottom:15px; font-size:0.9rem;">
-                <p><strong>De:</strong> ${nombreUsuario} (${solicitud.cedula})</p>
-                <p><strong>Fecha:</strong> ${solicitud.fecha}</p>
-                ${solicitud.email ? `<p><strong>Correo:</strong> ${solicitud.email}</p>` : ''}
+            <div style="margin-bottom:15px; font-size:0.9rem; color:var(--text-main);">
+                <p><strong>De:</strong> ${nombreUsuario} (${solicitud.CI_Solicitante})</p>
+                <p><strong>Fecha:</strong> ${formatearFecha(solicitud.Fecha)}</p>
+                ${solicitud.Email ? `<p><strong>Correo:</strong> ${solicitud.Email}</p>` : ''}
                 <p><strong>Mensaje del usuario:</strong> "${solicitud.Detalle || 'Sin mensaje adicional'}"</p>
             </div>
         `;
@@ -1871,15 +2104,15 @@
         // Contenido específico por tipo
         if (tipo === 'REPORTE_EVIDENCIA') {
             contenido += `
-                <div style="background:#fff4e5; padding:10px; border-radius:8px; margin-bottom:15px; border-left:4px solid var(--warning);">
-                    <p><strong>Acción de Aceptar:</strong> Se ELIMINARÁ la evidencia reportada del perfil del estudiante.</p>
-                    <p><strong>Acción de Rechazar:</strong> La evidencia se mantendrá.</p>
+                <div style="background:rgba(255, 193, 7, 0.1); padding:10px; border-radius:8px; margin-bottom:15px; border-left:4px solid var(--warning);">
+                    <p style="color:var(--text-main);"><strong>Acción de Aceptar:</strong> Se ELIMINARÁ la evidencia reportada del perfil del estudiante.</p>
+                    <p style="color:var(--text-main);"><strong>Acción de Rechazar:</strong> La evidencia se mantendrá.</p>
                 </div>
-                ${solicitud.evidencia_url ? 
+                ${solicitud.Evidencia_Reportada_Url ? 
                     `<div style="text-align:center; margin-bottom:10px;">
-                        <p><strong>Evidencia reportada:</strong></p>
-                        <img src="${solicitud.evidencia_url}" class="request-preview" 
-                             onclick="abrirPrevisualizacion('${solicitud.evidencia_url}')">
+                        <p style="color:var(--text-main);"><strong>Evidencia reportada:</strong></p>
+                        <img src="${solicitud.Evidencia_Reportada_Url}" class="request-preview" 
+                             onclick="abrirPrevisualizacion('${solicitud.Evidencia_Reportada_Url}')">
                     </div>` : ''
                 }
             `;
@@ -1887,32 +2120,32 @@
         else if (tipo === 'SUBIR_EVIDENCIA') {
             contenido += `
                 <div style="text-align:center; margin-bottom:15px;">
-                    <p style="font-weight:600; margin-bottom:5px;">Evidencia Propuesta:</p>
-                    ${solicitud.evidencia_url ? 
-                        `<img src="${solicitud.evidencia_url}" class="request-preview" 
-                             onclick="abrirPrevisualizacion('${solicitud.evidencia_url}')">
+                    <p style="font-weight:600; margin-bottom:5px; color:var(--text-main);">Evidencia Propuesta:</p>
+                    ${solicitud.Evidencia_Reportada_Url ? 
+                        `<img src="${solicitud.Evidencia_Reportada_Url}" class="request-preview" 
+                             onclick="abrirPrevisualizacion('${solicitud.Evidencia_Reportada_Url}')">
                          <br><small style="color:var(--text-sec);">Haz clic para ver tamaño completo</small>` 
-                        : 'Sin archivo adjunto'}
+                        : '<p style="color:var(--text-sec);">Sin archivo adjunto</p>'}
                 </div>
             `;
         }
         else if (tipo === 'PROBLEMA_ERROR') {
             contenido += `
-                <div style="background:#f0f7ff; padding:10px; border-radius:8px; margin-bottom:15px;">
-                    <p><strong>Tipo:</strong> Reporte de problema/error</p>
-                    <p><strong>El estudiante necesita ayuda con:</strong> ${solicitud.Detalle || 'Sin detalles'}</p>
+                <div style="background:rgba(33, 150, 243, 0.1); padding:10px; border-radius:8px; margin-bottom:15px;">
+                    <p style="color:var(--text-main);"><strong>Tipo:</strong> Reporte de problema/error</p>
+                    <p style="color:var(--text-main);"><strong>El estudiante necesita ayuda con:</strong> ${solicitud.Detalle || 'Sin detalles'}</p>
                 </div>
             `;
         }
         else if (tipo === 'RECUPERACION_CONTRASENA') {
             const contrasenaActual = usuario ? usuario.contrasena : "No disponible";
             contenido += `
-                <div style="background:#f0f7ff; padding:10px; border-radius:8px; margin-bottom:15px;">
-                    <p><strong>Contraseña Actual del Usuario:</strong> ${contrasenaActual}</p>
-                    <p><strong>Correo destino:</strong> ${solicitud.email || 'No especificado'}</p>
+                <div style="background:rgba(106, 13, 173, 0.1); padding:10px; border-radius:8px; margin-bottom:15px;">
+                    <p style="color:var(--text-main);"><strong>Contraseña Actual del Usuario:</strong> ${contrasenaActual}</p>
+                    <p style="color:var(--text-main);"><strong>Correo destino:</strong> ${solicitud.Email || 'No especificado'}</p>
                 </div>
                 <div class="form-group">
-                    <label>Nueva Contraseña (Opcional):</label>
+                    <label style="color:var(--text-main);">Nueva Contraseña (Opcional):</label>
                     <input type="text" id="nuevaContrasena" class="form-control" 
                            placeholder="Dejar vacío para mantener la actual">
                 </div>
@@ -1922,7 +2155,7 @@
         // Campo de respuesta común
         contenido += `
             <div class="form-group">
-                <label>Tu respuesta para el estudiante *</label>
+                <label style="color:var(--text-main);">Tu respuesta para el estudiante *</label>
                 <textarea id="respuestaAdmin" class="respuesta-textarea" required 
                           placeholder="Escribe tu respuesta para el estudiante..."></textarea>
             </div>
@@ -1998,67 +2231,46 @@
         const nuevaPass = nuevaPassInput ? nuevaPassInput.value : null;
 
         if (!mensaje.trim()) {
-            alert("Por favor escribe un mensaje de respuesta para el usuario.");
+            Swal.fire({
+                title: 'Campo requerido',
+                text: 'Por favor escribe un mensaje de respuesta para el usuario.',
+                icon: 'warning',
+                confirmButtonColor: '#6A0DAD'
+            });
             return;
         }
 
         const solicitud = solicitudes.find(s => s.id == id);
-        const usuario = usuarios.find(u => u.cedula === solicitud.cedula);
+        if (!solicitud) {
+            mostrarMensaje('Solicitud no encontrada', 'error');
+            return;
+        }
 
         // Determinar estado final según el tipo de solicitud y acción
         let estadoFinal = 'PENDIENTE';
-        let accionBackend = '';
         
         if (accion === 'aceptar') {
             if (tipo === 'PROBLEMA_ERROR') {
                 estadoFinal = 'RESUELTO';
-                accionBackend = 'marcar_resuelto';
             } else if (tipo === 'RECUPERACION_CONTRASENA') {
                 estadoFinal = 'APROBADA';
-                accionBackend = 'enviar_correo_contrasena';
             } else {
                 estadoFinal = 'APROBADA';
-                
-                if (tipo === 'REPORTE_EVIDENCIA') {
-                    accionBackend = 'eliminar_evidencia';
-                } else if (tipo === 'SUBIR_EVIDENCIA') {
-                    accionBackend = 'subir_evidencia';
-                }
             }
         } else {
             estadoFinal = 'RECHAZADA';
-            accionBackend = 'rechazar_solicitud';
         }
 
         // Crear FormData para enviar al endpoint
         const formData = new FormData();
-        formData.append('id', id);
-        formData.append('tipo', tipo);
-        formData.append('accion', accionBackend);
-        formData.append('estado', estadoFinal);
-        formData.append('respuesta', mensaje);
-        formData.append('resuelto_por', localStorage.getItem('usuario_nombre') || "Administrador");
-        formData.append('fecha_respuesta', new Date().toISOString());
-
-        // Agregar campos específicos según el tipo
-        if (tipo === 'REPORTE_EVIDENCIA' && accion === 'aceptar') {
-            formData.append('evidencia_id', solicitud.evidencia_id || '');
-        } 
-        else if (tipo === 'SUBIR_EVIDENCIA' && accion === 'aceptar') {
-            formData.append('evidencia_url', solicitud.evidencia_url || '');
-            formData.append('cedula', solicitud.cedula || '');
-        }
-        else if (tipo === 'RECUPERACION_CONTRASENA' && accion === 'aceptar') {
-            if (nuevaPass && nuevaPass.trim() !== '') {
-                formData.append('nueva_contrasena', nuevaPass);
-            }
-            formData.append('correo_destino', solicitud.email || '');
-        }
+        formData.append('id_solicitud', id);
+        formData.append('accion', accion === 'aceptar' ? 'aprobar' : 'rechazar');
+        formData.append('mensaje', mensaje);
+        formData.append('id_admin', 'Admin');
 
         try {
             mostrarMensaje("Procesando solicitud...", "info");
             
-            // CORRECCIÓN: Usar FormData y endpoint correcto
             const res = await fetch(`${API_URL}/gestionar_solicitud`, {
                 method: 'POST',
                 body: formData
@@ -2078,7 +2290,8 @@
                 cerrarModal('modalResponderSolicitud');
                 
                 // Recargar datos
-                await cargarDatosIniciales();
+                await cargarSolicitudes();
+                await cargarSolicitudesPendientes();
                 
             } else {
                 mostrarMensaje("Error: " + (result.error || "Desconocido"), "error");
@@ -2193,7 +2406,7 @@
             
         } catch (error) {
             console.error('Error cargando evidencias del estudiante:', error);
-            mostrarMensaje('Error al cargar evidencias del estudiante', 'error');
+            mostrarMensaje('Error al cargar evidencias del estudiante: ' + error.message, 'error');
         }
     }
 
@@ -2227,16 +2440,16 @@
                 }
             };
             
-            const esVideo = evidencia.url && evidencia.url.match(/\.(mp4|avi|mov|webm)$/i);
-            const esImagen = evidencia.url && evidencia.url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+            const esVideo = evidencia.Url_Archivo && evidencia.Url_Archivo.match(/\.(mp4|avi|mov|webm)$/i);
+            const esImagen = evidencia.Url_Archivo && evidencia.Url_Archivo.match(/\.(jpg|jpeg|png|gif|webp)$/i);
             
             let contenido = '';
             
             if (esImagen) {
-                contenido = `<img src="${evidencia.url}" class="card-media" loading="lazy">`;
+                contenido = `<img src="${evidencia.Url_Archivo}" class="card-media" loading="lazy" onerror="this.src='https://via.placeholder.com/180'">`;
             } else if (esVideo) {
                 contenido = `
-                    <video src="${evidencia.url}#t=0.1" class="card-media"></video>
+                    <video src="${evidencia.Url_Archivo}#t=0.1" class="card-media"></video>
                     <div class="video-overlay"><i class="fas fa-play-circle"></i></div>
                 `;
             } else {
@@ -2275,6 +2488,27 @@
     // ==========================================
     // 7. FUNCIONES DE LIGHTBOX Y VISOR
     // ==========================================
+    function configurarEventosTeclado() {
+        document.addEventListener('keydown', (e) => {
+            const lightbox = document.getElementById('lightbox');
+            if (!lightbox.classList.contains('active')) return;
+            
+            switch(e.key) {
+                case 'Escape':
+                    cerrarLightbox();
+                    break;
+                case 'ArrowLeft':
+                    imagenAnterior();
+                    e.preventDefault();
+                    break;
+                case 'ArrowRight':
+                    imagenSiguiente();
+                    e.preventDefault();
+                    break;
+            }
+        });
+    }
+
     function abrirPrevisualizacion(url) {
         const lightbox = document.getElementById('lightbox');
         const contenido = document.getElementById('lightboxContent');
@@ -2302,6 +2536,98 @@
         }
     }
 
+    function abrirVisor(indice) {
+        evidenciasVisor = evidenciasEstudianteActual;
+        indiceVisorActual = indice;
+        actualizarVisor();
+        document.getElementById('lightbox').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function actualizarVisor() {
+        const contenido = document.getElementById('lightboxContent');
+        const enlaceDescarga = document.getElementById('lbDownloadLink');
+        
+        if (evidenciasVisor.length === 0) return;
+        
+        const evidenciaActual = evidenciasVisor[indiceVisorActual];
+        
+        enlaceDescarga.href = evidenciaActual.Url_Archivo;
+        enlaceDescarga.download = evidenciaActual.Url_Archivo.split('/').pop();
+        
+        const esVideo = evidenciaActual.Url_Archivo && evidenciaActual.Url_Archivo.match(/\.(mp4|avi|mov|webm)$/i);
+        
+        if (esVideo) {
+            contenido.innerHTML = `
+                <video src="${evidenciaActual.Url_Archivo}" class="lb-media-item" controls autoplay></video>
+            `;
+        } else {
+            contenido.innerHTML = `
+                <img src="${evidenciaActual.Url_Archivo}" class="lb-media-item" onerror="this.src='https://via.placeholder.com/500'">
+            `;
+        }
+    }
+
+    function imagenSiguiente(evento) {
+        if (evento) evento.stopPropagation();
+        indiceVisorActual = (indiceVisorActual + 1) % evidenciasVisor.length;
+        actualizarVisor();
+    }
+
+    function imagenAnterior(evento) {
+        if (evento) evento.stopPropagation();
+        indiceVisorActual = (indiceVisorActual - 1 + evidenciasVisor.length) % evidenciasVisor.length;
+        actualizarVisor();
+    }
+
+    async function eliminarEvidenciaActual() {
+        const evidencia = evidenciasVisor[indiceVisorActual];
+        Swal.fire({
+            title: 'Eliminar evidencia',
+            text: '¿Estás seguro de eliminar esta evidencia permanentemente?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d32f2f',
+            cancelButtonColor: '#5f6368',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    const respuesta = await fetch(`${API_URL}/eliminar_evidencia/${evidencia.id}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (respuesta.ok) {
+                        mostrarMensaje('Evidencia eliminada correctamente', 'success');
+                        
+                        // Actualizar lista de evidencias
+                        const index = evidenciasEstudianteActual.findIndex(e => e.id === evidencia.id);
+                        if (index !== -1) {
+                            evidenciasEstudianteActual.splice(index, 1);
+                            evidenciasVisor.splice(indiceVisorActual, 1);
+                            
+                            if (evidenciasVisor.length === 0) {
+                                cerrarLightbox();
+                                renderizarEvidenciasEstudiante();
+                            } else {
+                                if (indiceVisorActual >= evidenciasVisor.length) {
+                                    indiceVisorActual = evidenciasVisor.length - 1;
+                                }
+                                actualizarVisor();
+                                renderizarEvidenciasEstudiante();
+                            }
+                        }
+                    } else {
+                        mostrarMensaje('Error al eliminar evidencia', 'error');
+                    }
+                } catch (error) {
+                    mostrarMensaje('Error de conexión: ' + error.message, 'error');
+                }
+            }
+        });
+    }
+
     // ==========================================
     // 8. FUNCIONES DE SEGURIDAD Y LOGS
     // ==========================================
@@ -2310,8 +2636,10 @@
             const respuesta = await fetch(`${API_URL}/obtener_logs`);
             logs = await respuesta.json();
             renderizarLogs();
+            mostrarMensaje('Logs actualizados', 'success');
         } catch (error) {
             console.error('Error cargando logs:', error);
+            mostrarMensaje('Error al cargar logs: ' + error.message, 'error');
         }
     }
 
@@ -2319,35 +2647,38 @@
         const tbody = document.getElementById('logsTableBody');
         if (!tbody) return;
         
-        tbody.innerHTML = logs.map(log => `
-            <tr>
-                <td>${log.fecha || 'Sin fecha'}</td>
-                <td>
-                    <span style="font-weight:600; color:${obtenerColorAccion(log.accion)}">
-                        ${log.accion}
-                    </span>
-                </td>
-                <td>${log.detalle}</td>
-                <td>${extraerUsuarioLog(log.detalle) || 'Sistema'}</td>
-            </tr>
-        `).join('');
+        tbody.innerHTML = logs.map(log => {
+            const fechaFormateada = formatearFecha(log.Fecha);
+            const colorAccion = obtenerColorAccion(log.Accion);
+            const usuario = log.Usuario || 'Sistema';
+            
+            return `
+                <tr>
+                    <td>${fechaFormateada}</td>
+                    <td>
+                        <span style="font-weight:600; color:${colorAccion}">
+                            ${log.Accion || 'Sin acción'}
+                        </span>
+                    </td>
+                    <td>${log.Detalle || 'Sin detalle'}</td>
+                    <td>${usuario}</td>
+                </tr>
+            `;
+        }).join('');
     }
 
     function obtenerColorAccion(accion) {
-        if (accion && (accion.includes('ELIMIN') || accion.includes('ERROR'))) {
+        if (!accion) return 'var(--text-main)';
+        if (accion.includes('ELIMIN') || accion.includes('ERROR')) {
             return 'var(--error)';
-        } else if (accion && (accion.includes('REGISTRO') || accion.includes('APROB'))) {
+        } else if (accion.includes('REGISTRO') || accion.includes('APROB')) {
             return 'var(--secondary)';
-        } else if (accion && (accion.includes('LOGIN') || accion.includes('SUBIDA'))) {
+        } else if (accion.includes('LOGIN') || accion.includes('SUBIDA')) {
             return 'var(--info)';
+        } else if (accion.includes('ACTUALIZ') || accion.includes('CAMBIAR')) {
+            return 'var(--primary)';
         }
         return 'var(--text-main)';
-    }
-
-    function extraerUsuarioLog(detalle) {
-        if (!detalle) return null;
-        const coincidencia = detalle.match(/\((.*?)\)/);
-        return coincidencia ? coincidencia[1] : null;
     }
 
     function filtrarLogs() {
@@ -2426,10 +2757,10 @@
                 cerrarModal('modalAgregarRef');
                 evento.target.reset();
             } else {
-                mostrarMensaje('Error: ' + resultado.error, 'error');
+                mostrarMensaje('Error: ' + (resultado.error || 'Desconocido'), 'error');
             }
         } catch (error) {
-            mostrarMensaje('Error de conexión', 'error');
+            mostrarMensaje('Error de conexión: ' + error.message, 'error');
         } finally {
             boton.innerHTML = '<i class="fas fa-save"></i> Agregar Referencia';
             boton.disabled = false;
@@ -2459,7 +2790,7 @@
         
         sugerencias.innerHTML = coincidencias.map(usuario => `
             <div onclick="seleccionarUsuario('${usuario.cedula}')" 
-                 style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--border-color);">
+                 style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--border-color); color:var(--text-main);">
                 ${usuario.nombre} ${usuario.apellido} 
                 <small style="color:var(--text-sec);">(${usuario.cedula})</small>
             </div>
@@ -2509,7 +2840,12 @@
         });
         
         if (cedulas.length === 0) {
-            mostrarMensaje('No se encontraron estudiantes con esos nombres', 'warning');
+            Swal.fire({
+                title: 'Error de validación',
+                text: 'No se encontraron estudiantes con esos nombres. Verifica los nombres e intenta nuevamente.',
+                icon: 'error',
+                confirmButtonColor: '#6A0DAD'
+            });
             return;
         }
         
@@ -2530,16 +2866,26 @@
             
             const resultado = await respuesta.json();
             
-            if (resultado.mensaje === 'OK') {
-                mostrarMensaje(`Archivo asignado a ${resultado.asignado_a?.length || 0} estudiantes`, 'success');
+            if (resultado.mensaje === 'OK' || resultado.status === 'ok') {
+                mostrarMensaje(`Archivo asignado a ${resultado.asignado_a?.length || cedulas.length} estudiantes`, 'success');
                 archivoInput.value = '';
                 nombresInput.value = '';
                 await cargarDatosIniciales();
             } else {
-                mostrarMensaje('Error: ' + (resultado.error || 'Desconocido'), 'error');
+                Swal.fire({
+                    title: 'Error al subir',
+                    text: resultado.error || 'Error desconocido al subir el archivo',
+                    icon: 'error',
+                    confirmButtonColor: '#6A0DAD'
+                });
             }
         } catch (error) {
-            mostrarMensaje('Error de conexión', 'error');
+            Swal.fire({
+                title: 'Error de conexión',
+                text: 'No se pudo conectar con el servidor: ' + error.message,
+                icon: 'error',
+                confirmButtonColor: '#6A0DAD'
+            });
         } finally {
             boton.innerHTML = '<i class="fas fa-user-check"></i> Asignar Manualmente';
             boton.disabled = false;
@@ -2555,7 +2901,7 @@
         const barra = document.getElementById('progressBar');
         const texto = document.getElementById('progressText');
         
-        log.innerHTML = '<div><i class="fas fa-info-circle"></i> Iniciando análisis...</div>';
+        log.innerHTML = '<div><i class="fas fa-info-circle"></i> Iniciando análisis de reconocimiento facial...</div>';
         progreso.style.display = 'block';
         
         let completados = 0;
@@ -2570,25 +2916,22 @@
             barra.style.width = ((i / total) * 100) + '%';
             
             try {
-                const respuesta = await fetch(`${API_URL}/subir_evidencia`, {
+                const respuesta = await fetch(`${API_URL}/subir_evidencia_ia`, {
                     method: 'POST',
                     body: datos
                 });
                 
                 const resultado = await respuesta.json();
                 
-                if (resultado.status === 'exito') {
-                    log.innerHTML += `<div style="color:var(--secondary);">✅ ${archivo.name} asignado a: ` +
-                                   `${resultado.asignado_a?.join(', ') || 'varios estudiantes'}</div>`;
+                if (resultado.status === 'exito' || resultado.mensaje) {
+                    log.innerHTML += `<div style="color:var(--secondary);">✅ ${archivo.name} asignado correctamente</div>`;
                 } else if (resultado.status === 'alerta') {
-                    log.innerHTML += `<div style="color:var(--warning);">⚠ ${archivo.name}: ` +
-                                   `${resultado.mensaje || 'Sin coincidencias'}</div>`;
+                    log.innerHTML += `<div style="color:var(--warning);">⚠ ${archivo.name}: ${resultado.mensaje || 'Sin coincidencias'}</div>`;
                 } else {
-                    log.innerHTML += `<div style="color:var(--error);">❌ ${archivo.name}: ` +
-                                   `${resultado.motivo || 'Error'}</div>`;
+                    log.innerHTML += `<div style="color:var(--error);">❌ ${archivo.name}: ${resultado.motivo || 'Error en el servidor'}</div>`;
                 }
             } catch (error) {
-                log.innerHTML += `<div style="color:var(--error);">❌ ${archivo.name}: Error de red</div>`;
+                log.innerHTML += `<div style="color:var(--error);">❌ ${archivo.name}: Error de conexión - ${error.message}</div>`;
             }
             
             completados++;
@@ -2626,7 +2969,7 @@
         
         sugerencias.innerHTML = coincidencias.map(usuario => `
             <div onclick="seleccionarUsuarioPassword('${usuario.cedula}')" 
-                 style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--border-color);">
+                 style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--border-color); color:var(--text-main);">
                 ${usuario.nombre} ${usuario.apellido}
                 <small style="color:var(--text-sec);">(${usuario.cedula})</small>
             </div>
@@ -2655,7 +2998,12 @@
         const nuevaPassword = document.getElementById('nuevaPassword').value;
         
         if (nuevaPassword.length < 6) {
-            mostrarMensaje('La contraseña debe tener al menos 6 caracteres', 'warning');
+            Swal.fire({
+                title: 'Error de validación',
+                text: 'La contraseña debe tener al menos 6 caracteres',
+                icon: 'error',
+                confirmButtonColor: '#6A0DAD'
+            });
             return;
         }
         
@@ -2692,10 +3040,10 @@
                 usuarioSeleccionadoPassword = null;
                 await cargarDatosIniciales();
             } else {
-                mostrarMensaje('Error al cambiar contraseña', 'error');
+                mostrarMensaje('Error al cambiar contraseña: ' + (resultado.error || 'Desconocido'), 'error');
             }
         } catch (error) {
-            mostrarMensaje('Error de conexión', 'error');
+            mostrarMensaje('Error de conexión: ' + error.message, 'error');
         }
     }
 
@@ -2707,9 +3055,11 @@
             ? `${API_URL}/crear_backup` 
             : `${API_URL}/descargar_multimedia_zip`;
         
+        // Crear enlace invisible para descarga
         const enlace = document.createElement('a');
         enlace.href = url;
         enlace.style.display = 'none';
+        enlace.target = '_blank';
         document.body.appendChild(enlace);
         enlace.click();
         document.body.removeChild(enlace);
@@ -2717,9 +3067,35 @@
         mostrarMensaje(`Descarga de ${tipo === 'db' ? 'base de datos' : 'multimedia'} iniciada`, 'info');
     }
 
-    function optimizarSistema() {
-        if (confirm('¿Optimizar sistema y limpiar caché?')) {
-            mostrarMensaje('Sistema optimizado', 'success');
+    async function optimizarSistema() {
+        const confirmacion = await Swal.fire({
+            title: '¿Optimizar sistema?',
+            text: '¿Deseas optimizar el sistema y limpiar caché? Esto puede mejorar el rendimiento.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#6A0DAD',
+            cancelButtonColor: '#5f6368',
+            confirmButtonText: 'Sí, optimizar',
+            cancelButtonText: 'Cancelar'
+        });
+        
+        if (!confirmacion.isConfirmed) return;
+        
+        try {
+            const respuesta = await fetch(`${API_URL}/optimizar_sistema`, {
+                method: 'POST'
+            });
+            
+            const resultado = await respuesta.json();
+            
+            if (resultado.status === 'ok') {
+                mostrarMensaje('Sistema optimizado correctamente', 'success');
+                await cargarDatosIniciales();
+            } else {
+                mostrarMensaje('Error al optimizar sistema', 'error');
+            }
+        } catch (error) {
+            mostrarMensaje('Error de conexión: ' + error.message, 'error');
         }
     }
 
@@ -2797,7 +3173,7 @@
             }
         } catch (error) {
             console.error('Error descargando evidencias:', error);
-            mostrarMensaje('Error de conexión al descargar', 'error');
+            mostrarMensaje('Error de conexión al descargar: ' + error.message, 'error');
         }
     }
 
@@ -2836,77 +3212,9 @@
             
         } catch (error) {
             console.error('Error eliminando evidencias:', error);
-            mostrarMensaje('Error al eliminar evidencias', 'error');
+            mostrarMensaje('Error al eliminar evidencias: ' + error.message, 'error');
         }
     }
-
-    // Funciones del visor (simplificadas)
-    let indiceVisorActual = 0;
-    let evidenciasVisor = [];
-
-    function abrirVisor(indice) {
-        evidenciasVisor = evidenciasEstudianteActual;
-        indiceVisorActual = indice;
-        actualizarVisor();
-        document.getElementById('lightbox').classList.add('active');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function actualizarVisor() {
-        const contenido = document.getElementById('lightboxContent');
-        const enlaceDescarga = document.getElementById('lbDownloadLink');
-        
-        if (evidenciasVisor.length === 0) return;
-        
-        const evidenciaActual = evidenciasVisor[indiceVisorActual];
-        
-        enlaceDescarga.href = evidenciaActual.url;
-        enlaceDescarga.download = evidenciaActual.url.split('/').pop();
-        
-        const esVideo = evidenciaActual.url && evidenciaActual.url.match(/\.(mp4|avi|mov|webm)$/i);
-        
-        if (esVideo) {
-            contenido.innerHTML = `
-                <video src="${evidenciaActual.url}" class="lb-media-item" controls autoplay></video>
-            `;
-        } else {
-            contenido.innerHTML = `
-                <img src="${evidenciaActual.url}" class="lb-media-item">
-            `;
-        }
-    }
-
-    function imagenSiguiente(evento) {
-        if (evento) evento.stopPropagation();
-        indiceVisorActual = (indiceVisorActual + 1) % evidenciasVisor.length;
-        actualizarVisor();
-    }
-
-    function imagenAnterior(evento) {
-        if (evento) evento.stopPropagation();
-        indiceVisorActual = (indiceVisorActual - 1 + evidenciasVisor.length) % evidenciasVisor.length;
-        actualizarVisor();
-    }
-
-    function reportarEvidenciaActual() {
-        const evidencia = evidenciasVisor[indiceVisorActual];
-        Swal.fire({
-            title: 'Reportar evidencia',
-            text: '¿Reportar esta evidencia como "No soy yo"?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d32f2f',
-            cancelButtonColor: '#5f6368',
-            confirmButtonText: 'Sí, reportar',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                mostrarMensaje('Evidencia reportada para revisión', 'success');
-                cerrarLightbox();
-            }
-        });
-    }
-
     </script>
 </body>
 </html>
