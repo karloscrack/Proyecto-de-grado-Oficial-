@@ -127,7 +127,7 @@ def init_db_completa():
             Hash TEXT,
             Estado INTEGER DEFAULT 1,
             Tipo_Archivo TEXT DEFAULT 'documento',
-            Fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            Fecha_Subida TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(CI_Estudiante) REFERENCES Usuarios(CI)
         )''')
 
@@ -318,16 +318,16 @@ async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
             return JSONResponse(content={"autenticado": False, "mensaje": "Cuenta desactivada"})
         
         # 4. Obtener Evidencias (CORRECCIÓN CRÍTICA AQUÍ)
-        # Intentamos leer 'Fecha' (nombre antiguo) o 'Fecha' (nombre nuevo)
+        # Intentamos leer 'Fecha' (nombre antiguo) o 'Fecha_Subida' (nombre nuevo)
         try:
             # Intento 1: Estructura nueva
             c.execute("""
                 SELECT id, Url_Archivo as url, 
                        COALESCE(Tipo_Archivo, 'documento') as tipo, 
-                       Fecha as fecha
+                       Fecha_Subida as fecha
                 FROM Evidencias 
                 WHERE CI_Estudiante=? AND Estado=1 
-                ORDER BY Fecha DESC
+                ORDER BY Fecha_Subida DESC
             """, (user['CI'],))
         except sqlite3.OperationalError:
             try:
@@ -387,65 +387,70 @@ async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
             "autenticado": False, 
             "mensaje": f"Error interno: {str(e)}" 
         })
-    
 @app.post("/buscar_estudiante")
 async def buscar_estudiante(cedula: Optional[str] = Form(None)):
-    """Endpoint solo para búsqueda (sin autenticación)"""
+    """Endpoint corregido para leer Fecha o Fecha_Subida"""
     try:
         if not cedula:
-            return JSONResponse(content={
-                "encontrado": False, 
-                "mensaje": "La cédula es requerida"
-            })
+            return JSONResponse(content={"encontrado": False, "mensaje": "La cédula es requerida"})
         
         cedula = cedula.strip()
-        
-        if not cedula:
-            return JSONResponse(content={
-                "encontrado": False, 
-                "mensaje": "Cédula no válida"
-            })
         
         conn = get_db_connection()
         c = conn.cursor()
         
-        c.execute("SELECT * FROM Usuarios WHERE TRIM(CI)=?", (cedula,))
+        # Buscar Usuario
+        c.execute("SELECT * FROM Usuarios WHERE TRIM(CI)=TRIM(?)", (cedula,))
         user = c.fetchone()
         
         if not user:
             conn.close()
-            return JSONResponse(content={
-                "encontrado": False, 
-                "mensaje": "Estudiante no encontrado"
-            })
+            return JSONResponse(content={"encontrado": False, "mensaje": "Estudiante no encontrado"})
         
+        # Validaciones de usuario
         if user["Tipo"] != 1:
             conn.close()
-            return JSONResponse(content={
-                "encontrado": False, 
-                "mensaje": "El usuario no es un estudiante"
-            })
+            return JSONResponse(content={"encontrado": False, "mensaje": "El usuario no es un estudiante"})
             
-        if user["Activo"] == 0:
+        if user.get("Activo", 1) == 0:
             conn.close()
-            return JSONResponse(content={
-                "encontrado": False, 
-                "mensaje": "Cuenta desactivada por administración"
-            })
+            return JSONResponse(content={"encontrado": False, "mensaje": "Cuenta desactivada por administración"})
             
-        # Obtener evidencias - CORREGIDO
+        # --- CORRECCIÓN DE EVIDENCIAS ---
         try:
-            c.execute("SELECT id, Url_Archivo as url, Tipo_Archivo as tipo, Fecha FROM Evidencias WHERE CI_Estudiante=? AND Estado=1 ORDER BY Fecha DESC", (user['CI'],))
-            evs = [dict(row) for row in c.fetchall()]
+            # Intento 1: Estructura nueva (Fecha_Subida y Tipo_Archivo)
+            c.execute("""
+                SELECT id, Url_Archivo as url, Tipo_Archivo as tipo, Fecha_Subida 
+                FROM Evidencias 
+                WHERE CI_Estudiante=? AND Estado=1 
+                ORDER BY Fecha_Subida DESC
+            """, (user['CI'],))
         except sqlite3.OperationalError:
-            # Fallback si Tipo_Archivo no existe
-            c.execute("SELECT id, Url_Archivo as url, 'documento' as tipo, Fecha FROM Evidencias WHERE CI_Estudiante=? AND Estado=1 ORDER BY Fecha DESC", (user['CI'],))
+            try:
+                # Intento 2: Estructura antigua (Fecha)
+                # Usamos 'Fecha' y lo renombramos a 'Fecha_Subida' para el frontend
+                c.execute("""
+                    SELECT id, Url_Archivo as url, 'documento' as tipo, Fecha as Fecha_Subida 
+                    FROM Evidencias 
+                    WHERE CI_Estudiante=? AND Estado=1 
+                    ORDER BY Fecha DESC
+                """, (user['CI'],))
+            except Exception as e:
+                print(f"⚠️ Error recuperando evidencias (fallback): {e}")
+                evs = [] # Si falla, lista vacía pero no error 500
+
+        # Si no hubo error, procesar resultados
+        if 'evs' not in locals():
             evs = [dict(row) for row in c.fetchall()]
 
-        c.execute("""SELECT Tipo, Estado, Respuesta, Fecha FROM Solicitudes 
-                     WHERE CI_Solicitante=? AND Estado != 'PENDIENTE' 
-                     ORDER BY Fecha DESC LIMIT 5""", (user['CI'],))
-        notis = [dict(row) for row in c.fetchall()]
+        # Notificaciones
+        try:
+            c.execute("""SELECT Tipo, Estado, Respuesta, Fecha FROM Solicitudes 
+                         WHERE CI_Solicitante=? AND Estado != 'PENDIENTE' 
+                         ORDER BY Fecha DESC LIMIT 5""", (user['CI'],))
+            notis = [dict(row) for row in c.fetchall()]
+        except:
+            notis = []
 
         conn.close()
         
@@ -462,12 +467,11 @@ async def buscar_estudiante(cedula: Optional[str] = Form(None)):
             }
         })
     except Exception as e:
-        print(f"Error en buscar_estudiante: {e}")
+        print(f"❌ Error CRÍTICO en buscar_estudiante: {e}")
         return JSONResponse(content={
             "encontrado": False, 
             "mensaje": f"Error del servidor: {str(e)}"
         })
-
 # =========================================================================
 # ENDPOINT DE REGISTRO - CORREGIDO
 # =========================================================================
@@ -817,26 +821,34 @@ async def todas_evidencias(cedula: str):
         conn = get_db_connection()
         c = conn.cursor()
         
+        # --- CORRECCIÓN DE EVIDENCIAS ---
         try:
-            c.execute("""SELECT id, Url_Archivo as url, Tipo_Archivo as tipo, 
-                        Fecha, Estado, Hash 
-                        FROM Evidencias 
-                        WHERE CI_Estudiante=? 
-                        ORDER BY Fecha DESC""", (cedula,))
+            # Intento 1: Estructura nueva
+            c.execute("""
+                SELECT id, Url_Archivo as url, Tipo_Archivo as tipo, 
+                Fecha_Subida, Estado, Hash 
+                FROM Evidencias 
+                WHERE CI_Estudiante=? 
+                ORDER BY Fecha_Subida DESC
+            """, (cedula,))
         except sqlite3.OperationalError:
-            # Fallback si Tipo_Archivo no existe
-            c.execute("""SELECT id, Url_Archivo as url, 'documento' as tipo, 
-                        Fecha, Estado, Hash 
-                        FROM Evidencias 
-                        WHERE CI_Estudiante=? 
-                        ORDER BY Fecha DESC""", (cedula,))
+            try:
+                # Intento 2: Estructura antigua (Fecha)
+                c.execute("""
+                    SELECT id, Url_Archivo as url, 'documento' as tipo, 
+                    Fecha as Fecha_Subida, Estado, Hash 
+                    FROM Evidencias 
+                    WHERE CI_Estudiante=? 
+                    ORDER BY Fecha DESC
+                """, (cedula,))
+            except:
+                return JSONResponse(content=[])
         
         evs = [dict(row) for row in c.fetchall()]
         conn.close()
         return JSONResponse(content=evs)
     except Exception as e:
         return JSONResponse(content={"error": str(e)})
-
 @app.get("/resumen_estudiantes_con_evidencias")
 async def resumen_estudiantes():
     try:
