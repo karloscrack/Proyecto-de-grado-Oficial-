@@ -106,8 +106,9 @@ class BackupRequest(BaseModel):
 def optimizar_sistema_db():
     """Ejecuta mantenimiento VACUUM en la base de datos"""
     try:
-        # Usamos DB_ORIGINAL_PATH que ya definiste arriba
-        conn = sqlite3.connect(DB_ORIGINAL_PATH)
+        # ❌ CAMBIA ESTO: conn = sqlite3.connect(DB_ORIGINAL_PATH)
+        # ✅ POR ESTO (Usamos el nombre directo para evitar errores de variable):
+        conn = sqlite3.connect("Bases_de_datos.db") 
         conn.execute("VACUUM")
         conn.close()
         print("✅ Sistema optimizado (VACUUM ejecutado)")
@@ -197,15 +198,13 @@ def init_db_completa():
             ("Usuarios", "Telefono", "TEXT"),
             ("Usuarios", "Ultimo_Acceso", "TIMESTAMP NULL"),
             ("Usuarios", "Fecha_Desactivacion", "TIMESTAMP NULL"),
-            
-            # 👇 AGREGA ESTA LÍNEA CRÍTICA AQUÍ 👇
-            ("Evidencias", "Tipo_Archivo", "TEXT DEFAULT 'documento'"), 
-            # 👆 ESTO ARREGLARÁ EL ERROR ACTUAL 👆
-            
+            ("Evidencias", "Tipo_Archivo", "TEXT DEFAULT 'documento'"),
             ("Evidencias", "Tamanio_KB", "REAL DEFAULT 0"),
             ("Evidencias", "Asignado_Automaticamente", "INTEGER DEFAULT 0"),
             ("Solicitudes", "Fecha_Resolucion", "TIMESTAMP NULL"),
-            ("Auditoria", "Usuario", "TEXT")
+            ("Auditoria", "Usuario", "TEXT"),
+            # 👇 AGREGA ESTA LÍNEA PARA ARREGLAR EL ERROR DE AUDITORÍA 👇
+            ("Auditoria", "IP", "TEXT")
         ]
         
         for tabla, columna, tipo in columnas_compatibilidad:
