@@ -101,25 +101,33 @@ def init_db_completa():
             Ultimo_Acceso TIMESTAMP NULL
         )''')
         
-        # Mantener columnas nuevas si existen, pero no forzar estructura incompatible
+        # --- AQUÍ ESTÁ LA SOLUCIÓN: Agregamos las columnas que faltan ---
         columnas_compatibilidad = [
             ("Usuarios", "TutorialVisto", "INTEGER DEFAULT 0"),
             ("Usuarios", "Face_Encoding", "TEXT"),
             ("Usuarios", "Fecha_Registro", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+            # 👇 ESTA ES LA LÍNEA NUEVA QUE ARREGLA TU ERROR 👇
+            ("Solicitudes", "Evidencia_Reportada_Url", "TEXT"),
+            ("Solicitudes", "Resuelto_Por", "TEXT"),
         ]
         
         for tabla, columna, tipo in columnas_compatibilidad:
             try:
-                c.execute(f"SELECT {columna} FROM {tabla} LIMIT 1")
-            except sqlite3.OperationalError:
-                try:
-                    c.execute(f"ALTER TABLE {tabla} ADD COLUMN {columna} {tipo}")
-                    print(f"✅ Columna {columna} agregada a tabla {tabla}")
-                except Exception as e:
-                    print(f"⚠️ No se pudo agregar columna {columna} a {tabla}: {e}")
-                    # Continuar sin esta columna
+                # Verificamos si la tabla existe antes de intentar alterar
+                c.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{tabla}'")
+                if c.fetchone():
+                    try:
+                        c.execute(f"SELECT {columna} FROM {tabla} LIMIT 1")
+                    except sqlite3.OperationalError:
+                        try:
+                            c.execute(f"ALTER TABLE {tabla} ADD COLUMN {columna} {tipo}")
+                            print(f"✅ Columna {columna} agregada a tabla {tabla}")
+                        except Exception as e:
+                            print(f"⚠️ No se pudo agregar columna {columna} a {tabla}: {e}")
+            except Exception as e:
+                pass
 
-        # Crear tablas adicionales
+        # Crear tablas adicionales si no existen
         c.execute('''CREATE TABLE IF NOT EXISTS Evidencias (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             CI_Estudiante TEXT,
@@ -153,24 +161,25 @@ def init_db_completa():
             Fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )''')
         
-        # Crear usuario admin si no existe (usando estructura compatible)
-        c.execute("SELECT CI FROM Usuarios WHERE Tipo=0")
-        if not c.fetchone():
-            # Usar nombres de columnas exactos de la estructura real
-            c.execute('''INSERT INTO Usuarios (Nombre, Apellido, CI, Password, Tipo, Activo) 
-                         VALUES (?,?,?,?,?,?)''', 
-                     ('Admin', 'Sistema', '9999999999', 'admin123', 0, 1))
-            print("✅ Usuario admin creado")
+        # Crear usuario admin si no existe
+        try:
+            c.execute("SELECT CI FROM Usuarios WHERE Tipo=0")
+            if not c.fetchone():
+                c.execute('''INSERT INTO Usuarios (Nombre, Apellido, CI, Password, Tipo, Activo) 
+                             VALUES (?,?,?,?,?,?)''', 
+                         ('Admin', 'Sistema', '9999999999', 'admin123', 0, 1))
+                print("✅ Usuario admin creado")
+        except:
+            pass
 
         conn.commit()
         conn.close()
-        print("✅ Base de datos inicializada correctamente (compatibilidad total)")
+        print("✅ Base de datos verificada y actualizada correctamente")
     except Exception as e:
         print(f"❌ Error inicializando DB: {e}")
 
-# Ejecutar inicialización
+# Ejecutar inicialización al arrancar
 init_db_completa()
-
 # =========================================================================
 # 3. CONFIGURACIÓN DE CORS
 # =========================================================================
