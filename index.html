@@ -454,7 +454,85 @@
         }
 
         /* ==========================================================================
-           8. MODALES (ESTILOS DE PERFIL.HTML)
+           8. SECCIÓN LIBRO DIGITAL INTERACTIVO
+           ========================================================================== */
+        .digital-book-section {
+            padding: 80px 20px;
+            background: linear-gradient(135deg, rgba(106, 13, 173, 0.03) 0%, rgba(46, 139, 87, 0.03) 100%);
+            text-align: center;
+        }
+
+        .book-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--bg-card);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-soft);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            padding: 40px 30px;
+            position: relative;
+        }
+
+        .book-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+        }
+
+        .book-header {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .book-header h2 {
+            color: var(--primary);
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .book-header p {
+            color: var(--text-sec);
+            font-size: 1.1rem;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .book-frame-wrapper {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s var(--transition-bounce), box-shadow 0.3s;
+        }
+
+        .book-frame-wrapper:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .book-frame-wrapper iframe {
+            display: block;
+            width: 100%;
+            height: 640px;
+            border: none;
+        }
+
+        .book-footer {
+            margin-top: 25px;
+            color: var(--text-sec);
+            font-size: 0.95rem;
+            font-style: italic;
+        }
+
+        /* ==========================================================================
+           9. MODALES (ESTILOS DE PERFIL.HTML)
            ========================================================================== */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -510,7 +588,7 @@
         }
 
         /* ==========================================================================
-           9. FOOTER (ESTILOS DE PERFIL.HTML)
+           10. FOOTER (ESTILOS DE PERFIL.HTML)
            ========================================================================== */
         footer {
             background: #1a1a1a; color: white; padding: 30px 20px;
@@ -530,7 +608,7 @@
         .copyright { font-size: 0.85rem; color: #888; border-top: 1px solid #333; padding-top: 15px; }
 
         /* ==========================================================================
-           10. ANIMACIONES
+           11. ANIMACIONES
            ========================================================================== */
         @keyframes fadeIn {
             from { opacity: 0; } to { opacity: 1; }
@@ -545,7 +623,7 @@
         }
 
         /* ==========================================================================
-           11. RESPONSIVE PARA MÓVILES
+           12. RESPONSIVE PARA MÓVILES
            ========================================================================== */
         @media (max-width: 768px) {
             .main-header { height: var(--header-height-mobile); padding: 0 15px; }
@@ -569,7 +647,18 @@
             .info-grid { grid-template-columns: 1fr; gap: 20px; }
             .info-card { padding: 30px 20px; }
             
+            .digital-book-section { padding: 50px 15px; }
+            .book-header h2 { font-size: 1.8rem; }
+            .book-header p { font-size: 1rem; }
+            .book-frame-wrapper iframe { height: 400px; }
+            .book-container { padding: 30px 20px; }
+            
             .contact-item { font-size: 0.95rem; }
+        }
+
+        @media (max-width: 480px) {
+            .book-frame-wrapper iframe { height: 300px; }
+            .book-header h2 { font-size: 1.6rem; }
         }
     </style>
 </head>
@@ -658,6 +747,22 @@
                     <h3>Privacidad Total</h3>
                     <p>Tus evidencias están encriptadas y protegidas, garantizando seguridad y confidencialidad.</p>
                 </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- NUEVA SECCIÓN: LIBRO DIGITAL INTERACTIVO -->
+    <section class="digital-book-section">
+        <div class="book-container">
+            <div class="book-header">
+                <h2>Explora Nuestro Colegio</h2>
+            </div>
+            
+            <div class="book-frame-wrapper">
+                <iframe width="100%" height="640" style="width: 100%; height: 640px; border: none; max-width: 100%;" allow="xr-spatial-tracking; vr; gyroscope; accelerometer; fullscreen; autoplay; xr" scrolling="no" allowfullscreen="true" frameborder="0" src="https://webobook.com/public/657e44fc1340d73a46388f52,en?ap=true&si=true&sm=true&sp=true&sfr=true&sl=true&sop=false&" allowvr="yes"></iframe>
+            </div>
+            
+            <div class="book-footer">
             </div>
         </div>
     </section>
