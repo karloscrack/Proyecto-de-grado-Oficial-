@@ -195,6 +195,10 @@ def init_db_completa():
         columnas_compatibilidad = [
             ("Usuarios", "Email", "TEXT"),
             ("Usuarios", "Telefono", "TEXT"),
+            # 👇 AGREGA ESTAS LÍNEAS NUEVAS AQUÍ 👇
+            ("Usuarios", "Ultimo_Acceso", "TIMESTAMP NULL"),
+            ("Usuarios", "Fecha_Desactivacion", "TIMESTAMP NULL"),
+            # 👆 FIN DE LÍNEAS NUEVAS 👆
             ("Evidencias", "Tamanio_KB", "REAL DEFAULT 0"),
             ("Evidencias", "Asignado_Automaticamente", "INTEGER DEFAULT 0"),
             ("Solicitudes", "Fecha_Resolucion", "TIMESTAMP NULL"),
