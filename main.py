@@ -127,7 +127,7 @@ def init_db_completa():
             Hash TEXT,
             Estado INTEGER DEFAULT 1,
             Tipo_Archivo TEXT DEFAULT 'documento',
-            Fecha_Subida TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            Fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(CI_Estudiante) REFERENCES Usuarios(CI)
         )''')
 
@@ -318,16 +318,16 @@ async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
             return JSONResponse(content={"autenticado": False, "mensaje": "Cuenta desactivada"})
         
         # 4. Obtener Evidencias (CORRECCIÓN CRÍTICA AQUÍ)
-        # Intentamos leer 'Fecha' (nombre antiguo) o 'Fecha_Subida' (nombre nuevo)
+        # Intentamos leer 'Fecha' (nombre antiguo) o 'Fecha' (nombre nuevo)
         try:
             # Intento 1: Estructura nueva
             c.execute("""
                 SELECT id, Url_Archivo as url, 
                        COALESCE(Tipo_Archivo, 'documento') as tipo, 
-                       Fecha_Subida as fecha
+                       Fecha as fecha
                 FROM Evidencias 
                 WHERE CI_Estudiante=? AND Estado=1 
-                ORDER BY Fecha_Subida DESC
+                ORDER BY Fecha DESC
             """, (user['CI'],))
         except sqlite3.OperationalError:
             try:
@@ -389,7 +389,7 @@ async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
         })
 @app.post("/buscar_estudiante")
 async def buscar_estudiante(cedula: Optional[str] = Form(None)):
-    """Endpoint corregido para leer Fecha o Fecha_Subida"""
+    """Endpoint corregido para leer Fecha o Fecha"""
     try:
         if not cedula:
             return JSONResponse(content={"encontrado": False, "mensaje": "La cédula es requerida"})
@@ -418,19 +418,19 @@ async def buscar_estudiante(cedula: Optional[str] = Form(None)):
             
         # --- CORRECCIÓN DE EVIDENCIAS ---
         try:
-            # Intento 1: Estructura nueva (Fecha_Subida y Tipo_Archivo)
+            # Intento 1: Estructura nueva (Fecha y Tipo_Archivo)
             c.execute("""
-                SELECT id, Url_Archivo as url, Tipo_Archivo as tipo, Fecha_Subida 
+                SELECT id, Url_Archivo as url, Tipo_Archivo as tipo, Fecha 
                 FROM Evidencias 
                 WHERE CI_Estudiante=? AND Estado=1 
-                ORDER BY Fecha_Subida DESC
+                ORDER BY Fecha DESC
             """, (user['CI'],))
         except sqlite3.OperationalError:
             try:
                 # Intento 2: Estructura antigua (Fecha)
-                # Usamos 'Fecha' y lo renombramos a 'Fecha_Subida' para el frontend
+                # Usamos 'Fecha' y lo renombramos a 'Fecha' para el frontend
                 c.execute("""
-                    SELECT id, Url_Archivo as url, 'documento' as tipo, Fecha as Fecha_Subida 
+                    SELECT id, Url_Archivo as url, 'documento' as tipo, Fecha as Fecha 
                     FROM Evidencias 
                     WHERE CI_Estudiante=? AND Estado=1 
                     ORDER BY Fecha DESC
@@ -826,17 +826,17 @@ async def todas_evidencias(cedula: str):
             # Intento 1: Estructura nueva
             c.execute("""
                 SELECT id, Url_Archivo as url, Tipo_Archivo as tipo, 
-                Fecha_Subida, Estado, Hash 
+                Fecha, Estado, Hash 
                 FROM Evidencias 
                 WHERE CI_Estudiante=? 
-                ORDER BY Fecha_Subida DESC
+                ORDER BY Fecha DESC
             """, (cedula,))
         except sqlite3.OperationalError:
             try:
                 # Intento 2: Estructura antigua (Fecha)
                 c.execute("""
                     SELECT id, Url_Archivo as url, 'documento' as tipo, 
-                    Fecha as Fecha_Subida, Estado, Hash 
+                    Fecha as Fecha, Estado, Hash 
                     FROM Evidencias 
                     WHERE CI_Estudiante=? 
                     ORDER BY Fecha DESC
@@ -963,18 +963,7 @@ async def reset_database():
         })
     except Exception as e:
         return JSONResponse(content={"error": str(e)})
-@app.get("/reset-db")
-async def reset_database():
-    """Endpoint para reiniciar la base de datos (solo desarrollo)"""
-    try:
-        init_db_completa()
-        return JSONResponse(content={
-            "status": "ok",
-            "message": "Base de datos reinicializada"
-        })
-    except Exception as e:
-        return JSONResponse(content={"error": str(e)})
-
+    
 # =========================================================================
 # ENDPOINT DE DIAGNÓSTICO (OPCIONAL, PARA DEBUG) - AL FINAL
 # =========================================================================
