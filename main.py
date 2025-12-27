@@ -283,98 +283,88 @@ def home():
 # =========================================================================
 @app.post("/iniciar_sesion")
 async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
-    """Endpoint de login con compatibilidad total"""
+    """Endpoint de login robusto contra cambios de esquema en DB"""
     try:
-        # Sanitización exhaustiva
         cedula = cedula.strip()
         contrasena = contrasena.strip()
         
-        # Validación
         if not cedula or not contrasena:
-            return JSONResponse(content={
-                "autenticado": False, 
-                "mensaje": "La cédula y contraseña son requeridas"
-            })
+            return JSONResponse(content={"autenticado": False, "mensaje": "Datos incompletos"})
         
         conn = get_db_connection()
         c = conn.cursor()
         
-        # CONSULTA CORREGIDA: Usar nombres de columna exactos de la estructura real
-        # Buscar por CI, con manejo de mayúsculas/minúsculas y espacios
+        # 1. Buscar Usuario (Usamos alias para asegurar compatibilidad de nombres)
         c.execute("""
-            SELECT 
-                ID, Nombre, Apellido, CI, Password, Tipo, Foto, Activo
+            SELECT ID, Nombre, Apellido, CI, Password, Tipo, Foto, Activo
             FROM Usuarios 
-            WHERE TRIM(UPPER(CI)) = TRIM(UPPER(?))
+            WHERE TRIM(CI) = TRIM(?)
         """, (cedula,))
         
         user = c.fetchone()
         
         if not user:
             conn.close()
-            return JSONResponse(content={
-                "autenticado": False, 
-                "mensaje": "Usuario no encontrado"
-            })
+            return JSONResponse(content={"autenticado": False, "mensaje": "Usuario no encontrado"})
         
-        # DEBUG: Registrar datos encontrados
-        print(f"🔍 LOGIN - Usuario encontrado:")
-        print(f"   - CI en DB: '{user['CI']}'")
-        print(f"   - Contraseña DB: '{user['Password']}'")
-        print(f"   - Contraseña recibida: '{contrasena}'")
-        print(f"   - Activo: {user['Activo']}")
-        
-        # Comparación EXACTA de contraseña (case-sensitive como estaba)
+        # 2. Validar Contraseña (Texto plano)
         if user["Password"] != contrasena:
             conn.close()
-            return JSONResponse(content={
-                "autenticado": False, 
-                "mensaje": "Contraseña incorrecta"
-            })
+            return JSONResponse(content={"autenticado": False, "mensaje": "Contraseña incorrecta"})
         
-        # Verificar estado activo (1 = activo, 0 = inactivo)
+        # 3. Validar Estado
         if user.get("Activo", 1) == 0:
             conn.close()
-            return JSONResponse(content={
-                "autenticado": False, 
-                "mensaje": "Cuenta desactivada por administración"
-            })
+            return JSONResponse(content={"autenticado": False, "mensaje": "Cuenta desactivada"})
         
-        # Obtener evidencias (con fallback si Tipo_Archivo no existe)
+        # 4. Obtener Evidencias (CORRECCIÓN CRÍTICA AQUÍ)
+        # Intentamos leer 'Fecha' (nombre antiguo) o 'Fecha_Subida' (nombre nuevo)
         try:
+            # Intento 1: Estructura nueva
             c.execute("""
                 SELECT id, Url_Archivo as url, 
                        COALESCE(Tipo_Archivo, 'documento') as tipo, 
-                       Fecha_Subida 
+                       Fecha_Subida as fecha
                 FROM Evidencias 
                 WHERE CI_Estudiante=? AND Estado=1 
                 ORDER BY Fecha_Subida DESC
             """, (user['CI'],))
         except sqlite3.OperationalError:
-            c.execute("""
-                SELECT id, Url_Archivo as url, 'documento' as tipo, Fecha_Subida 
-                FROM Evidencias 
-                WHERE CI_Estudiante=? AND Estado=1 
-                ORDER BY Fecha_Subida DESC
-            """, (user['CI'],))
+            try:
+                # Intento 2: Estructura antigua (usando columna 'Fecha')
+                c.execute("""
+                    SELECT id, Url_Archivo as url, 
+                           'documento' as tipo, 
+                           Fecha as fecha
+                    FROM Evidencias 
+                    WHERE CI_Estudiante=? AND Estado=1 
+                    ORDER BY Fecha DESC
+                """, (user['CI'],))
+            except Exception as e:
+                # Si todo falla, devolvemos lista vacía para no romper el login
+                print(f"⚠️ Error leyendo evidencias: {e}")
+                evs = []
         
-        evs = [dict(row) for row in c.fetchall()]
+        # Si la consulta fue exitosa, procesamos las filas
+        if 'evs' not in locals():
+            evs = [dict(row) for row in c.fetchall()]
 
-        # Notificaciones
-        c.execute("""
-            SELECT Tipo, Estado, Respuesta, Fecha 
-            FROM Solicitudes 
-            WHERE CI_Solicitante=? AND Estado != 'PENDIENTE' 
-            ORDER BY Fecha DESC LIMIT 5
-        """, (user['CI'],))
-        
-        notis = [dict(row) for row in c.fetchall()]
+        # 5. Obtener Notificaciones
+        try:
+            c.execute("""
+                SELECT Tipo, Estado, Respuesta, Fecha 
+                FROM Solicitudes 
+                WHERE CI_Solicitante=? AND Estado != 'PENDIENTE' 
+                ORDER BY Fecha DESC LIMIT 5
+            """, (user['CI'],))
+            notis = [dict(row) for row in c.fetchall()]
+        except:
+            notis = []
+
         conn.close()
         
-        # Auditoría
         registrar_auditoria("LOGIN_EXITOSO", f"Usuario {cedula} autenticado")
         
-        # Respuesta estructurada que el frontend espera
         return JSONResponse(content={
             "autenticado": True,
             "mensaje": "Autenticación exitosa",
@@ -392,11 +382,10 @@ async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
     except Exception as e:
         print(f"❌ ERROR CRÍTICO en iniciar_sesion: {e}")
         import traceback
-        traceback.print_exc()
-        
+        traceback.print_exc() # Esto imprimirá el error real en los logs de Railway
         return JSONResponse(content={
             "autenticado": False, 
-            "mensaje": "Error interno del servidor"
+            "mensaje": f"Error interno: {str(e)}" 
         })
     
 @app.post("/buscar_estudiante")
