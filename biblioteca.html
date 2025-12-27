@@ -1147,12 +1147,15 @@
                 localStorage.setItem('usuario_contrasena', contrasena);
                 localStorage.setItem('usuario_tipo', (data.datos.tipo !== undefined && data.datos.tipo !== null) ? data.datos.tipo : 1);
                 
-                // Redireccionar según tipo de usuario
-                if (data.datos.tipo === 0) {
-                    window.location.href = "perfiladmin.html";
-                } else {
-                    window.location.href = "perfil.html";
-                }
+               // ✅ PON ESTO:
+              // Usamos '==' en lugar de '===' para que acepte tanto 0 como "0"
+              if (data.datos.tipo == 0) {
+             console.log("👑 Redirigiendo al Panel de Admin...");
+             window.location.href = "perfiladmin.html";
+            } else {
+              console.log("🎓 Redirigiendo al Perfil de Estudiante...");
+               window.location.href = "perfil.html";
+            }
 
             } else {
                 errorText.innerHTML = data.mensaje || 'Usuario o contraseña incorrectos';
