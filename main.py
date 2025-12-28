@@ -693,40 +693,58 @@ async def registrar_usuario(
 
 @app.post("/buscar_estudiante")
 async def buscar_estudiante(cedula: str = Form(...)):
-    """Busca datos de un estudiante específico para el perfil"""
+    """Busca datos de un estudiante y sus evidencias para el perfil"""
     try:
         conn = get_db_connection()
-        
-        # Buscar usuario
         c = conn.cursor()
+        
+        # 1. Buscar usuario
         c.execute("SELECT * FROM Usuarios WHERE CI = ?", (cedula,))
         user = c.fetchone()
         
         if not user:
             conn.close()
-            return JSONResponse({"exito": False, "mensaje": "Estudiante no encontrado"})
+            # Usamos 'encontrado' porque así lo espera perfil.html
+            return JSONResponse({"encontrado": False, "mensaje": "Estudiante no encontrado"})
             
-        # Contar sus evidencias aprobadas
-        c.execute("SELECT COUNT(*) FROM Evidencias WHERE CI_Estudiante = ? AND Estado = 1", (cedula,))
-        total_evs = c.fetchone()[0]
-        
+        # 2. Obtener galería de evidencias (CRÍTICO: FALTABA ESTO)
+        try:
+            c.execute("""
+                SELECT id, Url_Archivo as url, Tipo_Archivo as tipo, Fecha, Estado 
+                FROM Evidencias 
+                WHERE CI_Estudiante = ? AND Estado = 1 
+                ORDER BY Fecha DESC
+            """, (cedula,))
+            evs = [dict(r) for r in c.fetchall()]
+        except Exception as e:
+            print(f"Error obteniendo galería: {e}")
+            evs = []
+
         conn.close()
         
-        # Convertir a diccionario y asegurar que no enviamos la contraseña
-        user_dict = dict(user)
-        if "Password" in user_dict:
-            del user_dict["Password"]
+        # 3. Preparar datos de respuesta
+        datos_usuario = {
+            "id": user["ID"],
+            "nombre": user["Nombre"],
+            "apellido": user["Apellido"],
+            "cedula": user["CI"],
+            "tipo": user["Tipo"],
+            "url_foto": user.get("Foto", ""),
+            "email": user.get("Email", ""),
+            "tutorial_visto": bool(user.get("TutorialVisto", 0)),
+            "galeria": evs  # <--- Aquí va la lista de fotos
+        }
             
+        # 4. Respuesta con la estructura EXACTA que espera tu HTML
         return JSONResponse({
-            "exito": True,
-            "estudiante": user_dict,
-            "total_evidencias": total_evs
+            "encontrado": True,  # <--- CAMBIADO DE 'exito' A 'encontrado'
+            "datos": datos_usuario
         })
         
     except Exception as e:
         print(f"Error en buscar_estudiante: {e}")
-        return JSONResponse({"exito": False, "mensaje": str(e)})
-
+        return JSONResponse({"encontrado": False, "mensaje": str(e)})
+    
 @app.post("/cambiar_estado_usuario")
 async def cambiar_estado_usuario(datos: EstadoUsuarioRequest):
     """Activa/desactiva un usuario"""
