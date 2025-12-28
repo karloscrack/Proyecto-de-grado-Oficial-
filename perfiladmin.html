@@ -1440,62 +1440,76 @@
     }
 
     async function actualizarDatosDashboard() {
-    try {
-        const res = await fetch(`${API_URL}/estadisticas_almacenamiento`);
-        const stats = await res.json();
-        
-        document.getElementById('statUsers').textContent = stats.usuarios_activos || 0;
-        document.getElementById('statFiles').textContent = stats.total_evidencias || 0;
-        
-        const gb = stats.almacenamiento_gb || 0;
-        document.getElementById('statSize').textContent = gb.toFixed(2) + ' GB';
-        document.getElementById('realSizeDisplay').textContent = gb.toFixed(2) + ' GB';
-        
-        const costoMensual = (gb * 0.005).toFixed(3);
-        const costoAnual = (gb * 0.005 * 12).toFixed(3);
-        
-        document.getElementById('monthlyCost').textContent = '$' + costoMensual;
-        document.getElementById('yearlyCost').textContent = '$' + costoAnual;
-        
-        document.getElementById('mainStorageBar').style.width = Math.min(100, (gb/50)*100) + '%';
-        document.getElementById('sidebarStorageBar').style.width = Math.min(100, (gb/50)*100) + '%';
-        document.getElementById('sidebarStorageText').textContent = gb.toFixed(1) + ' GB usados';
-        
-        // ==========================================
-        // AGREGADO: Actualizar tarjeta de costos AWS Rekognition en Mantenimiento
-        // ==========================================
-        if(document.getElementById('rekognitionCount')) {
-            // Usamos el total de evidencias como proxy de imágenes procesadas
-            document.getElementById('rekognitionCount').textContent = stats.total_evidencias || 0;
+        try {
+            const res = await fetch(`${API_URL}/estadisticas_almacenamiento`);
             
-            // Si el backend envía el detalle de costos, lo usamos
-            if (stats.costo_estimado_usd && stats.costo_estimado_usd.rekognition) {
-                document.getElementById('rekognitionCost').textContent = '$' + parseFloat(stats.costo_estimado_usd.rekognition).toFixed(2);
+            if (!res.ok) throw new Error("Error del servidor");
+
+            const stats = await res.json();
+            
+            // Actualizar contadores con animación simple
+            actualizarContador('statUsers', stats.usuarios_activos || 0);
+            actualizarContador('statFiles', stats.total_evidencias || 0);
+            
+            // Almacenamiento
+            const gb = stats.almacenamiento_gb || 0;
+            document.getElementById('statSize').textContent = gb.toFixed(2) + ' GB';
+            document.getElementById('realSizeDisplay').textContent = gb.toFixed(2) + ' GB';
+            
+            // Costos
+            const costoMensual = (gb * 0.005).toFixed(3);
+            const costoAnual = (gb * 0.005 * 12).toFixed(3);
+            
+            document.getElementById('monthlyCost').textContent = '$' + costoMensual;
+            document.getElementById('yearlyCost').textContent = '$' + costoAnual;
+            
+            // Barras de progreso
+            document.getElementById('mainStorageBar').style.width = Math.min(100, (gb/50)*100) + '%';
+            if(document.getElementById('sidebarStorageBar')) {
+                document.getElementById('sidebarStorageBar').style.width = Math.min(100, (gb/50)*100) + '%';
+                document.getElementById('sidebarStorageText').textContent = gb.toFixed(1) + ' GB usados';
+            }
+            
+            // Sección Mantenimiento (Costos AWS)
+            if(document.getElementById('rekognitionCount')) {
+                document.getElementById('rekognitionCount').textContent = stats.total_evidencias || 0;
                 
-                // Calcular total mensual (almacenamiento + IA)
-                const almacenamientoCost = parseFloat(costoMensual);
-                const rekognitionCost = parseFloat(stats.costo_estimado_usd.rekognition);
-                const totalMensual = (almacenamientoCost + rekognitionCost).toFixed(2);
-                document.getElementById('totalCost').textContent = '$' + totalMensual;
-            } else {
-                // Calculo manual si no viene del backend
-                // AWS Rekognition: $1.00 por 1000 imágenes
-                const rekogCost = ((stats.total_evidencias || 0) / 1000).toFixed(2);
-                document.getElementById('rekognitionCost').textContent = '$' + rekogCost;
+                // Priorizar datos precisos del backend si existen
+                let iaCost = 0;
+                if (stats.costo_estimado_usd && stats.costo_estimado_usd.rekognition) {
+                    iaCost = parseFloat(stats.costo_estimado_usd.rekognition);
+                } else {
+                    iaCost = ((stats.total_evidencias || 0) / 1000);
+                }
                 
-                // Calcular total mensual (almacenamiento + IA)
-                const almacenamientoCost = parseFloat(costoMensual);
-                const iaCost = parseFloat(rekogCost);
-                const totalMensual = (almacenamientoCost + iaCost).toFixed(2);
+                document.getElementById('rekognitionCost').textContent = '$' + iaCost.toFixed(2);
+                
+                // Costo Total = Storage + IA
+                const totalMensual = (parseFloat(costoMensual) + iaCost).toFixed(2);
                 document.getElementById('totalCost').textContent = '$' + totalMensual;
             }
+            
+        } catch (error) {
+            console.error("Error conectando al dashboard:", error);
+            // Mostrar visualmente que hay un error de conexión
+            document.getElementById('statUsers').innerHTML = '<span style="font-size:1rem; color:var(--error);">Offline</span>';
+            document.getElementById('statFiles').innerHTML = '<span style="font-size:1rem; color:var(--error);">Offline</span>';
+            document.getElementById('statSize').innerHTML = '<span style="font-size:1rem; color:var(--error);">Offline</span>';
         }
-        
-    } catch (error) {
-        console.error("Error actualizando dashboard:", error);
     }
-}
 
+    // Pequeña función auxiliar para animar los números (opcional, pero se ve profesional)
+    function actualizarContador(id, valorFinal) {
+        const elemento = document.getElementById(id);
+        if(!elemento) return;
+        // Si dice "Offline" o está vacío, poner el valor directo
+        if(elemento.innerText === 'Offline' || elemento.innerText === '') {
+            elemento.textContent = valorFinal;
+            return;
+        }
+        elemento.textContent = valorFinal;
+    }
+    
     async function cargarDatosIniciales() {
         try {
             // Cargar datos en paralelo
