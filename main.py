@@ -13,6 +13,7 @@ import smtplib
 import pytz
 import json
 import io
+import difflib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Optional, List
@@ -434,8 +435,8 @@ def identificar_varios_rostros_aws(imagen_path: str, confidence_threshold: float
     
 def buscar_estudiantes_por_texto(imagen_path: str, conn) -> List[str]:
     """
-    Usa AWS Rekognition para leer texto en la imagen y buscar nombres de estudiantes.
-    Retorna lista de cédulas encontradas.
+    Versión MEJORADA (Fuzzy): Capaz de leer tipografías difíciles (Góticas, Manuscritas).
+    Busca similitud palabra por palabra en lugar de texto exacto.
     """
     if not rekog: return []
     cedulas_encontradas = set()
@@ -444,35 +445,48 @@ def buscar_estudiantes_por_texto(imagen_path: str, conn) -> List[str]:
         with open(imagen_path, 'rb') as image_file:
             image_bytes = image_file.read()
             
-        # 1. Pedir a AWS que lea todo el texto
+        # 1. Pedir a AWS que lea LÍNEAS de texto
         response = rekog.detect_text(Image={'Bytes': image_bytes})
-        textDetections = response.get('TextDetections', [])
+        lineas_detectadas = [t['DetectedText'].lower() for t in response.get('TextDetections', []) if t['Type'] == 'LINE']
         
-        if not textDetections: return []
+        if not lineas_detectadas: return []
         
-        # 2. Unir todo el texto encontrado en una sola línea minúscula para buscar fácil
-        texto_completo = " ".join([t['DetectedText'] for t in textDetections]).lower()
-        print(f"📖 Texto leído en imagen: {texto_completo[:100]}...") # Log para depurar
-        
-        # 3. Traer lista de estudiantes de la base de datos para comparar
-        # Optimización: Traemos solo Nombre, Apellido y CI
+        print(f"📖 Texto crudo detectado: {lineas_detectadas}") # Para depurar en los logs
+
+        # 2. Traer estudiantes
         estudiantes = conn.execute("SELECT Nombre, Apellido, CI FROM Usuarios WHERE Tipo=1").fetchall()
         
-        # 4. Buscar coincidencias (Nombre + Apellido)
+        # 3. Lógica de Búsqueda Difusa (Fuzzy Matching)
         for est in estudiantes:
-            # Creamos el nombre completo "juan perez"
-            nombre_completo = f"{est['Nombre']} {est['Apellido']}".lower()
+            # Limpiamos el nombre del estudiante (ej: "Juan" y "Perez")
+            nombre_partes = f"{est['Nombre']} {est['Apellido']}".lower().split()
+            if not nombre_partes: continue
             
-            # Verificamos si "juan perez" está escrito en la imagen
-            if nombre_completo in texto_completo:
-                print(f"✅ Texto coincidente encontrado: {nombre_completo}")
-                cedulas_encontradas.add(est['CI'])
+            # Buscamos en cada línea de texto encontrada en la imagen
+            for linea in lineas_detectadas:
+                palabras_linea = linea.split()
                 
+                # Contamos cuántas partes del nombre encontramos en esta línea
+                coincidencias = 0
+                for parte_nombre in nombre_partes:
+                    # Buscamos si alguna palabra de la línea se parece a esta parte del nombre
+                    # cutoff=0.80 significa que aceptamos 20% de error (ej: "Pcrez" vs "Perez")
+                    mejores_matches = difflib.get_close_matches(parte_nombre, palabras_linea, n=1, cutoff=0.80)
+                    if mejores_matches:
+                        coincidencias += 1
+                
+                # Si encontramos al menos el 100% de las palabras del nombre (Nombre + Apellido)
+                # O si el nombre es muy largo, al menos la mayoría
+                if coincidencias >= len(nombre_partes):
+                    print(f"✅ Coincidencia difusa encontrada: '{linea}' se parece a '{est['Nombre']} {est['Apellido']}'")
+                    cedulas_encontradas.add(est['CI'])
+                    break # Ya encontramos a este estudiante, pasamos al siguiente
+
     except Exception as e:
-        print(f"⚠️ Error leyendo texto: {e}")
+        print(f"⚠️ Error leyendo texto (Fuzzy): {e}")
         
     return list(cedulas_encontradas)
-    
+
 # Función auxiliar por si no la tienes
 def calcular_hash(file_path):
     sha256_hash = hashlib.sha256()
