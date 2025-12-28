@@ -720,6 +720,25 @@
             border-color: var(--primary);
             box-shadow: 0 0 0 3px var(--primary-soft);
         }
+        .drop-zone {
+            border: 2px dashed var(--border-color);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+        .drop-zone.drag-over {
+            border-color: var(--primary);
+            background: rgba(106, 13, 173, 0.05); /* var(--primary-soft) */
+            transform: scale(1.01);
+            box-shadow: 0 0 15px rgba(106, 13, 173, 0.2);
+        }
+        /* Hacemos que el contenido no interfiera con el arrastre */
+        .drop-zone * {
+            pointer-events: none;
+        }
+        .drop-zone button, .drop-zone input {
+            pointer-events: auto;
+        }
     </style>
 </head>
 
@@ -976,21 +995,22 @@
             </div>
         </section>
 
-        <!-- PANEL: SUBIR ARCHIVOS -->
+        <!-- SUBIDA CON IA -->
         <section id="panel-upload" class="panel-section">
-            <h2 style="color:var(--primary); margin-bottom:20px;">Subida de Evidencias</h2>
+        <h2 style="color:var(--primary); margin-bottom:20px;">Subida de Evidencias</h2>
             
-            <!-- SUBIDA CON IA -->
-            <div class="storage-calc" style="text-align:center; margin-bottom:30px;">
+            <div id="dropZoneIA" class="storage-calc drop-zone" style="text-align:center; margin-bottom:30px;">
                 <i class="fas fa-robot" style="font-size:3rem; color:var(--primary); margin-bottom:15px;"></i>
                 <h3>Subida Inteligente (Reconocimiento Facial)</h3>
                 <p style="margin-bottom:20px; color:var(--text-sec);">
-                    El sistema asignará automáticamente la foto al estudiante correcto.
+                    Arrastra tus archivos aquí o haz clic para seleccionar.<br>
+                    <small>El sistema asignará automáticamente la foto al estudiante correcto.</small>
                 </p>
                 
                 <input type="file" id="fileInputIA" multiple 
                        accept="image/*,video/*,.pdf,.doc,.docx,.mp3,.mp4" 
                        style="display:none" onchange="handleUploadIA(this)">
+                
                 <button class="btn-primary" onclick="document.getElementById('fileInputIA').click()" 
                         style="font-size:1.1rem; padding:15px 30px;">
                     <i class="fas fa-cloud-upload-alt"></i> Seleccionar Archivos
@@ -1006,6 +1026,9 @@
                      overflow-y:auto; font-size:0.9rem; padding:10px; background:var(--bg-input); 
                      border-radius:8px;"></div>
             </div>
+            <div style="border-top:2px solid var(--border-color); padding-top:30px;">
+                <h4><i class="fas fa-hand-pointer"></i> Subida Manual</h4>
+                ...
 
             <!-- SUBIDA MANUAL -->
             <div style="border-top:2px solid var(--border-color); padding-top:30px;">
@@ -1372,7 +1395,7 @@
 
         inicializarTema();
         cargarDatosIniciales();
-        
+        configurarDragAndDrop(); 
         // Iniciar actualizaciones automáticas
         iniciarActualizacionesAutomaticas();
         
@@ -2966,7 +2989,9 @@
         }
         
         texto.textContent = 'Proceso completado ✅';
+        if (input.tagName === 'INPUT') {
         input.value = '';
+    }
         
         setTimeout(() => {
             cargarDatosIniciales();
@@ -3241,6 +3266,43 @@
             console.error('Error eliminando evidencias:', error);
             mostrarMensaje('Error al eliminar evidencias: ' + error.message, 'error');
         }
+    }
+    function configurarDragAndDrop() {
+        const dropZone = document.getElementById('dropZoneIA');
+        const fileInput = document.getElementById('fileInputIA');
+        
+        if(!dropZone) return;
+
+        // Prevenir comportamientos por defecto del navegador (para que no abra la foto al soltarla)
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // Efectos visuales: Iluminar al entrar
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false);
+        });
+
+        // Efectos visuales: Apagar al salir o soltar
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false);
+        });
+
+        // AL SOLTAR LOS ARCHIVOS
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            // Enviamos los archivos a tu función de subida existente
+            // Simulamos que viene de un input para no romper tu código actual
+            handleUploadIA({ files: files, value: '' });
+        }, false);
     }
     </script>
 </body>
