@@ -435,10 +435,10 @@ def identificar_varios_rostros_aws(imagen_path: str, confidence_threshold: float
     
 def buscar_estudiantes_por_texto(imagen_path: str, conn) -> List[str]:
     """
-    Versión DEFINITIVA (OCR Flexible):
-    1. 'Bag of Words': Busca en TODA la imagen mezclada, no importa si el nombre está en dos renglones.
-    2. 'Fuzzy Low': Acepta hasta 35% de error para entender letra Gótica (ej: 'Pcrez' = 'Pérez').
-    3. Asignación Múltiple: Si hay dos nombres en la carátula, detectará a ambos.
+    Versión ULTRA-FLEXIBLE para fuentes Góticas/Difíciles:
+    1. Lee PALABRAS y LÍNEAS completas.
+    2. Usa un umbral de similitud muy bajo (0.50) para tolerar errores graves de OCR.
+    3. Imprime exactamente qué leyó AWS para que puedas depurar.
     """
     if not rekog: return []
     cedulas_encontradas = set()
@@ -447,37 +447,57 @@ def buscar_estudiantes_por_texto(imagen_path: str, conn) -> List[str]:
         with open(imagen_path, 'rb') as image_file:
             image_bytes = image_file.read()
             
-        # 1. Detectar TODAS las palabras sueltas (Type='WORD')
+        # 1. Detectar TODO el texto (Palabras y Líneas)
         response = rekog.detect_text(Image={'Bytes': image_bytes})
         
-        # Juntamos todas las palabras que la IA vio en una sola lista desordenada
-        palabras_imagen = [t['DetectedText'].lower() for t in response.get('TextDetections', []) if t['Type'] == 'WORD']
+        # Guardamos palabras sueltas Y líneas completas para tener más oportunidades
+        textos_detectados = []
+        for t in response.get('TextDetections', []):
+            if t['Confidence'] > 40: # Solo si AWS está mínimamente seguro
+                textos_detectados.append(t['DetectedText'].lower())
         
-        if not palabras_imagen: return []
+        if not textos_detectados: 
+            print("⚠️ OCR: No se detectó ningún texto en la imagen.")
+            return []
         
-        print(f"📖 Palabras leídas en imagen: {palabras_imagen}") # Debug en logs
+        print(f"👀 OCR LEYÓ ESTO (Debug): {textos_detectados}") # ¡MIRA ESTO EN TUS LOGS!
 
-        # 2. Traer todos los estudiantes activos
+        # 2. Traer estudiantes
         estudiantes = conn.execute("SELECT Nombre, Apellido, CI FROM Usuarios WHERE Tipo=1").fetchall()
         
         for est in estudiantes:
-            # Limpiamos el nombre del estudiante de la base de datos
-            nombres = est['Nombre'].lower().split()   # Ej: ["juan", "carlos"]
-            apellidos = est['Apellido'].lower().split() # Ej: ["perez", "lopez"]
+            # Preparamos las partes del nombre del estudiante
+            nombres = est['Nombre'].lower().split()
+            apellidos = est['Apellido'].lower().split()
+            nombre_completo_str = f"{est['Nombre']} {est['Apellido']}".lower()
             
-            # --- ESTRATEGIA A: Nombre Completo (Más segura) ---
-            # Busca "Juan", "Carlos", "Perez", "Lopez" en cualquier lugar de la hoja
-            if coincidencia_difusa(nombres + apellidos, palabras_imagen, umbral=0.80):
+            # --- ESTRATEGIA 1: Búsqueda exacta de frase (La mejor para líneas) ---
+            # Si AWS leyó "honorable karlos ayala", esto lo encontrará.
+            encontrado_en_frase = False
+            for texto_ocr in textos_detectados:
+                # Verificamos si el nombre corto (Nombre + Apellido) está DENTRO de una línea detectada
+                # Usamos fuzzy match incluso para la frase completa
+                if difflib.SequenceMatcher(None, f"{nombres[0]} {apellidos[0]}", texto_ocr).ratio() > 0.60:
+                    encontrado_en_frase = True
+                    break
+            
+            if encontrado_en_frase:
+                print(f"✅ (Estrategia Frase) Se detectó a: {est['Nombre']} {est['Apellido']}")
                 cedulas_encontradas.add(est['CI'])
-                continue 
-                
-            # --- ESTRATEGIA B: Nombre Corto (Más flexible para Gótica) ---
-            # Busca solo "Juan" y "Perez". 
-            # Usamos umbral 0.65 para tolerar fallos de lectura en letra gótica.
-            nombre_corto = [nombres[0], apellidos[0]]
-            if coincidencia_difusa(nombre_corto, palabras_imagen, umbral=0.65):
+                continue
+
+            # --- ESTRATEGIA 2: Bolsa de Palabras (Bag of Words) ---
+            # Busca "Karlos" por un lado y "Ayala" por el otro, con tolerancia alta a fallos.
+            
+            # Buscamos el PRIMER Nombre con umbral 0.50 (Muy tolerante para letra Gótica)
+            match_nombre = difflib.get_close_matches(nombres[0], textos_detectados, n=1, cutoff=0.50)
+            
+            # Buscamos el PRIMER Apellido con umbral 0.50
+            match_apellido = difflib.get_close_matches(apellidos[0], textos_detectados, n=1, cutoff=0.50)
+            
+            if match_nombre and match_apellido:
+                print(f"✅ (Estrategia Palabras) Se juntó '{match_nombre[0]}' + '{match_apellido[0]}' -> {est['Nombre']} {est['Apellido']}")
                 cedulas_encontradas.add(est['CI'])
-                print(f"✅ Coincidencia difusa encontrada para: {est['Nombre']} {est['Apellido']}")
 
     except Exception as e:
         print(f"⚠️ Error OCR: {e}")
