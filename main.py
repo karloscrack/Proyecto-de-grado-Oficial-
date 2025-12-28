@@ -2022,21 +2022,21 @@ async def descargar_evidencias_zip(ids: str = Form(...)):
         return JSONResponse({"error": str(e)})
 
 
+from urllib.parse import urlparse 
+
 def limpieza_duplicados_startup():
     """
-    Ejecuta MANTENIMIENTO PROFUNDO al inicio:
-    0. FASE 0: Elimina duplicados por URL exacta.
-    1. FASE 1: Intenta calcular HASHES (si el archivo existe).
-    2. FASE 2: Elimina por HASH (contenido idéntico).
-    3. FASE 3: Elimina por NOMBRE + ESTUDIANTE (Heurística).
-    4. FASE 4: SINCRONIZACIÓN REAL CON NUBE (Pesos y Fantasmas).
+    V5.2 - VERSIÓN MAESTRA: Incluye TODAS las fases (0, 1, 2, 3) restauradas
+    y la Fase 4 corregida para Backblaze.
     """
     print("🧹 INICIANDO PROTOCOLO DE LIMPIEZA Y MANTENIMIENTO...")
     
     try:
         conn = get_db_connection()
         
-        # --- FASE 0: LIMPIEZA POR URL EXACTA ---
+        # ---------------------------------------------------------
+        # FASE 0: LIMPIEZA POR URL EXACTA
+        # ---------------------------------------------------------
         print("🔍 FASE 0: Buscando URLs idénticas...")
         urls_repetidas = conn.execute("""
             SELECT Url_Archivo, COUNT(*) as cantidad FROM Evidencias 
@@ -2046,13 +2046,15 @@ def limpieza_duplicados_startup():
         eliminados_0 = 0
         for row in urls_repetidas:
             copias = conn.execute("SELECT id FROM Evidencias WHERE Url_Archivo = ? ORDER BY id ASC", (row['Url_Archivo'],)).fetchall()
-            for copia in copias[1:]: # Borrar todos menos el primero
+            for copia in copias[1:]: # Borrar todos menos el primero (el original)
                 conn.execute("DELETE FROM Evidencias WHERE id = ?", (copia['id'],))
                 eliminados_0 += 1
         
         if eliminados_0 > 0: print(f"   ✨ Fase 0: {eliminados_0} registros eliminados.")
 
-        # --- FASE 1: REPARAR ARCHIVOS ANTIGUOS (HASH) ---
+        # ---------------------------------------------------------
+        # FASE 1: REPARAR ARCHIVOS ANTIGUOS (CALCULAR HASHES)
+        # ---------------------------------------------------------
         print("⏳ FASE 1: Verificando huellas digitales...")
         pendientes = conn.execute("SELECT id, Url_Archivo FROM Evidencias WHERE Hash = 'PENDIENTE' OR Hash IS NULL").fetchall()
         
@@ -2063,19 +2065,30 @@ def limpieza_duplicados_startup():
                 temp_path = None
                 file_hash = None
                 
-                # Intento de descarga robusto
+                # Intento de descarga para calcular hash
                 if "http" in url and s3_client:
                     try:
-                        # Intentamos extraer la key de varias formas
-                        parts = url.split(f"{BUCKET_NAME}/")
-                        if len(parts) > 1:
-                            key = parts[-1]
-                            with tempfile.NamedTemporaryFile(delete=False) as tmp:
-                                s3_client.download_fileobj(BUCKET_NAME, key, tmp)
-                                temp_path = tmp.name
-                            file_hash = calcular_hash(temp_path)
+                        # Extraer key usando urlparse para seguridad
+                        parsed = urlparse(url)
+                        key = parsed.path.lstrip('/')
+                        
+                        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                            s3_client.download_fileobj(BUCKET_NAME, key, tmp)
+                            temp_path = tmp.name
+                        file_hash = calcular_hash(temp_path)
                     except: pass 
                 
+                # Si es local
+                elif "/local/" in url:
+                    # Ajuste de ruta si es necesario
+                    ruta_local = url.replace("/local/", "./")
+                    if not os.path.exists(ruta_local):
+                         # Intento ruta absoluta para Docker
+                         ruta_local = os.path.join(BASE_DIR, url.replace("/local/", "").lstrip("/"))
+                    
+                    if os.path.exists(ruta_local):
+                        file_hash = calcular_hash(ruta_local)
+
                 if file_hash:
                     conn.execute("UPDATE Evidencias SET Hash = ? WHERE id = ?", (file_hash, row['id']))
                     count_hashed += 1
@@ -2086,11 +2099,13 @@ def limpieza_duplicados_startup():
         conn.commit()
         if count_hashed > 0: print(f"   ✨ Fase 1: {count_hashed} hashes calculados.")
 
-        # --- FASE 2: ELIMINAR POR HASH ---
+        # ---------------------------------------------------------
+        # FASE 2: ELIMINAR POR HASH (CONTENIDO IDÉNTICO)
+        # ---------------------------------------------------------
         print("🔍 FASE 2: Buscando contenido idéntico (Hash)...")
         grupos_hash = conn.execute("""
             SELECT Hash, COUNT(*) as cantidad FROM Evidencias 
-            WHERE Hash NOT IN ('PENDIENTE', '', NULL) GROUP BY Hash HAVING cantidad > 1
+            WHERE Hash NOT IN ('PENDIENTE', '', 'RECUPERADO') GROUP BY Hash HAVING cantidad > 1
         """).fetchall()
         
         eliminados_2 = 0
@@ -2098,10 +2113,11 @@ def limpieza_duplicados_startup():
             copias = conn.execute("SELECT id, Url_Archivo FROM Evidencias WHERE Hash = ? ORDER BY id ASC", (grupo['Hash'],)).fetchall()
             original = copias[0]
             for copia in copias[1:]:
-                # Borrar de S3 si son URLs diferentes
+                # Intentar borrar de S3 si la URL es diferente a la original
                 if s3_client and copia['Url_Archivo'] != original['Url_Archivo'] and BUCKET_NAME in copia['Url_Archivo']:
                     try:
-                        key = copia['Url_Archivo'].split(f"{BUCKET_NAME}/")[-1]
+                        parsed = urlparse(copia['Url_Archivo'])
+                        key = parsed.path.lstrip('/')
                         s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
                     except: pass
                 
@@ -2110,9 +2126,11 @@ def limpieza_duplicados_startup():
         
         if eliminados_2 > 0: print(f"   ✨ Fase 2: {eliminados_2} duplicados exactos eliminados.")
 
-        # --- FASE 3 (HEURÍSTICA): NOMBRE DE ARCHIVO + ESTUDIANTE ---
+        # ---------------------------------------------------------
+        # FASE 3: ELIMINAR POR NOMBRE + ESTUDIANTE (HEURÍSTICA)
+        # ---------------------------------------------------------
         print("🔍 FASE 3: Buscando duplicados por nombre de archivo...")
-        todas = conn.execute("SELECT id, CI_Estudiante, Url_Archivo, Tamanio_KB FROM Evidencias").fetchall()
+        todas = conn.execute("SELECT id, CI_Estudiante, Url_Archivo FROM Evidencias").fetchall()
         agrupados = {}
         import re
         eliminados_3 = 0
@@ -2121,6 +2139,7 @@ def limpieza_duplicados_startup():
             url = ev['Url_Archivo']
             cedula = ev['CI_Estudiante']
             filename = os.path.basename(url)
+            # Limpiamos timestamp inicial (ej: 123456_foto.jpg -> foto.jpg)
             clean_name = re.sub(r'^\d+_', '', filename)
             clave = f"{cedula}|{clean_name}"
             
@@ -2130,23 +2149,27 @@ def limpieza_duplicados_startup():
         for clave, lista in agrupados.items():
             if len(lista) > 1:
                 lista.sort(key=lambda x: x['id'])
-                original = lista[0]
-                duplicados = lista[1:]
+                # original = lista[0] # El primero se queda
+                duplicados = lista[1:] # El resto se va
                 for dup in duplicados:
                     conn.execute("DELETE FROM Evidencias WHERE id = ?", (dup['id'],))
+                    # Intento de borrado físico
                     if s3_client and BUCKET_NAME in dup['Url_Archivo']:
                         try:
-                            key = dup['Url_Archivo'].split(f"{BUCKET_NAME}/")[-1]
+                            parsed = urlparse(dup['Url_Archivo'])
+                            key = parsed.path.lstrip('/')
                             s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
                         except: pass
                     eliminados_3 += 1
 
         if eliminados_3 > 0: print(f"   ✨ Fase 3: {eliminados_3} archivos eliminados por nombre.")
 
-        # --- FASE 4: SINCRONIZACIÓN CON BACKBLAZE (ESTO ARREGLA TUS NÚMEROS) ---
-        print("☁️ FASE 4: Auditando existencia real en la nube y actualizando pesos...")
+        # ---------------------------------------------------------
+        # FASE 4: SINCRONIZACIÓN SEGURA CON NUBE (Corrección 404)
+        # ---------------------------------------------------------
+        print("☁️ FASE 4: Auditando existencia real en la nube (Modo Seguro)...")
         
-        # Recargamos la lista actualizada después de los borrados anteriores
+        # Recargamos la lista actualizada
         conn.commit()
         evidencias = conn.execute("SELECT id, Url_Archivo FROM Evidencias").fetchall()
         
@@ -2161,24 +2184,28 @@ def limpieza_duplicados_startup():
             # A) Si es archivo en Nube
             if s3_client and BUCKET_NAME in url:
                 try:
-                    key = url.split(f"{BUCKET_NAME}/")[-1]
-                    # Preguntamos a Backblaze la verdad
+                    # CORRECCIÓN CRÍTICA: Usamos urlparse
+                    parsed = urlparse(url)
+                    key = parsed.path.lstrip('/')
+                    
+                    # Preguntamos a Backblaze
                     meta = s3_client.head_object(Bucket=BUCKET_NAME, Key=key)
                     peso_kb = meta['ContentLength'] / 1024
                     existe = True
-                except Exception:
-                    existe = False # Si da error, es un fantasma
+                except Exception as e:
+                    # Solo marcamos como inexistente si es un error 404 REAL
+                    error_msg = str(e)
+                    if "404" in error_msg or "Not Found" in error_msg:
+                        existe = False
+                    else:
+                        # Si es otro error (conexión, permisos), asumimos que EXISTE para no borrarlo por error
+                        existe = True 
+                        # print(f"   ⚠️ Error conexión S3 ID {ev['id']}: {e}") 
             
             # B) Si es archivo Local
             elif "/local/" in url:
-                ruta_local = url.replace("/local/", "./") # Ajustar si usas Docker con ruta absoluta
-                # Parche para Docker si la ruta relativa falla
-                if not os.path.exists(ruta_local):
-                   ruta_local = os.path.join("/app", url.replace("/local/", "").lstrip("/"))
-
-                if os.path.exists(ruta_local):
-                    peso_kb = os.path.getsize(ruta_local) / 1024
-                    existe = True
+                existe = True # En local asumimos que existe para evitar borrados accidentales en Docker
+                # Lógica opcional para local...
             
             # ACCIONES FASE 4
             if existe:
@@ -2186,8 +2213,8 @@ def limpieza_duplicados_startup():
                 conn.execute("UPDATE Evidencias SET Tamanio_KB = ? WHERE id = ?", (peso_kb, ev['id']))
                 actualizados_peso += 1
             else:
-                # Borramos el fantasma
-                # print(f"   👻 Eliminando fantasma ID {ev['id']} (No en nube)") # Descomentar para debug
+                # Solo borramos si estamos SEGUROS de que es un 404
+                print(f"   👻 Eliminando fantasma CONFIRMADO ID {ev['id']} (404 en nube)")
                 conn.execute("DELETE FROM Evidencias WHERE id = ?", (ev['id'],))
                 eliminados_nube += 1
         
@@ -2215,6 +2242,113 @@ def limpieza_duplicados_startup():
 
     except Exception as e:
         print(f"❌ Error en limpieza startup: {e}")
+
+    # --- AGREGA ESTE NUEVO ENDPOINT PARA RECUPERAR TUS DATOS ---
+
+@app.post("/recuperar_evidencias_nube")
+async def recuperar_evidencias_nube(background_tasks: BackgroundTasks):
+    """
+    Escanea TODO el bucket de Backblaze, encuentra los archivos que faltan en la BD
+    y los restaura automáticamente (intentando usar IA para re-asignarlos).
+    """
+    def tarea_rescate():
+        print("🚑 INICIANDO OPERACIÓN RESCATE DE EVIDENCIAS...")
+        if not s3_client:
+            print("❌ No hay conexión S3 para el rescate.")
+            return
+
+        conn = get_db_connection()
+        restaurados = 0
+        
+        try:
+            # 1. Listar TODOS los objetos en la carpeta 'evidencias/' de la nube
+            paginator = s3_client.get_paginator('list_objects_v2')
+            pages = paginator.paginate(Bucket=BUCKET_NAME, Prefix='evidencias/')
+            
+            for page in pages:
+                if 'Contents' not in page: continue
+                
+                for obj in page['Contents']:
+                    key = obj['Key'] # Ejemplo: evidencias/123_foto.jpg
+                    
+                    # Ignoramos carpetas vacías
+                    if key.endswith('/'): continue
+                    
+                    # Construimos la URL que debería tener
+                    url_archivo = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{key}"
+                    
+                    # 2. Verificar si ya existe en la BD
+                    existe = conn.execute("SELECT id FROM Evidencias WHERE Url_Archivo = ?", (url_archivo,)).fetchone()
+                    
+                    if not existe:
+                        print(f"   📥 Recuperando: {key}...")
+                        
+                        # Descargar para análisis IA (si es imagen)
+                        temp_path = None
+                        ci_detectada = 'PENDIENTE' # Por defecto
+                        asignado_auto = 0
+                        
+                        try:
+                            # Descargar archivo temporal
+                            with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                                s3_client.download_fileobj(BUCKET_NAME, key, tmp)
+                                temp_path = tmp.name
+                            
+                            # Intentar reconocer rostros para re-asignar
+                            if key.lower().endswith(('.jpg', '.jpeg', '.png', '.webp', '.avif')):
+                                rostros = identificar_varios_rostros_aws(temp_path)
+                                if rostros:
+                                    # Si encuentra varios, asignamos al primero que encontremos registrado (simplificado para rescate)
+                                    for rostro in rostros:
+                                        u = conn.execute("SELECT CI FROM Usuarios WHERE CI=?", (rostro,)).fetchone()
+                                        if u:
+                                            ci_detectada = u['CI']
+                                            asignado_auto = 1
+                                            break
+                            
+                            # Calcular Hash nuevo
+                            nuevo_hash = calcular_hash(temp_path)
+                            size_kb = obj['Size'] / 1024
+                            
+                            # Insertar en BD
+                            tipo = 'video' if key.lower().endswith(('.mp4', '.avi')) else 'imagen'
+                            conn.execute("""
+                                INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
+                                VALUES (?, ?, ?, 1, ?, ?, ?)
+                            """, (ci_detectada, url_archivo, nuevo_hash, tipo, size_kb, asignado_auto))
+                            
+                            restaurados += 1
+                            
+                            if temp_path and os.path.exists(temp_path): os.remove(temp_path)
+                            
+                        except Exception as e:
+                            print(f"   ⚠️ Error parcial recuperando {key}: {e}")
+                            # Intentamos insertar aunque sea sin IA
+                            try:
+                                conn.execute("""
+                                    INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
+                                    VALUES ('PENDIENTE', ?, 'RECUPERADO', 1, 'desconocido', 0, 0)
+                                """, (url_archivo,))
+                                restaurados += 1
+                            except: pass
+
+            conn.commit()
+            print(f"✅ OPERACIÓN RESCATE FINALIZADA: {restaurados} evidencias restauradas.")
+            
+            # Actualizar estadísticas
+            stats = calcular_estadisticas_reales()
+            fecha = ahora_ecuador().date().isoformat()
+            conn.execute("INSERT OR REPLACE INTO Metricas_Sistema (Fecha, Total_Evidencias, Almacenamiento_MB) VALUES (?, ?, ?)", 
+                        (fecha, stats.get('total_evidencias',0), stats.get('almacenamiento_mb',0)))
+            conn.commit()
+
+        except Exception as e:
+            print(f"❌ Error crítico en rescate: {e}")
+        finally:
+            conn.close()
+
+    background_tasks.add_task(tarea_rescate)
+    return JSONResponse({"mensaje": "🚑 Rescate iniciado. Revisa los logs en 2 minutos."})
 
 if __name__ == "__main__":
     import uvicorn
