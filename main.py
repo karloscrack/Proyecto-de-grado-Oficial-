@@ -356,54 +356,67 @@ def optimizar_sistema_db():
         return False
 
 # --- REEMPLAZA TU FUNCIÓN 'identificar_rostro_aws' POR ESTA ---
+def preparar_imagen_aws(ruta_imagen):
+    """
+    Si la imagen pesa más de 5MB (límite de AWS), la comprime automáticamente.
+    Si pesa menos, la deja pasar tal cual.
+    """
+    MAX_BYTES = 5242880 # 5 MB
+    
+    try:
+        with open(ruta_imagen, 'rb') as f:
+            image_bytes = f.read()
+            
+        if len(image_bytes) < MAX_BYTES:
+            return image_bytes # Está ligera, todo bien
+            
+        # Si es pesada, comprimimos
+        print(f"⚠️ Imagen gigante ({len(image_bytes)/1024/1024:.2f} MB). Comprimiendo...")
+        img = cv2.imread(ruta_imagen)
+        if img is None: return image_bytes 
+        
+        # Reducir calidad JPG
+        _, buffer = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+        return buffer.tobytes()
+        
+    except Exception:
+        # Si falla algo, devolvemos el original y cruzamos los dedos
+        with open(ruta_imagen, 'rb') as f: return f.read()
 
 def identificar_varios_rostros_aws(imagen_path: str, confidence_threshold: float = 80.0) -> List[str]:
-    """
-    Versión CORREGIDA: Lee el ExternalImageId (Cédula) en lugar del FaceId (UUID).
-    """
-    if not rekog:
-        return []
-    
+    if not rekog: return []
     cedulas_encontradas = set()
     
     try:
-        # 1. Cargar imagen con OpenCV
+        # 1. Cargar imagen con OpenCV (para recortes)
         img = cv2.imread(imagen_path)
         if img is None: return []
         height, width, _ = img.shape
         
-        # 2. Leer bytes para AWS
-        with open(imagen_path, 'rb') as image_file:
-            image_bytes = image_file.read()
+        # 2. Obtener BYTES SEGUROS (Comprimidos si es necesario)
+        image_bytes = preparar_imagen_aws(imagen_path)
             
-        # 3. Detectar TODAS las caras primero
+        # 3. Detectar caras en la imagen (usando los bytes seguros)
         response_detect = rekog.detect_faces(Image={'Bytes': image_bytes})
         
-        if not response_detect['FaceDetails']:
-            return []
+        if not response_detect['FaceDetails']: return []
 
-        # 4. Procesar cada cara encontrada
+        # 4. Procesar cada cara
         for faceDetail in response_detect['FaceDetails']:
             bbox = faceDetail['BoundingBox']
-            
-            # Calcular recorte exacto
             x = int(bbox['Left'] * width)
             y = int(bbox['Top'] * height)
             w = int(bbox['Width'] * width)
             h = int(bbox['Height'] * height)
             
-            # Ajustar márgenes
             x, y = max(0, x), max(0, y)
             w, h = min(width - x, w), min(height - y, h)
-            
             face_crop = img[y:y+h, x:x+w]
             if face_crop.size == 0: continue
 
-            # Convertir a jpg
             _, buffer = cv2.imencode('.jpg', face_crop)
             crop_bytes = buffer.tobytes()
             
-            # 5. Buscar quién es esta persona
             try:
                 search_res = rekog.search_faces_by_image(
                     CollectionId=COLLECTION_ID,
@@ -411,50 +424,32 @@ def identificar_varios_rostros_aws(imagen_path: str, confidence_threshold: float
                     MaxFaces=1, 
                     FaceMatchThreshold=confidence_threshold
                 )
-                
                 if search_res['FaceMatches']:
-                    # --- CORRECCIÓN AQUÍ ---
-                    # Antes leía 'FaceId' (UUID), ahora lee 'ExternalImageId' (Cédula)
-                    face_data = search_res['FaceMatches'][0]['Face']
-                    ced = face_data.get('ExternalImageId') 
-                    
-                    if ced:
-                        cedulas_encontradas.add(ced)
-                        print(f"✅ Rostro identificado correctamente: {ced}")
-                    else:
-                        print("⚠️ Rostro encontrado pero sin Cédula asociada en AWS")
-                        
-            except Exception as e_inner:
-                continue 
+                    ced = search_res['FaceMatches'][0]['Face'].get('ExternalImageId')
+                    if ced: cedulas_encontradas.add(ced)
+            except: continue 
 
         return list(cedulas_encontradas)
-        
     except Exception as e:
-        print(f"Error IA: {e}")
+        print(f"Error IA Rostros: {e}")
         return []
     
 # --- REEMPLAZA TU FUNCIÓN DE LECTURA POR ESTA VERSIÓN 'TODO TERRENO' ---
 
 # --- REEMPLAZA TU FUNCIÓN 'buscar_estudiantes_por_texto' POR ESTA VERSIÓN CON DEBUG VISUAL ---
 
-def buscar_estudiantes_por_texto(imagen_path: str, conn): # Quitamos el tipo de retorno estricto para devolver tupla
-    """
-    Versión HÍBRIDA + DEBUG:
-    1. Busca en LÍNEAS completas (mejor contexto) y PALABRAS sueltas.
-    2. Retorna las cédulas encontradas Y TAMBIÉN el texto que leyó (para mostrarlo si falla).
-    """
+def buscar_estudiantes_por_texto(imagen_path: str, conn):
     if not rekog: return [], []
     cedulas_encontradas = set()
-    texto_leido_debug = [] # Aquí guardaremos lo que ve la IA
+    texto_leido_debug = []
     
     try:
-        with open(imagen_path, 'rb') as image_file:
-            image_bytes = image_file.read()
+        # 1. Obtener BYTES SEGUROS (Comprimidos < 5MB)
+        image_bytes = preparar_imagen_aws(imagen_path)
             
-        # 1. Detectar TODO el texto
+        # 2. Detectar texto (Ahora sí aceptará la imagen)
         response = rekog.detect_text(Image={'Bytes': image_bytes})
         
-        # Recopilar todo lo que ve (Líneas y Palabras)
         palabras_sueltas = []
         lineas_completas = []
         
@@ -462,54 +457,44 @@ def buscar_estudiantes_por_texto(imagen_path: str, conn): # Quitamos el tipo de 
             txt = t['DetectedText'].lower()
             if t['Type'] == 'WORD':
                 palabras_sueltas.append(txt)
-                if t['Confidence'] > 50: texto_leido_debug.append(txt) # Solo para el reporte visual
+                texto_leido_debug.append(txt) # Guardamos todo para debug
             elif t['Type'] == 'LINE':
                 lineas_completas.append(txt)
         
-        if not palabras_sueltas: return [], ["(Imagen vacía o ilegible)"]
+        if not palabras_sueltas: return [], ["(Imagen ilegible o sin texto)"]
 
-        # 2. Traer estudiantes
+        # 3. Lógica de Búsqueda (Igual que antes)
         estudiantes = conn.execute("SELECT Nombre, Apellido, CI FROM Usuarios WHERE Tipo=1").fetchall()
         
         for est in estudiantes:
-            # Preparamos las piezas del nombre (Ej: "Karlos", "Andres", "Ayala")
             partes = est['Nombre'].lower().split() + est['Apellido'].lower().split()
             piezas_validas = {p for p in partes if len(p) > 2}
             
-            # --- ESTRATEGIA A: BÚSQUEDA EN LÍNEAS (Contexto) ---
-            # Si una línea dice "award to karlos ayala", esto lo atrapa mejor que palabra por palabra
+            # Estrategia Líneas
             match_linea = False
-            nombre_corto = f"{est['Nombre'].split()[0]} {est['Apellido'].split()[0]}".lower() # "karlos ayala"
-            
+            nombre_corto = f"{est['Nombre'].split()[0]} {est['Apellido'].split()[0]}".lower()
             for linea in lineas_completas:
-                # Si el nombre corto aparece casi igual en una línea
                 if difflib.SequenceMatcher(None, nombre_corto, linea).find_longest_match(0, len(nombre_corto), 0, len(linea)).size > 4:
-                    # Chequeo doble con fuzzy
-                    if difflib.get_close_matches(nombre_corto, [linea], n=1, cutoff=0.60): 
+                     if difflib.get_close_matches(nombre_corto, [linea], n=1, cutoff=0.60): 
                         cedulas_encontradas.add(est['CI'])
                         match_linea = True
                         break
-            
-            if match_linea: continue # Si ya lo encontramos por línea, siguiente estudiante
+            if match_linea: continue
 
-            # --- ESTRATEGIA B: BOLSA DE PALABRAS (Fuerza Bruta) ---
+            # Estrategia Palabras (Bolsa de palabras)
             coincidencias = 0
             for pieza in piezas_validas:
-                # Umbral 0.45: Extremadamente tolerante (acepta casi cualquier garabato parecido)
                 if difflib.get_close_matches(pieza, palabras_sueltas, n=1, cutoff=0.45):
                     coincidencias += 1
             
-            # Si encontramos 2 piezas o más (Karlos + Ayala)
             if coincidencias >= 2:
                 cedulas_encontradas.add(est['CI'])
-            
-            # Si el estudiante solo tiene 1 nombre y 1 apellido (ej: "Will Smith") y encontramos ambos
             elif len(piezas_validas) == 2 and coincidencias == 2:
                 cedulas_encontradas.add(est['CI'])
 
     except Exception as e:
         print(f"⚠️ Error OCR: {e}")
-        return [], [f"Error: {str(e)}"]
+        return [], [f"Error técnico: {str(e)}"]
         
     return list(cedulas_encontradas), texto_leido_debug
 
