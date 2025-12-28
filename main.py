@@ -611,7 +611,7 @@ async def al_iniciar_sistema():
     import threading
     hilo_limpieza = threading.Thread(target=limpieza_duplicados_startup)
     hilo_limpieza.start()
-    
+
 # Configuración CORS
 app.add_middleware(
     CORSMiddleware,
@@ -1870,6 +1870,7 @@ async def descargar_evidencias_zip(ids: str = Form(...)):
 def limpieza_duplicados_startup():
     """
     Ejecuta MANTENIMIENTO PROFUNDO al inicio:
+    0. FASE NUEVA: Elimina duplicados por URL exacta (Atrapa los "fantasmas" 404).
     1. Genera HASHES para archivos antiguos que no lo tienen.
     2. Detecta y elimina duplicados basándose en esos hashes.
     """
@@ -1878,11 +1879,42 @@ def limpieza_duplicados_startup():
     try:
         conn = get_db_connection()
         
+        # --- FASE 0: LIMPIEZA POR URL EXACTA (Para archivos fantasma/404) ---
+        # Si dos registros apuntan EXACTAMENTE a la misma dirección, borramos los sobrantes
+        # sin necesidad de descargar nada.
+        print("🔍 FASE 0: Buscando URLs repetidas...")
+        sql_urls = """
+            SELECT Url_Archivo, COUNT(*) as cantidad 
+            FROM Evidencias 
+            GROUP BY Url_Archivo 
+            HAVING cantidad > 1
+        """
+        urls_repetidas = conn.execute(sql_urls).fetchall()
+        
+        eliminados_url = 0
+        
+        for row in urls_repetidas:
+            url = row['Url_Archivo']
+            # Traemos todos los IDs con esa URL
+            copias = conn.execute("SELECT id FROM Evidencias WHERE Url_Archivo = ? ORDER BY id ASC", (url,)).fetchall()
+            
+            # Dejamos el primero (original), borramos el resto
+            original = copias[0]
+            para_borrar = copias[1:]
+            
+            for copia in para_borrar:
+                conn.execute("DELETE FROM Evidencias WHERE id = ?", (copia['id'],))
+                eliminados_url += 1
+        
+        conn.commit()
+        if eliminados_url > 0:
+            print(f"✨ FASE 0 COMPLETADA: Se eliminaron {eliminados_url} registros con URL duplicada (incluyendo fantasmas).")
+        
         # --- FASE 1: REPARAR ARCHIVOS ANTIGUOS (CALCULAR HASHES FALTANTES) ---
         pendientes = conn.execute("SELECT id, Url_Archivo FROM Evidencias WHERE Hash = 'PENDIENTE' OR Hash IS NULL").fetchall()
         
         if pendientes:
-            print(f"⏳ Generando huella digital para {len(pendientes)} archivos antiguos...")
+            print(f"⏳ FASE 1: Generando huella digital para {len(pendientes)} archivos antiguos...")
             
             for row in pendientes:
                 try:
@@ -1892,8 +1924,7 @@ def limpieza_duplicados_startup():
                     
                     # A) Si es archivo local
                     if url.startswith("/local/"):
-                        # Intentar reconstruir ruta local (ajusta según tu estructura de carpetas real)
-                        possible_path = url.replace("/local/", "./") 
+                        possible_path = url.replace("/local/", "./") # Ajusta según tu estructura real si es necesario
                         if os.path.exists(possible_path):
                             file_hash = calcular_hash(possible_path)
                     
@@ -1908,12 +1939,13 @@ def limpieza_duplicados_startup():
                             
                             file_hash = calcular_hash(temp_path)
                         except Exception as e:
-                            print(f"   ⚠️ No se pudo descargar {url}: {e}")
+                            # Si es 404, no podemos hacer nada, solo logueamos
+                            # print(f"   ⚠️ No se encontró en nube ID {row['id']}: {e}")
+                            pass
                     
                     # Guardar el hash encontrado
                     if file_hash:
                         conn.execute("UPDATE Evidencias SET Hash = ? WHERE id = ?", (file_hash, row['id']))
-                        # print(f"   ✅ Hash recuperado para ID {row['id']}")
                     
                     # Limpieza temporal
                     if temp_path and os.path.exists(temp_path):
@@ -1923,10 +1955,9 @@ def limpieza_duplicados_startup():
                     print(f"   ❌ Error procesando ID {row['id']}: {e}")
             
             conn.commit()
-            print("✨ Fase 1 completada: Hashes actualizados.")
+            print("✨ FASE 1 COMPLETADA: Hashes actualizados.")
 
-        # --- FASE 2: ELIMINAR DUPLICADOS ---
-        # Ahora que todos tienen hash, buscamos los repetidos
+        # --- FASE 2: ELIMINAR DUPLICADOS POR CONTENIDO (HASH) ---
         sql_duplicados = """
             SELECT Hash, COUNT(*) as cantidad 
             FROM Evidencias 
@@ -1936,13 +1967,11 @@ def limpieza_duplicados_startup():
         """
         grupos = conn.execute(sql_duplicados).fetchall()
         
-        eliminados_count = 0
+        eliminados_hash = 0
         espacio_ahorrado = 0
         
         for grupo in grupos:
             file_hash = grupo['Hash']
-            
-            # Traemos todas las copias ordenadas por ID (el menor es el original)
             copias = conn.execute("""
                 SELECT id, Url_Archivo, Tamanio_KB 
                 FROM Evidencias 
@@ -1950,11 +1979,8 @@ def limpieza_duplicados_startup():
                 ORDER BY id ASC
             """, (file_hash,)).fetchall()
             
-            # Mantenemos el primero, borramos el resto
             original = copias[0]
             para_borrar = copias[1:]
-            
-            print(f"   🔍 Duplicado detectado (x{len(copias)}). Conservando ID {original['id']}.")
             
             for copia in para_borrar:
                 # 1. Borrar Físico (S3) si la URL es distinta al original
@@ -1967,15 +1993,16 @@ def limpieza_duplicados_startup():
 
                 # 2. Borrar de Base de Datos
                 conn.execute("DELETE FROM Evidencias WHERE id = ?", (copia['id'],))
-                eliminados_count += 1
+                eliminados_hash += 1
                 espacio_ahorrado += (copia['Tamanio_KB'] or 0)
         
         conn.commit()
         conn.close()
         
-        if eliminados_count > 0:
-            print(f"✅ LIMPIEZA: Se eliminaron {eliminados_count} archivos duplicados.")
-            print(f"💾 Espacio recuperado: {espacio_ahorrado/1024:.2f} MB")
+        total_eliminados = eliminados_url + eliminados_hash
+        if total_eliminados > 0:
+            print(f"✅ LIMPIEZA TOTAL: Se eliminaron {total_eliminados} registros duplicados.")
+            print(f"💾 Espacio recuperado (estimado): {espacio_ahorrado/1024:.2f} MB")
         else:
             print("✅ SISTEMA LIMPIO: No hay duplicados.")
             
