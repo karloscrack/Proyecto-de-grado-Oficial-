@@ -992,57 +992,115 @@
         function generarNotificacionesDesdeSolicitudes(solicitudes) {
             appState.notificaciones = [];
             
-            // Notificación de bienvenida
+            // 1. Bienvenida
             appState.notificaciones.push({
                 id: 0,
                 titulo: "Bienvenido/a",
-                mensaje: "Tu perfil está activo y sincronizado.",
+                mensaje: "Tu perfil está activo.",
                 tipo: "info",
                 fecha: "Hoy",
-                leida: false
+                leida: true
             });
             
-            // Notificaciones por cada solicitud con estado
+            const mensajesVistos = new Set();
+
             solicitudes.forEach((solicitud, index) => {
                 let tipo = "info";
-                let mensaje = "";
+                let titulo = "Estado de Solicitud";
+                let mensajeBase = "";
                 
+                // Extraer la respuesta del admin (Maneja mayúsculas/minúsculas por si acaso)
+                const respuestaAdmin = solicitud.Respuesta || solicitud.respuesta || '';
+
                 if (solicitud.Estado === 'APROBADA') {
                     tipo = "success";
-                    mensaje = `Tu solicitud "${solicitud.Tipo}" ha sido APROBADA. ${solicitud.Detalle || ''}`;
+                    titulo = "¡Solicitud Aprobada!";
+                    mensajeBase = `Tu solicitud "${solicitud.Tipo.replace(/_/g, ' ')}" fue ACEPTADA.`;
                 } else if (solicitud.Estado === 'RECHAZADA') {
                     tipo = "error";
-                    mensaje = `Tu solicitud "${solicitud.Tipo}" ha sido RECHAZADA. ${solicitud.Detalle || 'Contacta al admin para más detalles.'}`;
+                    titulo = "Solicitud Rechazada";
+                    mensajeBase = `Tu solicitud "${solicitud.Tipo.replace(/_/g, ' ')}" fue DENEGADA.`;
                 } else if (solicitud.Estado === 'PENDIENTE') {
                     tipo = "warning";
-                    mensaje = `Tu solicitud "${solicitud.Tipo}" está PENDIENTE de revisión.`;
+                    titulo = "En Revisión";
+                    mensajeBase = `Tu solicitud "${solicitud.Tipo.replace(/_/g, ' ')}" está siendo revisada.`;
                 }
                 
-                if (mensaje) {
+                // Construir el mensaje final CON la respuesta del admin visible
+                let mensajeFinal = mensajeBase;
+                if (respuestaAdmin) {
+                    // Agregamos un salto de línea y un icono de comentario para resaltar la respuesta
+                    mensajeFinal += `<br><br><strong>💬 Admin dice:</strong> <em>"${respuestaAdmin}"</em>`;
+                } else if (solicitud.Estado === 'RECHAZADA') {
+                    mensajeFinal += `<br><br><em>(Sin comentarios del admin)</em>`;
+                }
+
+                // Evitar duplicados
+                const firmaUnica = `${solicitud.Tipo}-${solicitud.Estado}-${respuestaAdmin}`;
+
+                if (mensajeBase && !mensajesVistos.has(firmaUnica)) {
+                    mensajesVistos.add(firmaUnica);
+                    
                     appState.notificaciones.push({
                         id: index + 1,
-                        titulo: `Solicitud: ${solicitud.Tipo}`,
-                        mensaje: mensaje,
+                        titulo: titulo,
+                        mensaje: mensajeFinal, // Aquí va el mensaje con HTML (br, strong)
                         tipo: tipo,
-                        fecha: solicitud.fecha || "Reciente",
+                        fecha: formatearFechaCorta(solicitud.Fecha),
                         leida: false
                     });
                 }
             });
             
-            // Si no hay evidencias, agregar notificación
-            if (appState.galeria.length === 0) {
-                appState.notificaciones.push({
-                    id: 100,
-                    titulo: "Sin evidencias",
-                    mensaje: "Aún no tienes evidencias aprobadas. Contacta al administrador.",
-                    tipo: "info",
-                    fecha: "Hoy",
-                    leida: false
-                });
+            renderNotificaciones();
+        }
+        
+        // Asegúrate de que renderNotificaciones use .innerHTML en lugar de .textContent para que se vean las negritas
+        function renderNotificaciones() {
+            const lista = document.getElementById('notisList');
+            const badge = document.getElementById('notisBadge');
+            const noLeidas = appState.notificaciones.filter(n => !n.leida).length;
+            
+            if (noLeidas > 0) {
+                badge.style.display = 'flex';
+                badge.textContent = noLeidas;
+            } else {
+                badge.style.display = 'none';
             }
             
-            renderNotificaciones();
+            lista.innerHTML = '';
+            
+            if(appState.notificaciones.length === 0) {
+                lista.innerHTML = `<div style="padding:20px;text-align:center;color:#999;">Sin notificaciones</div>`;
+                return;
+            }
+
+            appState.notificaciones.forEach(notis => {
+                const item = document.createElement('div');
+                item.className = `noti-item ${notis.leida ? '' : 'unread'}`;
+                
+                let iconClass = notis.tipo; 
+                let iconSymbol = notis.tipo === 'success' ? '<i class="fas fa-check"></i>' : 
+                                 notis.tipo === 'error' ? '<i class="fas fa-times"></i>' : 
+                                 '<i class="fas fa-info"></i>';
+                
+                // Usamos innerHTML en el párrafo para que se renderice el <br> y <strong>
+                item.innerHTML = `
+                    <div class="noti-icon ${iconClass}">${iconSymbol}</div>
+                    <div class="noti-content" style="width:100%;">
+                        <h4>${notis.titulo}</h4>
+                        <p style="white-space: pre-wrap;">${notis.mensaje}</p>
+                        <span class="noti-time">${notis.fecha}</span>
+                    </div>`;
+                lista.appendChild(item);
+            });
+        }
+
+        // Función auxiliar para fechas cortas en notificaciones
+        function formatearFechaCorta(fechaString) {
+            if (!fechaString) return "Reciente";
+            const fecha = new Date(fechaString);
+            return fecha.toLocaleDateString();
         }
 
         function generarNotificacionesBasicas() {
