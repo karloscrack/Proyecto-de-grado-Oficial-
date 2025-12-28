@@ -433,15 +433,20 @@ def identificar_varios_rostros_aws(imagen_path: str, confidence_threshold: float
             crop_bytes = buffer.tobytes()
             
             try:
+                # AQUÍ ESTÁ EL CAMBIO CLAVE: MaxFaces=5 (Antes era 1)
+                # Esto permite que si dos usuarios tienen la misma cara, AWS devuelva a ambos.
                 search_res = rekog.search_faces_by_image(
                     CollectionId=COLLECTION_ID,
                     Image={'Bytes': crop_bytes},
-                    MaxFaces=1, 
+                    MaxFaces=5, 
                     FaceMatchThreshold=confidence_threshold
                 )
-                if search_res['FaceMatches']:
-                    ced = search_res['FaceMatches'][0]['Face'].get('ExternalImageId')
+                
+                # Ahora iteramos sobre TODAS las coincidencias encontradas para esa cara
+                for match in search_res['FaceMatches']:
+                    ced = match['Face'].get('ExternalImageId')
                     if ced: cedulas_encontradas.add(ced)
+                    
             except: continue 
 
         return list(cedulas_encontradas)
@@ -449,7 +454,6 @@ def identificar_varios_rostros_aws(imagen_path: str, confidence_threshold: float
         print(f"Error IA Rostros: {e}")
         return []
     
-# --- REEMPLAZA TU FUNCIÓN DE LECTURA POR ESTA VERSIÓN 'TODO TERRENO' ---
 
 # --- REEMPLAZA TU FUNCIÓN 'buscar_estudiantes_por_texto' POR ESTA VERSIÓN CON DEBUG VISUAL ---
 
