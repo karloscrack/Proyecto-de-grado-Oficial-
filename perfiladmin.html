@@ -13,6 +13,7 @@
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
@@ -1481,36 +1482,43 @@
 
             // Procesar usuarios
             const usuariosData = await resUsers.json();
-            usuarios = usuariosData.map(u => ({
-                nombre: u.Nombre || u.nombre || '',
-                apellido: u.Apellido || u.apellido || '',
-                cedula: u.CI || u.cedula || u.Cedula || '',
-                tipo: u.Tipo || u.tipo || 1,
-                activo: u.Activo || u.activo || 1,
-                contrasena: u.Contrasena || u.contrasena || '',
-                foto: u.Foto || u.foto || ''
-            }));
+            usuarios = usuariosData.map(u => {
+                // CORRECCIÓN IMPORTANTE:
+                // Usamos validación estricta (undefined) para que el 0 (Admin) no se convierta en 1
+                let tipoReal = 1; 
+                if (u.Tipo !== undefined && u.Tipo !== null) tipoReal = u.Tipo;
+                else if (u.tipo !== undefined && u.tipo !== null) tipoReal = u.tipo;
 
+                return {
+                    nombre: u.Nombre || u.nombre || '',
+                    apellido: u.Apellido || u.apellido || '',
+                    cedula: u.CI || u.cedula || u.Cedula || '',
+                    tipo: tipoReal, // <--- Aquí estaba el error antes
+                    activo: (u.Activo !== undefined) ? u.Activo : (u.activo || 1),
+                    contrasena: u.Contrasena || u.contrasena || '',
+                    foto: u.Foto || u.foto || ''
+                };
+            });
+
+            // Procesar evidencias
             const evidenciasRaw = await resEvidencias.json();
             evidencias = evidenciasRaw.map(e => ({
-                // Traducimos de Mayúsculas (Backend) a Minúsculas (Frontend)
                 nombre: e.Nombre || '',
                 apellido: e.Apellido || '',
-                cedula: e.CI || '',          // <--- ESTO ARREGLA EL "cedula=undefined"
-                foto: e.Foto || '',          // <--- ESTO ARREGLA QUE NO SALGA EL ROSTRO
+                cedula: e.CI || '',
+                foto: e.Foto || '',
                 total_evidencias: e.total_evidencias || 0,
                 total_kb: e.total_kb || 0
             }));
+
+            // Procesar resto de datos
             solicitudes = await resSolicitudes.json();
             logs = await resLogs.json();
 
-            // Cargar estadísticas
+            // Actualizar interfaz
             await actualizarDatosDashboard();
-            
-            // Filtrar y actualizar notificaciones
             await cargarSolicitudesPendientes();
             
-            // Renderizar contenido
             renderizarUsuarios();
             renderizarEvidencias();
             renderizarSolicitudes();
