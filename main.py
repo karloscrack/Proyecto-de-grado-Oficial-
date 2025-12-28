@@ -601,6 +601,17 @@ def calcular_estadisticas_reales() -> dict:
 # =========================================================================
 app = FastAPI(title="Sistema Educativo Despertar", version="7.0")
 
+@app.on_event("startup")
+async def al_iniciar_sistema():
+    """Este código se ejecuta AUTOMÁTICAMENTE cuando Railway enciende el servidor"""
+    print("⚡ EVENTO DE INICIO DETECTADO: Ejecutando protocolos de mantenimiento...")
+    
+    # 1. Ejecutar limpieza de duplicados (Calcula hashes faltantes y borra copias)
+    # Ejecutamos en un hilo aparte para no bloquear el arranque si son muchos archivos
+    import threading
+    hilo_limpieza = threading.Thread(target=limpieza_duplicados_startup)
+    hilo_limpieza.start()
+    
 # Configuración CORS
 app.add_middleware(
     CORSMiddleware,
