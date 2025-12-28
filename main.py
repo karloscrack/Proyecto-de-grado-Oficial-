@@ -845,91 +845,103 @@ async def eliminar_usuario(cedula: str):
 # --- REEMPLAZA TU FUNCIÓN subir_evidencia_ia POR ESTA VERSIÓN DETALLADA ---
 
 @app.post("/subir_evidencia_ia")
-async def subir_evidencia_ia(
-    archivo: UploadFile = File(...),
-    comentario: Optional[str] = Form(None)
-):
+async def subir_evidencia_ia(archivo: UploadFile = File(...)):
     try:
-        if not archivo: return JSONResponse({"error": "Sin archivo"})
-        
-        # 1. Guardar temporalmente
+        # 1. Preparar archivo
         temp_dir = tempfile.mkdtemp()
         path = os.path.join(temp_dir, archivo.filename)
         with open(path, "wb") as f: shutil.copyfileobj(archivo.file, f)
         
-        # 2. Verificar si es imagen válida
         ext = os.path.splitext(archivo.filename)[1].lower()
-        if ext not in ['.jpg', '.jpeg', '.png', '.bmp']:
-            shutil.rmtree(temp_dir)
-            return JSONResponse({"status": "alerta", "mensaje": "Formato no compatible para IA (Solo JPG/PNG). Se guardó como archivo genérico."})
-
-        # 3. Analizar rostros
-        cedulas_encontradas = []
+        es_imagen = ext in ['.jpg', '.jpeg', '.png', '.bmp', '.webp']
+        es_video = ext in ['.mp4', '.avi', '.mov', '.mkv']
+        
+        cedulas_detectadas = set() # Usamos set para evitar duplicados
+        
+        # 2. ANÁLISIS INTELIGENTE
         if rekog:
-            # Esta función devuelve las Cédulas de AWS
-            cedulas_encontradas = identificar_varios_rostros_aws(path)
+            if es_imagen:
+                # Imagen: Análisis único
+                res = identificar_varios_rostros_aws(path)
+                cedulas_detectadas.update(res)
+                
+            elif es_video:
+                # VIDEO: ANÁLISIS POR INTERVALOS (Cada 2 segundos)
+                cap = cv2.VideoCapture(path)
+                fps = cap.get(cv2.CAP_PROP_FPS)
+                if fps == 0: fps = 24 # Fallback
+                
+                # Intervalo de muestreo (cada 2 segundos)
+                intervalo_frames = int(fps * 2) 
+                frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                
+                current_frame = 0
+                while current_frame < frame_count:
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, current_frame)
+                    ret, frame = cap.read()
+                    if not ret: break
+                    
+                    # Guardar frame temporal y analizar
+                    frame_path = os.path.join(temp_dir, f"frame_{current_frame}.jpg")
+                    cv2.imwrite(frame_path, frame)
+                    
+                    # Analizar este momento del video
+                    rostros_en_frame = identificar_varios_rostros_aws(frame_path)
+                    if rostros_en_frame:
+                        print(f"🎬 Minuto {current_frame/fps/60:.2f}: Encontrados {rostros_en_frame}")
+                        cedulas_detectadas.update(rostros_en_frame)
+                    
+                    # Saltar al siguiente intervalo
+                    current_frame += intervalo_frames
+                    
+                    # Límite de seguridad: Analizar máximo 10 cuadros para no tardar una eternidad
+                    if len(cedulas_detectadas) > 10: break 
+                
+                cap.release()
 
-        # 4. Subir archivo a la Nube/Local
+        # 3. Subir archivo original
         url_final = f"/local/{archivo.filename}"
         if s3_client:
             try:
-                nube_name = f"evidencias/{int(ahora_ecuador().timestamp())}_{archivo.filename}"
-                s3_client.upload_file(path, BUCKET_NAME, nube_name, ExtraArgs={'ACL': 'public-read'})
-                url_final = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nube_name}"
+                nube = f"evidencias/{int(ahora_ecuador().timestamp())}_{archivo.filename}"
+                ct = 'video/mp4' if es_video else archivo.content_type
+                s3_client.upload_file(path, BUCKET_NAME, nube, ExtraArgs={'ACL':'public-read', 'ContentType': ct})
+                url_final = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nube}"
             except: pass
 
-        # 5. LÓGICA DE MENSAJE DETALLADO
+        # 4. Guardar en Base de Datos
         conn = get_db_connection()
         status = "alerta"
         msg = ""
+        tipo_archivo = "video" if es_video else ("imagen" if es_imagen else "documento")
         
-        if cedulas_encontradas:
-            # Buscar NOMBRES reales en la base de datos
-            nombres_asignados = []
-            cedulas_no_registradas = []
+        cedulas_validas = []
+        if cedulas_detectadas:
+            # Filtrar solo usuarios reales
+            nombres = []
+            for ced in cedulas_detectadas:
+                u = conn.execute("SELECT Nombre, Apellido FROM Usuarios WHERE CI=?", (ced,)).fetchone()
+                if u:
+                    conn.execute("INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Estado, Tipo_Archivo, Asignado_Automaticamente) VALUES (?,?,1,?,1)", (ced, url_final, tipo_archivo))
+                    nombres.append(f"{u['Nombre']} {u['Apellido']}")
             
-            for ced in cedulas_encontradas:
-                # Verificar si existe en DB y traer Nombre
-                usuario = conn.execute("SELECT Nombre, Apellido FROM Usuarios WHERE CI=?", (ced,)).fetchone()
-                
-                if usuario:
-                    # Asignar evidencia
-                    conn.execute("""
-                        INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
-                        VALUES (?, ?, 1, 'imagen', 0, 1)
-                    """, (ced, url_final))
-                    nombres_asignados.append(f"{usuario['Nombre']} {usuario['Apellido']}")
-                else:
-                    cedulas_no_registradas.append(ced)
-
-            # Construir el mensaje final
-            if nombres_asignados:
+            if nombres:
                 status = "exito"
-                msg = f"✅ Asignado correctamente a: {', '.join(nombres_asignados)}."
-                if cedulas_no_registradas:
-                    msg += f" (Nota: Se detectaron otros rostros no registrados en el sistema: {', '.join(cedulas_no_registradas)})"
+                msg = f"✅ Asignado a: {', '.join(nombres)}"
             else:
-                # Caso raro: La IA reconoció cédulas, pero esas cédulas no están en tu tabla Usuarios
-                status = "alerta"
-                msg = f"⚠️ La IA detectó rostros registrados en AWS ({', '.join(cedulas_no_registradas)}) pero NO existen en tu base de datos de Usuarios local. Revisa el registro."
-                # Guardar como pendiente
-                conn.execute("INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Estado, Asignado_Automaticamente) VALUES ('PENDIENTE', ?, 1, 0)", (url_final,))
-
+                conn.execute("INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Estado, Tipo_Archivo, Asignado_Automaticamente) VALUES ('PENDIENTE',?,1,?,0)", (url_final, tipo_archivo))
+                msg = "⚠️ Rostros detectados pero no registrados en usuarios."
         else:
-            # No se detectó ninguna cédula
-            status = "alerta"
-            msg = "⚠️ No se asignó automáticamente. Posibles causas: 1) Foto borrosa o rostros muy pequeños. 2) Estudiantes no tienen foto de perfil registrada. 3) Rostro de perfil (lado). Se guardó en 'Pendientes'."
-            # Guardar como pendiente
-            conn.execute("INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Estado, Asignado_Automaticamente) VALUES ('PENDIENTE', ?, 1, 0)", (url_final,))
-            
+            conn.execute("INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Estado, Tipo_Archivo, Asignado_Automaticamente) VALUES ('PENDIENTE',?,1,?,0)", (url_final, tipo_archivo))
+            msg = "⚠️ No se detectaron rostros. Guardado en Pendientes."
+
         conn.commit()
         conn.close()
         shutil.rmtree(temp_dir)
-        
         return JSONResponse({"status": status, "mensaje": msg})
 
     except Exception as e:
-        return JSONResponse({"status": "error", "mensaje": f"Error interno: {str(e)}"})
+        return JSONResponse({"status": "error", "mensaje": str(e)})
     
 @app.post("/subir_manual")
 async def subir_manual(
