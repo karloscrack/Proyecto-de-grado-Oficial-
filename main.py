@@ -1731,105 +1731,69 @@ async def obtener_solicitudes(limit: int = 100):
 @app.post("/gestionar_solicitud")
 async def gestionar_solicitud(
     id_solicitud: int = Form(...),
-    accion: str = Form(...),
-    mensaje: str = Form(""),
+    accion: str = Form(...), # 'aprobar' o 'rechazar'
+    mensaje: str = Form(...), # Respuesta del admin
     id_admin: str = Form("Admin")
 ):
-    """Gestiona una solicitud pendiente con envío de email real"""
     try:
-        accion_norm = "APROBADA" if accion.upper() in ['APROBAR', 'ACEPTAR', 'APROBADA'] else "RECHAZADA"
+        # 1. Normalizar la acción (Aceptamos 'aprobar', 'aceptar', etc.)
+        accion_norm = "APROBADA" if accion.lower() in ['aprobar', 'aceptar', 'aprobada'] else "RECHAZADA"
         fecha_resolucion = ahora_ecuador()
         
         conn = get_db_connection()
-        c = conn.cursor()
         
-        # Obtener detalles de la solicitud
-        c.execute("""
-            SELECT s.*, u.Email, u.Nombre, u.Apellido 
+        # 2. Obtener datos de la solicitud y del usuario
+        sol = conn.execute("""
+            SELECT s.*, u.Nombre, u.Apellido, u.Email as UserEmail
             FROM Solicitudes s
             LEFT JOIN Usuarios u ON s.CI_Solicitante = u.CI
             WHERE s.id = ?
-        """, (id_solicitud,))
+        """, (id_solicitud,)).fetchone()
         
-        sol = c.fetchone()
         if not sol:
-            conn.close()
-            return JSONResponse(content={"error": "Solicitud no encontrada"})
+            return JSONResponse({"status": "error", "mensaje": "Solicitud no encontrada"})
         
         tipo = sol['Tipo']
-        email_usuario = sol['Email']
+        ci_solicitante = sol['CI_Solicitante']
+        # Usar el email del formulario si existe, sino el del perfil
+        email_destino = sol['Email'] if sol['Email'] else sol['UserEmail']
         nombre_usuario = f"{sol['Nombre']} {sol['Apellido']}"
         
-        # Procesar según tipo
-        if tipo == 'SUBIDA':
+        # --- LÓGICA DE ACCIONES FÍSICAS ---
+        
+        # CASO A: REPORTE "NO SOY YO"
+        if tipo == 'REPORTE_EVIDENCIA':
             id_evidencia = sol['Id_Evidencia']
             if accion_norm == 'APROBADA':
-                c.execute("UPDATE Evidencias SET Estado=1 WHERE id=?", (id_evidencia,))
-                mensaje_email = f"Tu evidencia ha sido aprobada por el administrador. {mensaje}"
+                # ACCIÓN REAL: Borrar de la base de datos inmediatamente
+                conn.execute("DELETE FROM Evidencias WHERE id=?", (id_evidencia,))
+                cuerpo_correo = f"Hola {nombre_usuario},\n\nTu reporte ha sido ACEPTADO. La foto ha sido eliminada permanentemente de tu perfil.\n\nAdmin: {mensaje}"
             else:
-                c.execute("DELETE FROM Evidencias WHERE id=?", (id_evidencia,))
-                mensaje_email = f"Tu evidencia ha sido rechazada. Motivo: {mensaje}"
-                
-                # Eliminar archivo de S3 si existe
-                if sol['Evidencia_Reportada_Url'] and s3_client and BUCKET_NAME in sol['Evidencia_Reportada_Url']:
-                    try:
-                        key = sol['Evidencia_Reportada_Url'].split(f"{BUCKET_NAME}/")[-1]
-                        s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
-                        print(f"✅ Archivo eliminado de S3: {key}")
-                    except Exception as e:
-                        print(f"⚠️ Error eliminando de S3: {e}")
-        
-        elif tipo == 'REPORTE':
-            id_evidencia = sol['Id_Evidencia']
+                cuerpo_correo = f"Hola {nombre_usuario},\n\nTu reporte fue revisado pero decidimos mantener la evidencia.\n\nMotivo: {mensaje}"
+
+        # CASO B: SUBIR EVIDENCIA
+        elif tipo == 'SUBIR_EVIDENCIA':
+            url_archivo = sol['Evidencia_Reportada_Url']
             if accion_norm == 'APROBADA':
-                # Eliminar la evidencia reportada
-                c.execute("DELETE FROM Evidencias WHERE id=?", (id_evidencia,))
-                mensaje_email = f"Tu reporte ha sido procesado. La evidencia ha sido eliminada del sistema. {mensaje}"
-                
-                # Eliminar archivo de S3
-                if sol['Evidencia_Reportada_Url'] and s3_client and BUCKET_NAME in sol['Evidencia_Reportada_Url']:
-                    try:
-                        key = sol['Evidencia_Reportada_Url'].split(f"{BUCKET_NAME}/")[-1]
-                        s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
-                    except:
-                        pass
+                # ACCIÓN REAL: Insertar en la galería del estudiante
+                conn.execute("""
+                    INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
+                    VALUES (?, ?, 'MANUAL_APROBADO', 1, 'documento', 0, 0)
+                """, (ci_solicitante, url_archivo))
+                cuerpo_correo = f"Hola {nombre_usuario},\n\nTu solicitud de subida fue APROBADA. El archivo ya está en tu galería.\n\nAdmin: {mensaje}"
             else:
-                mensaje_email = f"Tu reporte ha sido rechazado. Motivo: {mensaje}"
-        
-        elif tipo == 'RECUPERACION':
-            if accion_norm == 'APROBADA':
-                # Enviar contraseña temporal o instrucciones
-                temp_password = "Temp123!"  # En producción, generar aleatoria
-                mensaje_email = f"""
-                Hola {nombre_usuario},
-                
-                Tu solicitud de recuperación de contraseña ha sido aprobada.
-                
-                Contraseña temporal: {temp_password}
-                
-                Por favor, cambia tu contraseña después de iniciar sesión.
-                
-                {mensaje if mensaje else ''}
-                
-                Atentamente,
-                Soporte U.E. Despertar
-                """
-            else:
-                mensaje_email = f"""
-                Hola {nombre_usuario},
-                
-                Tu solicitud de recuperación de contraseña ha sido rechazada.
-                
-                Motivo: {mensaje if mensaje else 'No cumple con los requisitos de seguridad.'}
-                
-                Por favor, contacta al administrador para más información.
-                
-                Atentamente,
-                Soporte U.E. Despertar
-                """
-        
-        # Actualizar solicitud
-        c.execute("""
+                cuerpo_correo = f"Hola {nombre_usuario},\n\nTu solicitud de subida fue RECHAZADA.\n\nMotivo: {mensaje}"
+
+        # CASO C: RECUPERAR CONTRASEÑA / PROBLEMAS
+        elif tipo in ['RECUPERACION_CONTRASENA', 'PROBLEMA_ERROR']:
+            # ACCIÓN: Enviar la solución por correo
+            cuerpo_correo = f"Hola {nombre_usuario},\n\nRespuesta a tu solicitud ({tipo.replace('_',' ')}):\n\n{mensaje}\n\nAtentamente,\nSoporte U.E. Despertar"
+
+        else:
+            cuerpo_correo = f"Hola {nombre_usuario},\n\nTu solicitud ha sido procesada: {mensaje}"
+
+        # 3. GUARDAR CAMBIOS EN BASE DE DATOS
+        conn.execute("""
             UPDATE Solicitudes 
             SET Estado=?, Resuelto_Por=?, Respuesta=?, Fecha_Resolucion=?
             WHERE id=?
@@ -1838,29 +1802,23 @@ async def gestionar_solicitud(
         conn.commit()
         conn.close()
         
-        # Enviar correo real al usuario si tiene email
-        if email_usuario:
-            asunto = f"Respuesta a tu solicitud - U.E. Despertar"
-            enviado = enviar_correo_real(email_usuario, asunto, mensaje_email)
-            
-            if not enviado:
-                print(f"⚠️ No se pudo enviar email a {email_usuario}")
+        # 4. ENVIAR CORREO REAL
+        email_enviado = False
+        if email_destino:
+            asunto = f"Respuesta a Solicitud: {tipo.replace('_', ' ')}"
+            try:
+                email_enviado = enviar_correo_real(email_destino, asunto, cuerpo_correo)
+            except: 
+                email_enviado = False
         
-        # Registrar auditoría
-        registrar_auditoria(
-            "GESTION_SOLICITUD",
-            f"Solicitud {id_solicitud} ({tipo}) {accion_norm.lower()} por {id_admin}"
-        )
-        
-        return JSONResponse(content={
-            "status": "ok",
-            "mensaje": f"Solicitud {accion_norm.lower()} correctamente",
-            "email_enviado": bool(email_usuario),
-            "fecha_resolucion": fecha_resolucion.isoformat()
+        return JSONResponse({
+            "status": "ok", 
+            "mensaje": "Acción realizada y notificada.", 
+            "email_enviado": email_enviado
         })
-        
+
     except Exception as e:
-        return JSONResponse(content={"status": "error", "mensaje": str(e)})
+        return JSONResponse({"status": "error", "mensaje": str(e)})
 
 # =========================================================================
 # 12. ENDPOINTS DE LOGS Y AUDITORÍA

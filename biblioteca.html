@@ -1187,7 +1187,7 @@
             const data = await res.json();
             
             if (data.status === 'ok') {
-                alert("✅ Solicitud enviada.\n\nEl administrador revisará tu caso y te contactará al correo proporcionado.");
+                alert("✅ Solicitud enviada.\n\nEl administrador revisará tu caso y te enviará una respuesta al correo que proporcionaste.");
                 cerrarRecuperar();
                 this.reset();
             } else {
@@ -1195,7 +1195,6 @@
             }
         } catch (error) {
             alert("Error de conexión. Intenta más tarde.");
-            console.error('Error en recuperación:', error);
         } finally {
             btn.innerHTML = originalText; 
             btn.disabled = false;

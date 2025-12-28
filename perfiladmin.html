@@ -2198,149 +2198,144 @@
     // ==========================================
     // 5. GESTIÓN COMPLETA DE SOLICITUDES
     // ==========================================
+    // ==========================================
+    // 12. GESTIÓN DE SOLICITUDES (CON VISOR DE FOTOS Y EMAIL)
+    // ==========================================
+    
     function procesarSolicitudDesdeCard(tipo, solicitudId) {
         const solicitud = solicitudes.find(s => s.id == solicitudId);
         if (!solicitud) return;
 
-        // Buscar información del usuario
         const usuario = usuarios.find(u => u.cedula === solicitud.CI_Solicitante);
-        const nombreUsuario = usuario ? `${usuario.nombre} ${usuario.apellido}` : solicitud.CI_Solicitante || 'Usuario';
+        const nombreUsuario = usuario ? `${usuario.nombre} ${usuario.apellido}` : solicitud.CI_Solicitante;
         
-        let contenido = '';
-        
-        // Contenido común para todos los tipos
-        contenido += `
-            <h3 style="color:var(--primary); margin-bottom:15px;">
-                <i class="fas fa-reply"></i> Responder: ${tipo.replace(/_/g, ' ')}
-            </h3>
-            <div style="margin-bottom:15px; font-size:0.9rem; color:var(--text-main);">
-                <p><strong>De:</strong> ${nombreUsuario} (${solicitud.CI_Solicitante})</p>
-                <p><strong>Fecha:</strong> ${formatearFecha(solicitud.Fecha)}</p>
-                ${solicitud.Email ? `<p><strong>Correo:</strong> ${solicitud.Email}</p>` : ''}
-                <p><strong>Mensaje del usuario:</strong> "${solicitud.Detalle || 'Sin mensaje adicional'}"</p>
-            </div>
+        // Estructura base del modal
+        let contenido = `
+            <div style="text-align:left;">
+                <h3 style="color:var(--primary); margin-bottom:10px;">
+                    <i class="fas fa-tasks"></i> Gestionar Solicitud
+                </h3>
+                <div style="background:var(--bg-input); padding:10px; border-radius:8px; margin-bottom:15px; font-size:0.9rem;">
+                    <p><strong>Usuario:</strong> ${nombreUsuario} (${solicitud.CI_Solicitante})</p>
+                    <p><strong>Tipo:</strong> ${tipo.replace(/_/g, ' ')}</p>
+                    <p><strong>Mensaje:</strong> "${solicitud.Detalle || 'Sin detalles'}"</p>
+                    ${solicitud.Email ? `<p><strong>Email:</strong> ${solicitud.Email}</p>` : ''}
+                </div>
         `;
 
-        // Contenido específico por tipo
+        // Lógica para mostrar fotos o campos de texto según el tipo
         if (tipo === 'REPORTE_EVIDENCIA') {
+            // Muestra la foto que el alumno dice que NO es suya
             contenido += `
-                <div style="background:rgba(255, 193, 7, 0.1); padding:10px; border-radius:8px; margin-bottom:15px; border-left:4px solid var(--warning);">
-                    <p style="color:var(--text-main);"><strong>Acción de Aceptar:</strong> Se ELIMINARÁ la evidencia reportada del perfil del estudiante.</p>
-                    <p style="color:var(--text-main);"><strong>Acción de Rechazar:</strong> La evidencia se mantendrá.</p>
+                <div style="text-align:center; margin-bottom:15px; border:2px solid var(--error); padding:10px; border-radius:8px;">
+                    <p style="color:var(--error); font-weight:bold;">Reporte: "Esta foto no soy yo"</p>
+                    <img src="${solicitud.Evidencia_Reportada_Url}" style="max-width:100%; max-height:200px; border-radius:5px;">
+                    <p style="font-size:0.8rem; color:#666;">Si aceptas, se borra permanentemente.</p>
                 </div>
-                ${solicitud.Evidencia_Reportada_Url ? 
-                    `<div style="text-align:center; margin-bottom:10px;">
-                        <p style="color:var(--text-main);"><strong>Evidencia reportada:</strong></p>
-                        <img src="${solicitud.Evidencia_Reportada_Url}" class="request-preview" 
-                             onclick="abrirPrevisualizacion('${solicitud.Evidencia_Reportada_Url}')">
-                    </div>` : ''
-                }
+                <div class="form-group">
+                    <label>Respuesta (Se enviará por correo):</label>
+                    <textarea id="mensajeAdmin" class="form-control" rows="3">Revisado. Tienes razón, eliminaremos la foto.</textarea>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'aprobar')" style="background:var(--error); flex:1;">
+                        <i class="fas fa-trash"></i> Aceptar (Borrar)
+                    </button>
+                    <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'rechazar')" style="background:var(--secondary); flex:1;">
+                        <i class="fas fa-times"></i> Rechazar
+                    </button>
+                </div>
             `;
         } 
         else if (tipo === 'SUBIR_EVIDENCIA') {
+            // Muestra la foto que quieren subir
             contenido += `
-                <div style="text-align:center; margin-bottom:15px;">
-                    <p style="font-weight:600; margin-bottom:5px; color:var(--text-main);">Evidencia Propuesta:</p>
-                    ${solicitud.Evidencia_Reportada_Url ? 
-                        `<img src="${solicitud.Evidencia_Reportada_Url}" class="request-preview" 
-                             onclick="abrirPrevisualizacion('${solicitud.Evidencia_Reportada_Url}')">
-                         <br><small style="color:var(--text-sec);">Haz clic para ver tamaño completo</small>` 
-                        : '<p style="color:var(--text-sec);">Sin archivo adjunto</p>'}
+                <div style="text-align:center; margin-bottom:15px; border:2px solid var(--info); padding:10px; border-radius:8px;">
+                    <p style="color:var(--info); font-weight:bold;">Propuesta de Subida</p>
+                    <img src="${solicitud.Evidencia_Reportada_Url}" style="max-width:100%; max-height:200px; border-radius:5px;">
+                    <p style="font-size:0.8rem; color:#666;">Si aceptas, se agrega al perfil.</p>
                 </div>
-            `;
-        }
-        else if (tipo === 'PROBLEMA_ERROR') {
-            contenido += `
-                <div style="background:rgba(33, 150, 243, 0.1); padding:10px; border-radius:8px; margin-bottom:15px;">
-                    <p style="color:var(--text-main);"><strong>Tipo:</strong> Reporte de problema/error</p>
-                    <p style="color:var(--text-main);"><strong>El estudiante necesita ayuda con:</strong> ${solicitud.Detalle || 'Sin detalles'}</p>
+                <div class="form-group">
+                    <label>Respuesta (Se enviará por correo):</label>
+                    <textarea id="mensajeAdmin" class="form-control" rows="2">Solicitud aprobada.</textarea>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'aprobar')" style="background:var(--secondary); flex:1;">
+                        <i class="fas fa-check"></i> Aceptar (Subir)
+                    </button>
+                    <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'rechazar')" style="background:var(--error); flex:1;">
+                        <i class="fas fa-times"></i> Rechazar
+                    </button>
                 </div>
             `;
         }
         else if (tipo === 'RECUPERACION_CONTRASENA') {
-            const contrasenaActual = usuario ? usuario.contrasena : "No disponible";
+            // Campo para escribir la contraseña
             contenido += `
-                <div style="background:rgba(106, 13, 173, 0.1); padding:10px; border-radius:8px; margin-bottom:15px;">
-                    <p style="color:var(--text-main);"><strong>Contraseña Actual del Usuario:</strong> ${contrasenaActual}</p>
-                    <p style="color:var(--text-main);"><strong>Correo destino:</strong> ${solicitud.Email || 'No especificado'}</p>
+                <div style="background:#e3f2fd; padding:10px; border-radius:8px; margin-bottom:15px;">
+                    <p><strong>Usuario olvidó contraseña.</strong> Escribe la nueva clave abajo.</p>
                 </div>
                 <div class="form-group">
-                    <label style="color:var(--text-main);">Nueva Contraseña (Opcional):</label>
-                    <input type="text" id="nuevaContrasena" class="form-control" 
-                           placeholder="Dejar vacío para mantener la actual">
+                    <label>Escribe el correo de respuesta (Incluye la clave):</label>
+                    <textarea id="mensajeAdmin" class="form-control" rows="5">Hola ${usuario ? usuario.nombre : ''},\n\nTu nueva contraseña temporal es: 12345\n\nSaludos.</textarea>
                 </div>
+                <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'aprobar')" style="width:100%;">
+                    <i class="fas fa-paper-plane"></i> Enviar Correo con Clave
+                </button>
+            `;
+        }
+        else { 
+            // Problemas generales
+            contenido += `
+                <div class="form-group">
+                    <label>Respuesta / Solución:</label>
+                    <textarea id="mensajeAdmin" class="form-control" rows="4">Hola, hemos recibido tu reporte...</textarea>
+                </div>
+                <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'aprobar')" style="width:100%;">
+                    <i class="fas fa-paper-plane"></i> Enviar Respuesta
+                </button>
             `;
         }
 
-        // Campo de respuesta común
-        contenido += `
-            <div class="form-group">
-                <label style="color:var(--text-main);">Tu respuesta para el estudiante *</label>
-                <textarea id="respuestaAdmin" class="respuesta-textarea" required 
-                          placeholder="Escribe tu respuesta para el estudiante..."></textarea>
-            </div>
-            
-            <input type="hidden" id="solicitudIdRespuesta" value="${solicitudId}">
-            <input type="hidden" id="tipoRespuesta" value="${tipo}">
-            
-            <div class="respuesta-actions">
-        `;
-        
-        // Botones según el tipo
-        if (tipo === 'PROBLEMA_ERROR') {
-            contenido += `
-                <button class="btn-primary" onclick="procesarSolicitud('aceptar')" 
-                        style="background:var(--secondary); flex:1;">
-                    <i class="fas fa-check"></i> Marcar como Resuelto
-                </button>
-            `;
-        } else if (tipo === 'RECUPERACION_CONTRASENA') {
-            contenido += `
-                <button class="btn-primary" onclick="procesarSolicitud('aceptar')" 
-                        style="background:var(--secondary); flex:1;">
-                    <i class="fas fa-paper-plane"></i> Enviar Correo al Estudiante
-                </button>
-            `;
-        } else {
-            contenido += `
-                <button class="btn-primary" onclick="procesarSolicitud('aceptar')" 
-                        style="background:var(--secondary); flex:1;">
-                    <i class="fas fa-check"></i> Aceptar
-                </button>
-                <button class="btn-primary" onclick="procesarSolicitud('rechazar')" 
-                        style="background:var(--error); flex:1;">
-                    <i class="fas fa-times"></i> Rechazar
-                </button>
-            `;
-        }
-        
         contenido += `</div>`;
-
         document.getElementById('modalSolicitudContenido').innerHTML = contenido;
         document.getElementById('modalResponderSolicitud').classList.add('active');
-        
-        // Pre-llenar respuesta sugerida
-        setTimeout(() => {
-            const textarea = document.getElementById('respuestaAdmin');
-            if (textarea) {
-                let respuestaBase = '';
-                switch(tipo) {
-                    case 'REPORTE_EVIDENCIA':
-                        respuestaBase = `Hola ${nombreUsuario},\n\nHemos revisado tu reporte de "No soy yo". `;
-                        break;
-                    case 'PROBLEMA_ERROR':
-                        respuestaBase = `Hola ${nombreUsuario},\n\nHemos revisado tu reporte de problema. `;
-                        break;
-                    case 'SUBIR_EVIDENCIA':
-                        respuestaBase = `Hola ${nombreUsuario},\n\nHemos evaluado tu solicitud para subir evidencia. `;
-                        break;
-                    case 'RECUPERACION_CONTRASENA':
-                        respuestaBase = `Hola ${nombreUsuario},\n\nHemos procesado tu solicitud de recuperación de contraseña. `;
-                        break;
-                }
-                textarea.value = respuestaBase;
+    }
+
+    async function enviarGestion(id, accion) {
+        const mensaje = document.getElementById('mensajeAdmin').value;
+        if(!mensaje.trim()) {
+            Swal.fire('Atención', 'Debes escribir una respuesta para el estudiante.', 'warning');
+            return;
+        }
+
+        const btn = event.target.closest('button');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...'; 
+        btn.disabled = true;
+
+        const fd = new FormData();
+        fd.append('id_solicitud', id);
+        fd.append('accion', accion);
+        fd.append('mensaje', mensaje);
+        fd.append('id_admin', 'Administrador');
+
+        try {
+            const res = await fetch(`${API_URL}/gestionar_solicitud`, { method: 'POST', body: fd });
+            const data = await res.json();
+
+            if (data.status === 'ok') {
+                Swal.fire('Éxito', data.mensaje, 'success');
+                document.getElementById('modalResponderSolicitud').classList.remove('active');
+                cargarSolicitudes(); // Recargar lista
+                actualizarDatosDashboard(); // Recargar campana
+            } else {
+                Swal.fire('Error', data.mensaje, 'error');
             }
-        }, 100);
+        } catch (e) {
+            Swal.fire('Error', 'Error de conexión', 'error');
+        } finally {
+            if(btn) { btn.innerHTML = originalText; btn.disabled = false; }
+        }
     }
 
     async function procesarSolicitud(accion) {

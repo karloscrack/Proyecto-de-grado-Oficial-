@@ -1183,68 +1183,52 @@
         }
 
         async function enviarSolicitud(e, tipo) {
-            e.preventDefault();
-            const btn = e.target.querySelector('button[type="submit"]');
-            const originalText = btn.innerText;
-            btn.innerText = "Enviando...";
-            btn.disabled = true;
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        const originalText = btn.innerText;
+        btn.innerText = "Enviando...";
+        btn.disabled = true;
 
-            const cedula = localStorage.getItem('usuario_cedula');
-            const formData = new FormData();
-            formData.append('cedula', cedula);
+        const cedula = localStorage.getItem('usuario_cedula');
+        const formData = new FormData();
+        formData.append('cedula', cedula);
 
-            let endpoint = "";
+        let endpoint = "";
 
-            try {
-                if (tipo === 'SUBIDA') {
-                    // Endpoint: /solicitar_subida
-                    const fileInput = document.getElementById('fileUpload');
-                    if(fileInput.files.length > 0) {
-                        formData.append('archivo', fileInput.files[0]);
-                        endpoint = "/solicitar_subida";
-                    } else { throw new Error("Debes seleccionar un archivo"); }
-                } 
-                else if (tipo === 'ERROR' || tipo === 'PROBLEMA') {
-                    // Endpoint: /solicitar_recuperacion (Usado como contacto general)
-                    const desc = tipo === 'ERROR' ? document.getElementById('descError').value : document.getElementById('descProblem').value;
-                    const mensajeCompleto = `${tipo}: ${desc}`;
-                    
-                    formData.append('email', `${cedula}@sistema.com`); // Placeholder requerido por backend
-                    formData.append('mensaje', mensajeCompleto);
-                    endpoint = "/solicitar_recuperacion";
-                }
-
-                const res = await fetch(`${API_URL}${endpoint}`, { method: 'POST', body: formData });
-                const data = await res.json();
-
-                if (data.status === "ok" || data.mensaje) {
-                    alert("✅ Solicitud enviada con éxito. El administrador revisará tu caso.");
-                    
-                    // Agregar notificación local
-                    appState.notificaciones.unshift({
-                        id: Date.now(),
-                        titulo: `Solicitud enviada: ${tipo}`,
-                        mensaje: "Tu solicitud ha sido enviada al administrador. Te notificaremos cuando haya una respuesta.",
-                        tipo: "info",
-                        fecha: "Ahora",
-                        leida: false
-                    });
-                    
-                    renderNotificaciones();
-                    cerrarModal(tipo === 'SUBIDA' ? 'modalUpload' : (tipo === 'ERROR' ? 'modalReport' : 'modalProblem'));
-                    cerrarModal('modalContactHub'); // Cerrar el Hub también
-                } else {
-                    alert("❌ Error: " + (data.mensaje || "No se pudo enviar"));
-                }
-
-            } catch (error) {
-                console.error(error);
-                alert("❌ Ocurrió un error al enviar la solicitud.");
-            } finally {
-                btn.innerText = originalText;
-                btn.disabled = false;
+        try {
+            if (tipo === 'SUBIDA') {
+                const fileInput = document.getElementById('fileUpload');
+                if(fileInput.files.length > 0) {
+                    formData.append('archivo', fileInput.files[0]);
+                    endpoint = "/solicitar_subida";
+                } else { throw new Error("Selecciona un archivo"); }
+            } 
+            else if (tipo === 'ERROR' || tipo === 'PROBLEMA') {
+                const desc = tipo === 'ERROR' ? document.getElementById('descError').value : document.getElementById('descProblem').value;
+                formData.append('email', ""); // Email opcional (admin responderá al del perfil)
+                formData.append('mensaje', `${tipo}: ${desc}`);
+                endpoint = "/solicitar_recuperacion"; // Usamos este endpoint como genérico para mensajes
             }
+
+            const res = await fetch(`${API_URL}${endpoint}`, { method: 'POST', body: formData });
+            const data = await res.json();
+
+            if (data.status === "ok" || data.mensaje) {
+                alert("✅ Solicitud enviada correctamente.");
+                if(tipo === 'SUBIDA') cerrarModal('modalUpload');
+                else cerrarModal('modalContactHub');
+            } else {
+                alert("❌ Error: " + (data.mensaje || "No se pudo enviar"));
+            }
+
+        } catch (error) {
+            console.error(error);
+            alert("❌ Ocurrió un error.");
+        } finally {
+            btn.innerText = originalText;
+            btn.disabled = false;
         }
+    }
         
         // Reportar evidencia individual (desde Lightbox)
         async function reportarEvidenciaActual() {
