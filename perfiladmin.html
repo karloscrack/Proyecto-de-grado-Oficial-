@@ -1764,31 +1764,40 @@
         if(!tbody) return;
 
         tbody.innerHTML = usuarios.map(u => {
-            // CORRECCIÓN: Convertir a número para comparar bien
-            const esAdmin = parseInt(u.Tipo) === 0; 
+            const esAdmin = parseInt(u.tipo) === 0; // Asegúrate que coincida con tu dato (Tipo o tipo)
             const rol = esAdmin ? 'Administrador' : 'Estudiante';
             const claseRol = esAdmin ? 'tipo-contrasena' : 'tipo-subida';
             
-            // CORRECCIÓN: Estado y botones
-            const esActivo = parseInt(u.Activo) === 1;
+            const esActivo = parseInt(u.activo) === 1;
             const estadoTexto = esActivo ? 'Activo' : 'Inactivo';
             const claseEstado = esActivo ? 'badge-resolved' : 'badge-rejected';
 
             return `
-                <tr>
+                <tr id="user-row-${u.cedula}">
                     <td>
-                        <strong>${u.Nombre} ${u.Apellido}</strong><br>
-                        <small style="color:#888;">${u.Contrasena || '***'}</small>
+                        <strong>${u.nombre} ${u.apellido}</strong><br>
+                        <small style="color:#888;">${u.contrasena || '***'}</small>
                     </td>
-                    <td>${u.CI}</td>
+                    <td>${u.cedula}</td>
                     <td><span class="solicitud-tipo ${claseRol}">${rol}</span></td>
-                    <td><span class="request-badge ${claseEstado}">${estadoTexto}</span></td>
+                    <td><span id="user-status-${u.cedula}" class="request-badge ${claseEstado}">${estadoTexto}</span></td>
                     <td>
+                        <button class="action-btn" onclick="verUsuario('${u.cedula}')" style="background:#e3f2fd; color:#2196f3;" title="Ver Detalles">
+                            <i class="fas fa-eye"></i>
+                        </button>
+
                         ${esActivo ? 
-                            `<button class="action-btn btn-deactivate" onclick="cambiarEstadoUsuario('${u.CI}', 0)" title="Desactivar"><i class="fas fa-user-slash"></i></button>` : 
-                            `<button class="action-btn btn-activate" onclick="cambiarEstadoUsuario('${u.CI}', 1)" title="Activar"><i class="fas fa-user-check"></i></button>`
+                            `<button class="action-btn btn-deactivate" onclick="cambiarEstadoUsuario('${u.cedula}', 0)" title="Desactivar">
+                                <i class="fas fa-user-slash"></i>
+                             </button>` : 
+                            `<button class="action-btn btn-activate" onclick="cambiarEstadoUsuario('${u.cedula}', 1)" title="Activar">
+                                <i class="fas fa-user-check"></i>
+                             </button>`
                         }
-                        <button class="action-btn" onclick="verUsuario('${u.CI}')" style="background:#e3f2fd; color:#2196f3;"><i class="fas fa-eye"></i></button>
+
+                        <button class="action-btn btn-delete" onclick="eliminarUsuario('${u.cedula}')" style="background:#ffebee; color:#d32f2f;" title="Eliminar Usuario">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
                     </td>
                 </tr>
             `;

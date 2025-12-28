@@ -782,6 +782,34 @@ async def cambiar_estado_usuario(datos: EstadoUsuarioRequest):
     except Exception as e:
         return JSONResponse(content={"error": str(e)})
 
+
+@app.delete("/eliminar_usuario/{cedula}")
+async def eliminar_usuario(cedula: str):
+    """Elimina un usuario y todas sus evidencias asociadas"""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        # Verificar si es admin (opcional, pero seguro)
+        c.execute("SELECT Tipo FROM Usuarios WHERE CI = ?", (cedula,))
+        user = c.fetchone()
+        
+        # Opcional: Impedir borrar al superadmin si quisieras
+        # if user and user['Tipo'] == 0: ...
+
+        # Borrar evidencias primero (limpieza)
+        c.execute("DELETE FROM Evidencias WHERE CI_Estudiante = ?", (cedula,))
+        
+        # Borrar usuario
+        c.execute("DELETE FROM Usuarios WHERE CI = ?", (cedula,))
+        
+        conn.commit()
+        conn.close()
+        
+        registrar_auditoria("ELIMINACION_USUARIO", f"Usuario {cedula} eliminado permanentemente")
+        return JSONResponse({"status": "ok", "mensaje": "Usuario eliminado"})
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
 # =========================================================================
 # 8. ENDPOINTS DE EVIDENCIAS
 # =========================================================================
