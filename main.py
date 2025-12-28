@@ -1870,144 +1870,154 @@ async def descargar_evidencias_zip(ids: str = Form(...)):
 def limpieza_duplicados_startup():
     """
     Ejecuta MANTENIMIENTO PROFUNDO al inicio:
-    0. FASE NUEVA: Elimina duplicados por URL exacta (Atrapa los "fantasmas" 404).
-    1. Genera HASHES para archivos antiguos que no lo tienen.
-    2. Detecta y elimina duplicados basándose en esos hashes.
+    0. FASE 0: Elimina duplicados por URL exacta.
+    1. FASE 1: Intenta calcular HASHES (si el archivo existe).
+    2. FASE 2: Elimina por HASH (contenido idéntico).
+    3. FASE 3 (NUEVA): Elimina por NOMBRE + ESTUDIANTE (Atrapa lo que se escapó).
     """
     print("🧹 INICIANDO PROTOCOLO DE LIMPIEZA Y MANTENIMIENTO...")
     
     try:
         conn = get_db_connection()
         
-        # --- FASE 0: LIMPIEZA POR URL EXACTA (Para archivos fantasma/404) ---
-        # Si dos registros apuntan EXACTAMENTE a la misma dirección, borramos los sobrantes
-        # sin necesidad de descargar nada.
-        print("🔍 FASE 0: Buscando URLs repetidas...")
-        sql_urls = """
-            SELECT Url_Archivo, COUNT(*) as cantidad 
-            FROM Evidencias 
-            GROUP BY Url_Archivo 
-            HAVING cantidad > 1
-        """
-        urls_repetidas = conn.execute(sql_urls).fetchall()
+        # --- FASE 0: LIMPIEZA POR URL EXACTA ---
+        print("🔍 FASE 0: Buscando URLs idénticas...")
+        urls_repetidas = conn.execute("""
+            SELECT Url_Archivo, COUNT(*) as cantidad FROM Evidencias 
+            GROUP BY Url_Archivo HAVING cantidad > 1
+        """).fetchall()
         
-        eliminados_url = 0
-        
+        eliminados_0 = 0
         for row in urls_repetidas:
-            url = row['Url_Archivo']
-            # Traemos todos los IDs con esa URL
-            copias = conn.execute("SELECT id FROM Evidencias WHERE Url_Archivo = ? ORDER BY id ASC", (url,)).fetchall()
-            
-            # Dejamos el primero (original), borramos el resto
-            original = copias[0]
-            para_borrar = copias[1:]
-            
-            for copia in para_borrar:
+            copias = conn.execute("SELECT id FROM Evidencias WHERE Url_Archivo = ? ORDER BY id ASC", (row['Url_Archivo'],)).fetchall()
+            for copia in copias[1:]: # Borrar todos menos el primero
                 conn.execute("DELETE FROM Evidencias WHERE id = ?", (copia['id'],))
-                eliminados_url += 1
+                eliminados_0 += 1
         
-        conn.commit()
-        if eliminados_url > 0:
-            print(f"✨ FASE 0 COMPLETADA: Se eliminaron {eliminados_url} registros con URL duplicada (incluyendo fantasmas).")
-        
-        # --- FASE 1: REPARAR ARCHIVOS ANTIGUOS (CALCULAR HASHES FALTANTES) ---
+        if eliminados_0 > 0: print(f"   ✨ Fase 0: {eliminados_0} registros eliminados.")
+
+        # --- FASE 1: REPARAR ARCHIVOS ANTIGUOS (HASH) ---
+        print("⏳ FASE 1: Verificando huellas digitales...")
         pendientes = conn.execute("SELECT id, Url_Archivo FROM Evidencias WHERE Hash = 'PENDIENTE' OR Hash IS NULL").fetchall()
         
-        if pendientes:
-            print(f"⏳ FASE 1: Generando huella digital para {len(pendientes)} archivos antiguos...")
-            
-            for row in pendientes:
-                try:
-                    url = row['Url_Archivo']
-                    temp_path = None
-                    file_hash = None
-                    
-                    # A) Si es archivo local
-                    if url.startswith("/local/"):
-                        possible_path = url.replace("/local/", "./") # Ajusta según tu estructura real si es necesario
-                        if os.path.exists(possible_path):
-                            file_hash = calcular_hash(possible_path)
-                    
-                    # B) Si es archivo en Nube (S3/Backblaze)
-                    elif "http" in url and s3_client:
-                        try:
-                            # Descargar a temporal para hashear
-                            key = url.split(f"{BUCKET_NAME}/")[-1]
+        count_hashed = 0
+        for row in pendientes:
+            try:
+                url = row['Url_Archivo']
+                temp_path = None
+                file_hash = None
+                
+                # Intento de descarga robusto
+                if "http" in url and s3_client:
+                    try:
+                        # Intentamos extraer la key de varias formas
+                        parts = url.split(f"{BUCKET_NAME}/")
+                        if len(parts) > 1:
+                            key = parts[-1]
                             with tempfile.NamedTemporaryFile(delete=False) as tmp:
                                 s3_client.download_fileobj(BUCKET_NAME, key, tmp)
                                 temp_path = tmp.name
-                            
                             file_hash = calcular_hash(temp_path)
-                        except Exception as e:
-                            # Si es 404, no podemos hacer nada, solo logueamos
-                            # print(f"   ⚠️ No se encontró en nube ID {row['id']}: {e}")
-                            pass
-                    
-                    # Guardar el hash encontrado
-                    if file_hash:
-                        conn.execute("UPDATE Evidencias SET Hash = ? WHERE id = ?", (file_hash, row['id']))
-                    
-                    # Limpieza temporal
-                    if temp_path and os.path.exists(temp_path):
-                        os.remove(temp_path)
-                        
-                except Exception as e:
-                    print(f"   ❌ Error procesando ID {row['id']}: {e}")
+                    except: pass # Si falla (404), seguimos
+                
+                if file_hash:
+                    conn.execute("UPDATE Evidencias SET Hash = ? WHERE id = ?", (file_hash, row['id']))
+                    count_hashed += 1
+                
+                if temp_path and os.path.exists(temp_path): os.remove(temp_path)
+            except: pass
             
-            conn.commit()
-            print("✨ FASE 1 COMPLETADA: Hashes actualizados.")
+        conn.commit()
+        if count_hashed > 0: print(f"   ✨ Fase 1: {count_hashed} hashes calculados.")
 
-        # --- FASE 2: ELIMINAR DUPLICADOS POR CONTENIDO (HASH) ---
-        sql_duplicados = """
-            SELECT Hash, COUNT(*) as cantidad 
-            FROM Evidencias 
-            WHERE Hash IS NOT NULL AND Hash != 'PENDIENTE' AND Hash != ''
-            GROUP BY Hash 
-            HAVING cantidad > 1
-        """
-        grupos = conn.execute(sql_duplicados).fetchall()
+        # --- FASE 2: ELIMINAR POR HASH ---
+        print("🔍 FASE 2: Buscando contenido idéntico (Hash)...")
+        grupos_hash = conn.execute("""
+            SELECT Hash, COUNT(*) as cantidad FROM Evidencias 
+            WHERE Hash NOT IN ('PENDIENTE', '', NULL) GROUP BY Hash HAVING cantidad > 1
+        """).fetchall()
         
-        eliminados_hash = 0
-        espacio_ahorrado = 0
-        
-        for grupo in grupos:
-            file_hash = grupo['Hash']
-            copias = conn.execute("""
-                SELECT id, Url_Archivo, Tamanio_KB 
-                FROM Evidencias 
-                WHERE Hash = ? 
-                ORDER BY id ASC
-            """, (file_hash,)).fetchall()
-            
+        eliminados_2 = 0
+        for grupo in grupos_hash:
+            copias = conn.execute("SELECT id, Url_Archivo FROM Evidencias WHERE Hash = ? ORDER BY id ASC", (grupo['Hash'],)).fetchall()
             original = copias[0]
-            para_borrar = copias[1:]
-            
-            for copia in para_borrar:
-                # 1. Borrar Físico (S3) si la URL es distinta al original
-                if s3_client and BUCKET_NAME in copia['Url_Archivo']:
+            for copia in copias[1:]:
+                # Borrar de S3 si son URLs diferentes
+                if s3_client and copia['Url_Archivo'] != original['Url_Archivo'] and BUCKET_NAME in copia['Url_Archivo']:
                     try:
-                        if copia['Url_Archivo'] != original['Url_Archivo']:
-                            key = copia['Url_Archivo'].split(f"{BUCKET_NAME}/")[-1]
-                            s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
+                        key = copia['Url_Archivo'].split(f"{BUCKET_NAME}/")[-1]
+                        s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
                     except: pass
-
-                # 2. Borrar de Base de Datos
+                
                 conn.execute("DELETE FROM Evidencias WHERE id = ?", (copia['id'],))
-                eliminados_hash += 1
-                espacio_ahorrado += (copia['Tamanio_KB'] or 0)
+                eliminados_2 += 1
         
+        if eliminados_2 > 0: print(f"   ✨ Fase 2: {eliminados_2} duplicados exactos eliminados.")
+
+        # --- FASE 3 (HEURÍSTICA): NOMBRE DE ARCHIVO + ESTUDIANTE ---
+        # Si Juan subió "foto.jpg" dos veces, tendrán URLs distintas (por el timestamp),
+        # pero el nombre original al final es el mismo.
+        print("🔍 FASE 3: Buscando duplicados por nombre de archivo...")
+        
+        # Traemos todo para analizar con Python (más seguro que SQL complejo)
+        todas = conn.execute("SELECT id, CI_Estudiante, Url_Archivo, Tamanio_KB FROM Evidencias").fetchall()
+        
+        # Agrupar por Estudiante + NombreOriginal
+        agrupados = {}
+        import re
+        
+        eliminados_3 = 0
+        
+        for ev in todas:
+            url = ev['Url_Archivo']
+            cedula = ev['CI_Estudiante']
+            
+            # Extraer nombre original (quitando timestamp inicial 123456_)
+            filename = os.path.basename(url)
+            # Regex: busca digitos seguidos de guion bajo al inicio
+            clean_name = re.sub(r'^\d+_', '', filename)
+            
+            # Clave única: Cédula + NombreLimpio (Ej: 175105... + foto.jpg)
+            clave = f"{cedula}|{clean_name}"
+            
+            if clave not in agrupados:
+                agrupados[clave] = []
+            agrupados[clave].append(ev)
+            
+        # Analizar grupos
+        for clave, lista in agrupados.items():
+            if len(lista) > 1:
+                # Ordenar por ID (el menor es el más antiguo)
+                lista.sort(key=lambda x: x['id'])
+                
+                original = lista[0]
+                duplicados = lista[1:]
+                
+                for dup in duplicados:
+                    # Protección extra: Solo borrar si tienen un tamaño similar o si el duplicado es 0
+                    # (Evita borrar una corrección válida del mismo archivo)
+                    # Pero como quieres limpieza agresiva, borramos si el nombre es IDÉNTICO.
+                    
+                    conn.execute("DELETE FROM Evidencias WHERE id = ?", (dup['id'],))
+                    
+                    # Intentar borrar físico S3
+                    if s3_client and BUCKET_NAME in dup['Url_Archivo']:
+                        try:
+                            key = dup['Url_Archivo'].split(f"{BUCKET_NAME}/")[-1]
+                            s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
+                        except: pass
+                        
+                    eliminados_3 += 1
+
         conn.commit()
         conn.close()
         
-        total_eliminados = eliminados_url + eliminados_hash
-        if total_eliminados > 0:
-            print(f"✅ LIMPIEZA TOTAL: Se eliminaron {total_eliminados} registros duplicados.")
-            print(f"💾 Espacio recuperado (estimado): {espacio_ahorrado/1024:.2f} MB")
-        else:
-            print("✅ SISTEMA LIMPIO: No hay duplicados.")
-            
+        total = eliminados_0 + eliminados_2 + eliminados_3
+        print(f"✅ MANTENIMIENTO FINALIZADO. Total eliminados: {total}")
+        if eliminados_3 > 0: print(f"   (La Fase 3 eliminó {eliminados_3} archivos por nombre repetido)")
+
     except Exception as e:
-        print(f"❌ Error crítico en limpieza: {e}")
+        print(f"❌ Error en limpieza: {e}")
 
 if __name__ == "__main__":
     import uvicorn
