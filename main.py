@@ -942,11 +942,66 @@ async def eliminar_usuario(cedula: str):
 # 8. ENDPOINTS DE EVIDENCIAS
 # =========================================================================
 
-# --- REEMPLAZA TU FUNCIÓN subir_evidencia_ia POR ESTA VERSIÓN DETALLADA ---
-
-# --- REEMPLAZA TU FUNCIÓN subir_evidencia_ia POR ESTA VERSIÓN FINAL (ROSTROS + VIDEO + TEXTO) ---
-
-# --- REEMPLAZA TU FUNCIÓN 'subir_evidencia_ia' POR ESTA ---
+def garantizar_limite_storage(ruta_archivo, limite_mb=1000):
+    """
+    Si el archivo supera el limite_mb (ej: 1GB), lo comprime para ahorrar espacio.
+    Si no lo supera, lo deja intacto (Calidad Original).
+    """
+    try:
+        peso_actual_mb = os.path.getsize(ruta_archivo) / (1024 * 1024)
+        
+        # CASO 1: El archivo está dentro del límite (Ej: 500MB) -> NO TOCAR
+        if peso_actual_mb <= limite_mb:
+            return ruta_archivo # Devolvemos la ruta original
+            
+        # CASO 2: El archivo es gigante (Ej: 2GB) -> COMPRIMIR
+        print(f"⚠️ Archivo gigante ({peso_actual_mb:.2f} MB). Comprimiendo para cumplir cuota de 1GB...")
+        
+        # Nombre para el archivo comprimido
+        dir_name = os.path.dirname(ruta_archivo)
+        base_name = os.path.basename(ruta_archivo)
+        ruta_comprimida = os.path.join(dir_name, f"compressed_{base_name}")
+        
+        # Detectar si es VIDEO
+        ext = os.path.splitext(ruta_archivo)[1].lower()
+        if ext in ['.mp4', '.avi', '.mov', '.mkv']:
+            # Usamos OpenCV para reducir resolución y bitrate
+            cap = cv2.VideoCapture(ruta_archivo)
+            
+            # Calculamos nueva resolución (HD 720p suele ser suficiente y ligero)
+            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            
+            # Si es 4K, lo bajamos a 720p. Si es menor, lo bajamos un 30%
+            scale = 0.5 if width > 1920 else 0.7
+            new_w, new_h = int(width * scale), int(height * scale)
+            
+            # Configurar el escritor de video
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            out = cv2.VideoWriter(ruta_comprimida, fourcc, 24, (new_w, new_h))
+            
+            while True:
+                ret, frame = cap.read()
+                if not ret: break
+                # Redimensionar frame
+                frame_b = cv2.resize(frame, (new_w, new_h))
+                out.write(frame_b)
+                
+            cap.release()
+            out.release()
+            
+            # Reemplazar archivo original con el comprimido
+            if os.path.exists(ruta_comprimida):
+                shutil.move(ruta_comprimida, ruta_archivo) # Sobrescribimos el original
+                nuevo_peso = os.path.getsize(ruta_archivo) / (1024 * 1024)
+                print(f"✅ Compresión exitosa. Nuevo peso: {nuevo_peso:.2f} MB")
+                return ruta_archivo
+                
+    except Exception as e:
+        print(f"⚠️ Error intentando comprimir video storage: {e}")
+    
+    # Si algo falla o no es video, devolvemos el original
+    return ruta_archivo
 
 @app.post("/subir_evidencia_ia")
 async def subir_evidencia_ia(archivo: UploadFile = File(...)):
@@ -996,11 +1051,15 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
                 cap.release()
 
         # 3. Subir archivo
+        path = garantizar_limite_storage(path, limite_mb=1000)
+        
         url_final = f"/local/{archivo.filename}"
         if s3_client:
             try:
                 nube = f"evidencias/{int(ahora_ecuador().timestamp())}_{archivo.filename}"
                 ct = 'video/mp4' if es_video else archivo.content_type
+                
+                # Subimos el archivo (que será el original o el comprimido si era gigante)
                 s3_client.upload_file(path, BUCKET_NAME, nube, ExtraArgs={'ACL':'public-read', 'ContentType': ct})
                 url_final = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nube}"
             except: pass
