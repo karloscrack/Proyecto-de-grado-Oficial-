@@ -358,29 +358,44 @@ def optimizar_sistema_db():
 # --- REEMPLAZA TU FUNCIÓN 'identificar_rostro_aws' POR ESTA ---
 def preparar_imagen_aws(ruta_imagen):
     """
-    Si la imagen pesa más de 5MB (límite de AWS), la comprime automáticamente.
-    Si pesa menos, la deja pasar tal cual.
+    1. Lee la imagen (soporta AVIF si las librerías están instaladas).
+    2. La convierte SIEMPRE a JPG (compatible con AWS).
+    3. Comprime si pesa más de 5MB.
     """
     MAX_BYTES = 5242880 # 5 MB
     
     try:
-        with open(ruta_imagen, 'rb') as f:
-            image_bytes = f.read()
-            
-        if len(image_bytes) < MAX_BYTES:
-            return image_bytes # Está ligera, todo bien
-            
-        # Si es pesada, comprimimos
-        print(f"⚠️ Imagen gigante ({len(image_bytes)/1024/1024:.2f} MB). Comprimiendo...")
+        # Intentamos leer con OpenCV
         img = cv2.imread(ruta_imagen)
-        if img is None: return image_bytes 
         
-        # Reducir calidad JPG
+        # Si OpenCV falla (común con AVIF antiguos), intentamos con PIL (si está instalado)
+        if img is None:
+            try:
+                from PIL import Image
+                import numpy as np
+                pil_img = Image.open(ruta_imagen).convert('RGB')
+                img = np.array(pil_img) 
+                # Convertir RGB (PIL) a BGR (OpenCV)
+                img = img[:, :, ::-1].copy() 
+            except ImportError:
+                pass # Si no hay PIL, nos rendimos
+
+        # Si después de todo no pudimos leer la imagen...
+        if img is None:
+            # Si es AVIF y no pudimos leerla, NO podemos mandarla cruda a AWS. Retornamos None o error.
+            if ruta_imagen.lower().endswith('.avif'):
+                print("⚠️ Error: No se pudo decodificar AVIF. Instala 'pillow-avif-plugin'.")
+                return None
+            # Si es JPG/PNG, mandamos crudo
+            with open(ruta_imagen, 'rb') as f: return f.read()
+
+        # COMPRESIÓN / CONVERSIÓN A JPG
+        # Esto transforma el AVIF/WEBP/PNG a un JPG estándar que AWS sí entiende
         _, buffer = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
         return buffer.tobytes()
         
-    except Exception:
-        # Si falla algo, devolvemos el original y cruzamos los dedos
+    except Exception as e:
+        print(f"⚠️ Error preparando imagen AWS: {e}")
         with open(ruta_imagen, 'rb') as f: return f.read()
 
 def identificar_varios_rostros_aws(imagen_path: str, confidence_threshold: float = 80.0) -> List[str]:
@@ -1040,7 +1055,7 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
         # --------------------------------------
         
         ext = os.path.splitext(archivo.filename)[1].lower()
-        es_imagen = ext in ['.jpg', '.jpeg', '.png', '.bmp', '.webp']
+        es_imagen = ext in ['.jpg', '.jpeg', '.png', '.bmp', '.webp', '.avif']
         es_video = ext in ['.mp4', '.avi', '.mov', '.mkv']
         
         cedulas_detectadas = set() 
