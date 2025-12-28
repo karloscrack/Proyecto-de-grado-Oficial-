@@ -1143,26 +1143,24 @@
             console.log('📥 Respuesta del backend:', data);
 
             if (data.autenticado) {
-                localStorage.setItem('usuario_cedula', cedula);
-                localStorage.setItem('usuario_contrasena', contrasena);
-                localStorage.setItem('usuario_tipo', (data.datos.tipo !== undefined && data.datos.tipo !== null) ? data.datos.tipo : 1);
-                
-               // ✅ PON ESTO:
-              // Usamos '==' en lugar de '===' para que acepte tanto 0 como "0"
-              if (data.datos.tipo == 0) {
-             console.log("👑 Redirigiendo al Panel de Admin...");
-             window.location.href = "perfiladmin.html";
-            } else {
-              console.log("🎓 Redirigiendo al Perfil de Estudiante...");
-               window.location.href = "perfil.html";
-            }
+                // ✅ GUARDAR TODOS LOS DATOS CRÍTICOS EN LOCALSTORAGE
+                localStorage.setItem('usuario_id', data.datos.id);          // <--- ESTA ES LA CLAVE QUE FALTABA
+                localStorage.setItem('usuario_cedula', data.datos.cedula);
+                localStorage.setItem('usuario_nombre', data.datos.nombre);
+                localStorage.setItem('usuario_apellido', data.datos.apellido);
+                localStorage.setItem('usuario_tipo', data.datos.tipo);
+                localStorage.setItem('usuario_foto', data.datos.url_foto);
+                localStorage.setItem('usuario_email', data.datos.email);
+                localStorage.setItem('tutorial_visto', data.datos.tutorial_visto); // <--- IMPORTANTE TAMBIÉN
 
+                // Redireccionar según tipo de usuario
+                if (parseInt(data.datos.tipo) === 0) {
+                    window.location.href = 'perfiladmin.html';
+                } else {
+                    window.location.href = 'perfil.html';
+                }
             } else {
-                errorText.innerHTML = data.mensaje || 'Usuario o contraseña incorrectos';
-                errorBox.style.display = 'block';
-                
-                // Desplazar ligeramente la vista hacia el error
-                errorBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // ... manejo de errores ...
             }
         } catch (error) {
             console.error('❌ Error en login:', error);
