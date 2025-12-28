@@ -628,21 +628,25 @@ async def iniciar_sesion(
         ip_cliente = request.client.host if request.client else "Desconocido"
         registrar_auditoria("LOGIN_EXITOSO", f"Usuario {cedula}", user["Nombre"], ip_cliente)
         
-        return JSONResponse(content={
+        return JSONResponse({
             "autenticado": True,
-            "mensaje": "Autenticación exitosa",
+            "mensaje": "Bienvenido",
             "datos": {
+                # 👇 AGREGAR ESTA LÍNEA (CRÍTICA PARA EL PERFIL) 👇
                 "id": user["ID"],
-                "nombre": user["Nombre"] or "",
-                "apellido": user["Apellido"] or "",
+                
+                "nombre": user["Nombre"],
+                "apellido": user["Apellido"],
                 "cedula": user["CI"],
-                "tipo": user["Tipo"] if user["Tipo"] is not None else 1,
+                "tipo": user["Tipo"],
                 "url_foto": user["Foto"] or "",
-                "email": user.get("Email") or "",
+                "email": user.get("Email", ""),
+                
+                # 👇 AGREGAR ESTA LÍNEA TAMBIÉN (PARA EL TUTORIAL) 👇
                 "tutorial_visto": bool(user.get("TutorialVisto", 0)),
+
                 "galeria": evs,
-                "notificaciones": notis,
-                "ultimo_acceso": fecha_acceso.isoformat()
+                "notificaciones": notis
             }
         })
         
@@ -1329,7 +1333,25 @@ async def datos_graficos_dashboard():
 # =========================================================================
 # 11. ENDPOINTS DE SOLICITUDES Y GESTIÓN
 # =========================================================================
-
+@app.get("/obtener_solicitudes")
+async def obtener_solicitudes(limit: int = 100):
+    """Obtiene las solicitudes del sistema (pendientes e historial)"""
+    try:
+        conn = get_db_connection()
+        # Unir con nombre de usuario para mostrar quién solicita
+        rows = conn.execute("""
+            SELECT s.*, u.Nombre, u.Apellido 
+            FROM Solicitudes s 
+            LEFT JOIN Usuarios u ON s.CI_Solicitante = u.CI 
+            ORDER BY s.Fecha DESC
+            LIMIT ?
+        """, (limit,)).fetchall()
+        
+        conn.close()
+        return JSONResponse([dict(r) for r in rows])
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)})
+    
 @app.post("/gestionar_solicitud")
 async def gestionar_solicitud(
     id_solicitud: int = Form(...),
