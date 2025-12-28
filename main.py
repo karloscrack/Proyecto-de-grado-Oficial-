@@ -199,13 +199,13 @@ def init_db_completa():
             ("Usuarios", "Telefono", "TEXT"),
             ("Usuarios", "Ultimo_Acceso", "TIMESTAMP NULL"),
             ("Usuarios", "Fecha_Desactivacion", "TIMESTAMP NULL"),
-            
-            # 👇 ESTA ES LA LÍNEA QUE TE FALTA Y ARREGLA EL ERROR 👇
             ("Usuarios", "Fecha_Registro", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
-            
             ("Evidencias", "Tipo_Archivo", "TEXT DEFAULT 'documento'"),
             ("Evidencias", "Tamanio_KB", "REAL DEFAULT 0"),
             ("Evidencias", "Asignado_Automaticamente", "INTEGER DEFAULT 0"),
+            # 👇 AGREGA ESTA LÍNEA OBLIGATORIAMENTE 👇
+            ("Evidencias", "Hash", "TEXT DEFAULT 'PENDIENTE'"), 
+            
             ("Solicitudes", "Fecha_Resolucion", "TIMESTAMP NULL"),
             ("Auditoria", "Usuario", "TEXT"),
             ("Auditoria", "IP", "TEXT")
@@ -1011,28 +1011,41 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
         path = os.path.join(temp_dir, archivo.filename)
         with open(path, "wb") as f: shutil.copyfileobj(archivo.file, f)
         
+        # --- NUEVO: DETECCIÓN DE DUPLICADOS ---
+        # Calculamos la "Huella Digital" (Hash) del archivo
+        file_hash = calcular_hash(path)
+        
+        conn = get_db_connection()
+        # Verificamos si esta huella ya existe
+        duplicado = conn.execute("SELECT id, CI_Estudiante FROM Evidencias WHERE Hash = ?", (file_hash,)).fetchone()
+        
+        if duplicado:
+            conn.close()
+            shutil.rmtree(temp_dir) # Borramos el archivo inmediatamente
+            return JSONResponse({
+                "status": "error", 
+                "mensaje": f"⚠️ DUPLICADO: Este archivo ya existe en el sistema (Evidencia #{duplicado['id']})."
+            })
+        # --------------------------------------
+        
         ext = os.path.splitext(archivo.filename)[1].lower()
         es_imagen = ext in ['.jpg', '.jpeg', '.png', '.bmp', '.webp']
         es_video = ext in ['.mp4', '.avi', '.mov', '.mkv']
         
         cedulas_detectadas = set() 
-        texto_debug = [] # Para saber qué leyó si falla
-        conn = get_db_connection()
+        texto_debug = []
         
         # 2. ANÁLISIS INTELIGENTE
         if rekog:
             if es_imagen:
-                # A) Rostros
                 rostros = identificar_varios_rostros_aws(path)
                 cedulas_detectadas.update(rostros)
                 
-                # B) Texto (Recibimos Cédulas Y Texto Leído)
                 textos_ceds, debug_ocr = buscar_estudiantes_por_texto(path, conn)
                 cedulas_detectadas.update(textos_ceds)
-                if debug_ocr: texto_debug = debug_ocr # Guardamos lo que leyó para el reporte
+                if debug_ocr: texto_debug = debug_ocr
                 
             elif es_video:
-                # Video (Lógica simplificada para brevedad, mantenemos la que tenías)
                 cap = cv2.VideoCapture(path)
                 fps = cap.get(cv2.CAP_PROP_FPS) or 24
                 intervalo = int(fps * 2)
@@ -1050,21 +1063,20 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
                     if len(cedulas_detectadas) > 10: break
                 cap.release()
 
-        # 3. Subir archivo
+        # 3. Subir archivo (Si pasó la prueba de duplicados)
         path = garantizar_limite_storage(path, limite_mb=1000)
+        tamanio_kb = os.path.getsize(path) / 1024 # Calculamos peso final
         
         url_final = f"/local/{archivo.filename}"
         if s3_client:
             try:
                 nube = f"evidencias/{int(ahora_ecuador().timestamp())}_{archivo.filename}"
                 ct = 'video/mp4' if es_video else archivo.content_type
-                
-                # Subimos el archivo (que será el original o el comprimido si era gigante)
                 s3_client.upload_file(path, BUCKET_NAME, nube, ExtraArgs={'ACL':'public-read', 'ContentType': ct})
                 url_final = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nube}"
             except: pass
 
-        # 4. Guardar y Responder
+        # 4. Guardar y Responder (INCLUYENDO EL HASH)
         status = "alerta"
         msg = ""
         tipo_archivo = "video" if es_video else ("imagen" if es_imagen else "documento")
@@ -1074,19 +1086,28 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
             for ced in cedulas_detectadas:
                 u = conn.execute("SELECT Nombre, Apellido FROM Usuarios WHERE CI=?", (ced,)).fetchone()
                 if u:
-                    conn.execute("INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Estado, Tipo_Archivo, Asignado_Automaticamente) VALUES (?,?,1,?,1)", (ced, url_final, tipo_archivo))
+                    # AGREGAMOS 'Hash' y 'Tamanio_KB' al INSERT
+                    conn.execute("""
+                        INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente) 
+                        VALUES (?, ?, ?, 1, ?, ?, 1)
+                    """, (ced, url_final, file_hash, tipo_archivo, tamanio_kb))
                     nombres.append(f"{u['Nombre']} {u['Apellido']}")
             
             if nombres:
                 status = "exito"
                 msg = f"✅ Asignado a: {', '.join(nombres)}"
             else:
-                conn.execute("INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Estado, Tipo_Archivo, Asignado_Automaticamente) VALUES ('PENDIENTE',?,1,?,0)", (url_final, tipo_archivo))
+                conn.execute("""
+                    INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente) 
+                    VALUES ('PENDIENTE', ?, ?, 1, ?, ?, 0)
+                """, (url_final, file_hash, tipo_archivo, tamanio_kb))
                 msg = "⚠️ Se detectaron datos pero no coinciden con usuarios activos."
         else:
-            conn.execute("INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Estado, Tipo_Archivo, Asignado_Automaticamente) VALUES ('PENDIENTE',?,1,?,0)", (url_final, tipo_archivo))
+            conn.execute("""
+                INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente) 
+                VALUES ('PENDIENTE', ?, ?, 1, ?, ?, 0)
+            """, (url_final, file_hash, tipo_archivo, tamanio_kb))
             
-            # --- MENSAJE DEPURADO INTELIGENTE ---
             muestras_texto = ", ".join(texto_debug[:5]) if texto_debug else "Nada legible"
             msg = f"⚠️ No se identificó alumno. La IA leyó: [{muestras_texto}...]. Verifique si el nombre está registrado así."
 
@@ -1105,19 +1126,31 @@ async def subir_manual(
     comentario: Optional[str] = Form(None)
 ):
     try:
-        # Procesar lista de cédulas
         lista_cedulas = [c.strip() for c in cedulas.split(",") if c.strip()]
         if not lista_cedulas:
             return JSONResponse(content={"error": "Debe especificar al menos una cédula"})
         
-        # Guardar archivo temporalmente
+        # 1. Guardar temporalmente
         temp_dir = tempfile.mkdtemp()
         path = os.path.join(temp_dir, archivo.filename)
-        with open(path, "wb") as f:
-            shutil.copyfileobj(archivo.file, f)
+        with open(path, "wb") as f: shutil.copyfileobj(archivo.file, f)
+
+        # --- NUEVO: DETECCIÓN DE DUPLICADOS ---
+        file_hash = calcular_hash(path)
+        conn = get_db_connection()
+        duplicado = conn.execute("SELECT id FROM Evidencias WHERE Hash = ?", (file_hash,)).fetchone()
+        
+        if duplicado:
+            conn.close()
+            shutil.rmtree(temp_dir)
+            # Mostramos un error claro en el frontend
+            return JSONResponse({"error": "⚠️ ARCHIVO DUPLICADO: Esta evidencia ya fue subida anteriormente."})
+        # --------------------------------------
             
-        # Determinar URL (S3 o Local)
+        # 2. Subir a la nube
+        tamanio_kb = os.path.getsize(path) / 1024
         url_archivo = f"/local/{archivo.filename}"
+        
         if s3_client:
             try:
                 nombre_nube = f"evidencias/manual_{int(ahora_ecuador().timestamp())}_{archivo.filename}"
@@ -1125,18 +1158,16 @@ async def subir_manual(
                 url_archivo = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nombre_nube}"
             except: pass
             
-        conn = get_db_connection()
         c = conn.cursor()
-        
-        # Guardar evidencia para cada estudiante
         count = 0
+        
+        # 3. Guardar en BD (Incluyendo Hash)
         for ced in lista_cedulas:
-            # Verificar si existe el usuario
             if c.execute("SELECT CI FROM Usuarios WHERE CI=?", (ced,)).fetchone():
                 c.execute("""
-                    INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
-                    VALUES (?, ?, 1, 'documento', 0, 0)
-                """, (ced, url_archivo))
+                    INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
+                    VALUES (?, ?, ?, 1, 'documento', ?, 0)
+                """, (ced, url_archivo, file_hash, tamanio_kb))
                 count += 1
         
         conn.commit()
@@ -1146,6 +1177,7 @@ async def subir_manual(
         return JSONResponse({"status": "ok", "mensaje": f"Asignado a {count} estudiantes"})
     except Exception as e:
         return JSONResponse({"error": str(e)})
+    
 # =========================================================================
 # 9. ENDPOINTS DE BACKUP Y MANTENIMIENTO
 # =========================================================================
@@ -1823,6 +1855,82 @@ async def descargar_evidencias_zip(ids: str = Form(...)):
     except Exception as e:
         return JSONResponse({"error": str(e)})
 
+
+def limpieza_duplicados_startup():
+    """
+    Se ejecuta al iniciar el sistema.
+    Busca evidencias con el mismo HASH (contenido idéntico) y elimina las copias,
+    dejando solo la más antigua.
+    """
+    print("🧹 EJECUTANDO LIMPIEZA DE ARCHIVOS DUPLICADOS...")
+    try:
+        conn = get_db_connection()
+        
+        # 1. Buscar HASHES que se repiten más de una vez
+        # (Ignoramos los que no tienen hash o es 'PENDIENTE')
+        sql_duplicados = """
+            SELECT Hash, COUNT(*) as cantidad 
+            FROM Evidencias 
+            WHERE Hash IS NOT NULL AND Hash != 'PENDIENTE' AND Hash != ''
+            GROUP BY Hash 
+            HAVING cantidad > 1
+        """
+        grupos = conn.execute(sql_duplicados).fetchall()
+        
+        eliminados_count = 0
+        espacio_ahorrado = 0
+        
+        for grupo in grupos:
+            file_hash = grupo['Hash']
+            
+            # 2. Para cada grupo repetido, traemos TODOS los registros ordenados por ID (el menor es el más viejo)
+            copias = conn.execute("""
+                SELECT id, Url_Archivo, Tamanio_KB, CI_Estudiante 
+                FROM Evidencias 
+                WHERE Hash = ? 
+                ORDER BY id ASC
+            """, (file_hash,)).fetchall()
+            
+            # La primera (índice 0) es la ORIGINAL. Las demás (1 en adelante) son COPIAS a borrar.
+            original = copias[0]
+            para_borrar = copias[1:]
+            
+            print(f"   🔍 Hash {file_hash[:8]}... encontrado {len(copias)} veces. Conservando original ID {original['id']}.")
+            
+            for copia in para_borrar:
+                # A) Borrar de la Nube (S3/Backblaze)
+                if s3_client and BUCKET_NAME in copia['Url_Archivo']:
+                    try:
+                        # Extraer la 'key' del archivo en S3
+                        # Url formato: https://BUCKET.s3.../evidencias/archivo.jpg
+                        key = copia['Url_Archivo'].split(f"{BUCKET_NAME}/")[-1]
+                        
+                        # Solo borramos el físico si la URL es diferente a la original
+                        # (Si apuntan a la misma URL exacta, no borramos el físico, solo el registro extra en DB)
+                        if copia['Url_Archivo'] != original['Url_Archivo']:
+                            s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
+                            print(f"      ☁️ Archivo físico eliminado de S3: {key}")
+                    except Exception as e:
+                        print(f"      ⚠️ Error borrando de S3: {e}")
+
+                # B) Borrar de Base de Datos
+                conn.execute("DELETE FROM Evidencias WHERE id = ?", (copia['id'],))
+                
+                eliminados_count += 1
+                espacio_ahorrado += (copia['Tamanio_KB'] or 0)
+        
+        conn.commit()
+        conn.close()
+        
+        if eliminados_count > 0:
+            print(f"✅ LIMPIEZA COMPLETADA: Se eliminaron {eliminados_count} archivos duplicados.")
+            print(f"💾 Espacio recuperado: {espacio_ahorrado/1024:.2f} MB")
+        else:
+            print("✅ SISTEMA LIMPIO: No se encontraron duplicados.")
+            
+    except Exception as e:
+        print(f"❌ Error durante la limpieza automática: {e}")
+
 if __name__ == "__main__":
     import uvicorn
     
@@ -1838,6 +1946,10 @@ if __name__ == "__main__":
     print(f"💾 S3 Storage: {'✅ Disponible' if s3_client else '❌ No disponible'}")
     print(f"📧 Servidor SMTP: {'✅ Configurado' if SMTP_EMAIL and 'tu_correo' not in SMTP_EMAIL else '⚠️ Simulado'}")
     print(f"🔐 Usuario admin: 9999999999 / admin123")
+    
+    # 👇 ¡ESTA ES LA LÍNEA QUE TE FALTA! AGREGALA AQUÍ 👇
+    limpieza_duplicados_startup()
+    
     print(f"🌐 Servidor iniciado en: http://0.0.0.0:{port}")
     print("=" * 60)
     
