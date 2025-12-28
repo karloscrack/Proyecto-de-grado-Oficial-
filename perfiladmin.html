@@ -2805,26 +2805,60 @@
     // ==========================================
     // 9. FUNCIONES AUXILIARES RESTANTES
     // ==========================================
-    function analizarDuplicados() {
-        mostrarMensaje('Analizando archivos duplicados...', 'info');
-        setTimeout(() => {
-            mostrarMensaje('Análisis completado: 0 archivos duplicados encontrados', 'success');
-        }, 2000);
-    }
+    async function ejecutarMantenimiento(tipo) {
+        let titulo, texto, icono;
+        
+        if (tipo === 'duplicados') {
+            titulo = '¿Analizar y Borrar Duplicados?';
+            texto = 'El sistema buscará archivos idénticos y borrará las copias sobrantes para ahorrar espacio.';
+            icono = 'question';
+        } else if (tipo === 'cache') {
+            titulo = '¿Limpiar Caché y Compactar?';
+            texto = 'Se ejecutará VACUUM para reducir el tamaño de la base de datos y acelerar el sistema.';
+            icono = 'info';
+        } else if (tipo === 'huerfanos') {
+            titulo = '¿Limpiar Archivos Fantasma?';
+            texto = 'Se eliminarán de la lista los archivos que no existen físicamente en la nube/disco.';
+            icono = 'warning';
+        }
 
-    function limpiarCache() {
-        if (confirm('¿Limpiar caché del sistema?')) {
-            mostrarMensaje('Caché limpiada correctamente', 'success');
+        const confirmacion = await Swal.fire({
+            title: titulo,
+            text: texto,
+            icon: icono,
+            showCancelButton: true,
+            confirmButtonColor: '#6A0DAD',
+            confirmButtonText: 'Sí, ejecutar',
+            cancelButtonText: 'Cancelar'
+        });
+        
+        if (!confirmacion.isConfirmed) return;
+
+        try {
+            mostrarMensaje('Ejecutando mantenimiento...', 'info');
+            
+            // TODOS llaman a la función maestra V4.1 porque ella hace todo junto de forma segura
+            const respuesta = await fetch(`${API_URL}/optimizar_sistema`, { method: 'POST' });
+            const resultado = await respuesta.json();
+            
+            if (resultado.status === 'ok') {
+                mostrarMensaje('Proceso finalizado correctamente.', 'success');
+                // Recargar estadísticas para ver el ahorro de espacio
+                setTimeout(() => actualizarDatosDashboard(), 2000);
+            } else {
+                mostrarMensaje('Error: ' + resultado.error, 'error');
+            }
+        } catch (error) {
+            mostrarMensaje('Error de conexión', 'error');
         }
     }
 
-    function limpiarHuerfanos() {
-        mostrarMensaje('Buscando archivos huérfanos...', 'info');
-        setTimeout(() => {
-            mostrarMensaje('0 archivos huérfanos encontrados', 'success');
-        }, 2000);
-    }
+    // Botones individuales que llaman a la maestra
+    function analizarDuplicados() { ejecutarMantenimiento('duplicados'); }
+    function limpiarCache() { ejecutarMantenimiento('cache'); }
+    function limpiarHuerfanos() { ejecutarMantenimiento('huerfanos'); }
 
+    // (Aquí sigue tu función abrirModalAgregarRef...)
     function abrirModalAgregarRef() {
         const select = document.getElementById('selectUsuarioRef');
         select.innerHTML = '<option value="">-- Seleccionar --</option>' +

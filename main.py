@@ -974,31 +974,57 @@ async def cambiar_estado_usuario(datos: EstadoUsuarioRequest):
 
 @app.delete("/eliminar_usuario/{cedula}")
 async def eliminar_usuario(cedula: str):
-    """Elimina un usuario y todas sus evidencias asociadas"""
+    """Elimina usuario y SUS ARCHIVOS FÍSICOS (si nadie más los usa)"""
     try:
         conn = get_db_connection()
         c = conn.cursor()
         
-        # Verificar si es admin (opcional, pero seguro)
-        c.execute("SELECT Tipo FROM Usuarios WHERE CI = ?", (cedula,))
-        user = c.fetchone()
+        # 1. Obtener archivos del usuario antes de borrarlos
+        evidencias = c.execute("SELECT id, Url_Archivo FROM Evidencias WHERE CI_Estudiante = ?", (cedula,)).fetchall()
         
-        # Opcional: Impedir borrar al superadmin si quisieras
-        # if user and user['Tipo'] == 0: ...
+        archivos_borrados = 0
+        espacio_liberado = 0
+        
+        for ev in evidencias:
+            url = ev['Url_Archivo']
+            
+            # 2. VERIFICACIÓN DE SEGURIDAD: ¿Alguien más usa este mismo archivo?
+            # Contamos cuántas veces aparece esta URL en total en la base de datos
+            uso_compartido = c.execute("SELECT COUNT(*) as n FROM Evidencias WHERE Url_Archivo = ?", (url,)).fetchone()['n']
+            
+            # Si 'n' es 1, significa que SOLO este usuario lo tiene. ¡Podemos borrarlo de la nube!
+            # Si 'n' > 1, significa que otro estudiante comparte la foto. NO la borramos de S3, solo de la BD.
+            if uso_compartido == 1:
+                if s3_client and BUCKET_NAME in url:
+                    try:
+                        parsed = urlparse(url)
+                        key = parsed.path.lstrip('/')
+                        s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
+                        print(f"   🗑️ Archivo de usuario eliminado físicamente: {key}")
+                        archivos_borrados += 1
+                        # Estimamos 1MB por archivo si no tenemos el dato a mano
+                        espacio_liberado += 1
+                    except Exception as e:
+                        print(f"⚠️ No se pudo borrar archivo {key}: {e}")
+            else:
+                print(f"   🛡️ Archivo protegido (compartido por otros): {url}")
 
-        # Borrar evidencias primero (limpieza)
+        # 3. Borrar registros de la base de datos
         c.execute("DELETE FROM Evidencias WHERE CI_Estudiante = ?", (cedula,))
-        
-        # Borrar usuario
         c.execute("DELETE FROM Usuarios WHERE CI = ?", (cedula,))
         
         conn.commit()
         conn.close()
         
-        registrar_auditoria("ELIMINACION_USUARIO", f"Usuario {cedula} eliminado permanentemente")
-        return JSONResponse({"status": "ok", "mensaje": "Usuario eliminado"})
+        # Auditoría
+        detalles = f"Usuario {cedula} eliminado. {archivos_borrados} archivos borrados de la nube."
+        registrar_auditoria("ELIMINACION_USUARIO", detalles)
+        
+        return JSONResponse({"status": "ok", "mensaje": f"Usuario y {archivos_borrados} archivos eliminados correctamente."})
+        
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
+    
 # =========================================================================
 # 8. ENDPOINTS DE EVIDENCIAS
 # =========================================================================
@@ -1399,54 +1425,101 @@ async def descargar_multimedia_zip():
 from urllib.parse import urlparse
 import re
 
+from urllib.parse import urlparse
+import re
+import os
+
 @app.post("/optimizar_sistema")
 async def optimizar_sistema(background_tasks: BackgroundTasks):
     """
-    V3.5 - OPTIMIZACIÓN MAGNETO + TERMINATOR:
-    1. 🧲 IMÁN: Mueve todo lo 'PENDIENTE' a la Bandeja Recuperados.
-    2. 🗑️ TERMINATOR: Detecta duplicados y borra FÍSICAMENTE de S3.
-    3. 🧹 VACUUM: Compacta la base de datos de forma segura.
+    V4.1 - MANTENIMIENTO TOTAL (MAESTRA):
+    1. 🧲 IMÁN: Recupera archivos perdidos a la Bandeja.
+    2. 👻 CAZAFANTASMAS: Elimina registros de archivos que no existen (Local/Nube).
+    3. 🤖 TERMINATOR: Elimina duplicados físicos reales.
+    4. 🧹 VACUUM: Optimización final.
     """
     try:
         def tarea_mantenimiento_profundo():
-            print("🔧 INICIANDO MANTENIMIENTO MAGNETO V3.5...")
+            print("🔧 INICIANDO MANTENIMIENTO MAESTRO V4.1...")
             try:
                 conn = get_db_connection()
                 c = conn.cursor()
 
                 # =========================================================
-                # PASO 0: EL IMÁN (Recoger evidencias perdidas/invisibles)
+                # PASO 1: EL IMÁN (Recoger evidencias perdidas/invisibles)
                 # =========================================================
-                print("🧲 Paso 0: Atrayendo archivos huérfanos a la Bandeja...")
-                
-                # Mover todo lo que no tenga dueño a la Bandeja (CI: 9999999990)
+                print("🧲 Paso 1: Atrayendo archivos huérfanos a la Bandeja...")
                 c.execute("""
                     UPDATE Evidencias 
                     SET CI_Estudiante = '9999999990' 
                     WHERE CI_Estudiante IS NULL OR CI_Estudiante = 'PENDIENTE' OR CI_Estudiante = ''
                 """)
-                recuperados = c.rowcount
-                if recuperados > 0:
-                    print(f"   🎉 ¡APARECIERON! Se movieron {recuperados} archivos invisibles a la Bandeja.")
-                else:
-                    print("   ✨ No había archivos invisibles.")
+                if c.rowcount > 0:
+                    print(f"   🎉 Se recuperaron {c.rowcount} archivos invisibles.")
 
                 # =========================================================
-                # PASO 1: LIMPIEZA INTELIGENTE (Borrado Físico de Duplicados)
+                # PASO 2: CAZAFANTASMAS (Borrar lo que NO existe)
                 # =========================================================
-                print("🧹 Paso 1: Buscando duplicados físicos...")
+                print("👻 Paso 2: Cazando fantasmas (Archivos inexistentes)...")
+                evidencias = c.execute("SELECT id, Url_Archivo FROM Evidencias").fetchall()
+                fantasmas = 0
                 
-                # Función interna para borrar de S3
+                for ev in evidencias:
+                    url = ev['Url_Archivo']
+                    existe = False
+                    peso_kb = 0
+                    
+                    # A. Verificación NUBE
+                    if s3_client and BUCKET_NAME in url:
+                        try:
+                            parsed = urlparse(url)
+                            key = parsed.path.lstrip('/')
+                            meta = s3_client.head_object(Bucket=BUCKET_NAME, Key=key)
+                            peso_kb = meta['ContentLength'] / 1024
+                            existe = True
+                        except Exception as e:
+                            if "404" in str(e) or "Not Found" in str(e): existe = False
+                            else: existe = True # Ante duda, no borrar
+                    
+                    # B. Verificación LOCAL (Aquí tenías el problema de los 3 archivos)
+                    elif "/local/" in url:
+                        ruta_fisica = url.replace("/local/", "./").lstrip("/")
+                        # Asegurar ruta absoluta en Railway
+                        if not os.path.exists(ruta_fisica):
+                            ruta_fisica = os.path.join(os.getcwd(), url.replace("/local/", "").lstrip("/"))
+                        
+                        if os.path.exists(ruta_fisica):
+                            existe = True
+                            peso_kb = os.path.getsize(ruta_fisica) / 1024
+                        else:
+                            print(f"   👻 Fantasma Local: {url}")
+                            existe = False
+
+                    # ACCIÓN
+                    if existe:
+                        if peso_kb > 0:
+                            c.execute("UPDATE Evidencias SET Tamanio_KB = ? WHERE id = ?", (peso_kb, ev['id']))
+                    else:
+                        c.execute("DELETE FROM Evidencias WHERE id = ?", (ev['id'],))
+                        fantasmas += 1
+                
+                print(f"   ✨ {fantasmas} fantasmas eliminados.")
+
+                # =========================================================
+                # PASO 3: TERMINATOR (Borrado de Duplicados Físicos)
+                # =========================================================
+                print("🤖 Paso 3: Eliminando duplicados físicos...")
+                
                 def borrar_de_nube_real(url_archivo):
                     if s3_client and BUCKET_NAME in url_archivo:
                         try:
                             parsed = urlparse(url_archivo)
                             key = parsed.path.lstrip('/')
                             s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
-                            print(f"   🗑️ Archivo eliminado de S3: {key}")
-                        except Exception as e:
-                            print(f"   ⚠️ Falló borrado S3: {e}")
+                            print(f"   🗑️ Borrado S3: {key}")
+                        except: pass
 
+                # Recargamos lista tras borrar fantasmas
                 todas = c.execute("SELECT id, CI_Estudiante, Url_Archivo, Hash FROM Evidencias").fetchall()
                 vistos = {}
                 ids_a_borrar = []
@@ -1454,73 +1527,35 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                 for ev in todas:
                     cedula = ev['CI_Estudiante']
                     url = ev['Url_Archivo']
-                    id_ev = ev['id']
                     
-                    # Limpieza del nombre (para detectar "mellizos")
                     nombre_archivo = url.split('/')[-1]
                     nombre_limpio = re.sub(r'^(manual_)?\d+_', '', nombre_archivo).lower()
                     
-                    # Clave única
+                    # Clave única: Estudiante + (Hash o Nombre)
                     clave = f"{cedula}|{ev.get('Hash')}" if ev.get('Hash') and ev.get('Hash') != 'PENDIENTE' else f"{cedula}|{nombre_limpio}"
                     
                     if clave in vistos:
                         original = vistos[clave]
-                        if url != original['Url_Archivo']: # Solo borrar físico si la URL es distinta
-                            borrar_de_nube_real(url)
-                        ids_a_borrar.append(id_ev)
+                        if url != original['Url_Archivo']: 
+                            borrar_de_nube_real(url) # Borra físico si la URL es distinta
+                        ids_a_borrar.append(ev['id'])
                     else:
                         vistos[clave] = ev
                 
                 if ids_a_borrar:
                     placeholders = ','.join(['?'] * len(ids_a_borrar))
                     c.execute(f"DELETE FROM Evidencias WHERE id IN ({placeholders})", ids_a_borrar)
-                    print(f"   ✨ Se eliminaron {len(ids_a_borrar)} duplicados.")
+                    print(f"   ✨ {len(ids_a_borrar)} duplicados eliminados.")
 
                 # =========================================================
-                # PASO 2: LIMPIAR BANDEJA (Si ya lo tiene un alumno real)
+                # PASO 4: FINALIZACIÓN
                 # =========================================================
-                print("🧹 Paso 2: Limpiando redundancias en Bandeja...")
-                duplicados_bandeja = c.execute("""
-                    SELECT id, Url_Archivo FROM Evidencias 
-                    WHERE CI_Estudiante = '9999999990' 
-                    AND Hash IN (SELECT Hash FROM Evidencias WHERE CI_Estudiante != '9999999990')
-                """).fetchall()
-                
-                ids_bandeja = []
-                for dup in duplicados_bandeja:
-                    # Verificar si la URL es única antes de borrar físico
-                    uso_url = c.execute("SELECT COUNT(*) as n FROM Evidencias WHERE Url_Archivo = ?", (dup['Url_Archivo'],)).fetchone()['n']
-                    if uso_url == 1: borrar_de_nube_real(dup['Url_Archivo'])
-                    ids_bandeja.append(dup['id'])
-
-                if ids_bandeja:
-                    placeholders = ','.join(['?'] * len(ids_bandeja))
-                    c.execute(f"DELETE FROM Evidencias WHERE id IN ({placeholders})", ids_bandeja)
-
-                # =========================================================
-                # PASO 3: SINCRONIZACIÓN Y VACUUM (Modo Seguro)
-                # =========================================================
-                print("☁️ Paso 3: Sincronizando pesos...")
-                
-                # ... (Lógica de pesos simplificada para no alargar, pero funcional) ...
-                evidencias = c.execute("SELECT id, Url_Archivo FROM Evidencias").fetchall()
-                for ev in evidencias:
-                    # Solo actualizamos si es local o si tenemos acceso a S3
-                    if "/local/" in ev['Url_Archivo'] and os.path.exists(ev['Url_Archivo'].replace("/local/", "./")):
-                         peso = os.path.getsize(ev['Url_Archivo'].replace("/local/", "./")) / 1024
-                         c.execute("UPDATE Evidencias SET Tamanio_KB = ? WHERE id = ?", (peso, ev['id']))
-                    # Si es nube, confiamos en que ya está actualizado o se actualizará en el próximo inicio
-
-                # GUARDADO IMPORTANTE ANTES DE VACUUM
                 conn.commit()
-                
-                # ACTIVAR MODO AUTOCOMMIT PARA VACUUM
                 conn.isolation_level = None 
                 c.execute("VACUUM")
-                
                 conn.close()
                 
-                # Actualizar métricas finales
+                # Actualizar estadísticas
                 stats = calcular_estadisticas_reales()
                 conn2 = get_db_connection()
                 fecha = ahora_ecuador().date().isoformat()
@@ -1529,17 +1564,17 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                 conn2.commit()
                 conn2.close()
                 
-                print("✅ MANTENIMIENTO MAGNETO FINALIZADO.")
+                print("✅ MANTENIMIENTO MAESTRO V4.1 FINALIZADO.")
                 
             except Exception as e:
                 print(f"❌ Error en mantenimiento: {e}")
 
         background_tasks.add_task(tarea_mantenimiento_profundo)
-        return JSONResponse({"status": "ok", "mensaje": "🧲 Mantenimiento iniciado. Los archivos perdidos aparecerán en la Bandeja."})
+        return JSONResponse({"status": "ok", "mensaje": "🛠️ Protocolo Maestro V4.1 iniciado."})
         
     except Exception as e:
         return JSONResponse(content={"error": str(e)})
-
+    
 # =========================================================================
 # 10. ENDPOINTS DE ESTADÍSTICAS Y REPORTES
 # =========================================================================
