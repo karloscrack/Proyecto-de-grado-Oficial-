@@ -2323,10 +2323,10 @@
             tarjeta.onclick = () => verEvidenciasEstudiante(estudiante);
             
             tarjeta.innerHTML = `
-                <img src="${estudiante.foto || 'https://via.placeholder.com/180'}" 
+                <img src="${estudiante.foto || 'Img/Logo_pestaña.png'}" 
                      class="card-media" 
-                     onerror="this.src='https://via.placeholder.com/180'"
-                     alt="${estudiante.nombre} ${estudiante.apellido}">
+                     onerror="this.src='Img/Logo_pestaña.png'"
+                      alt="${estudiante.nombre} ${estudiante.apellido}">
                 ${estudiante.total_evidencias > 0 ? `
                     <div style="position:absolute; top:10px; left:10px; background:var(--primary); 
                                 color:white; padding:2px 8px; border-radius:10px; font-size:0.8rem;">
@@ -2446,7 +2446,7 @@
             let contenido = '';
             
             if (esImagen) {
-                contenido = `<img src="${evidencia.Url_Archivo}" class="card-media" loading="lazy" onerror="this.src='https://via.placeholder.com/180'">`;
+                contenido = `<img src="${evidencia.Url_Archivo}" class="card-media" loading="lazy" onerror="this.src='Img/Logo_pestaña.png'">`;
             } else if (esVideo) {
                 contenido = `
                     <video src="${evidencia.Url_Archivo}#t=0.1" class="card-media"></video>
@@ -2563,7 +2563,7 @@
             `;
         } else {
             contenido.innerHTML = `
-                <img src="${evidenciaActual.Url_Archivo}" class="lb-media-item" onerror="this.src='https://via.placeholder.com/500'">
+               <img src="${evidenciaActual.Url_Archivo}" class="lb-media-item" onerror="this.src='Img/Logo_pestaña.png'">
             `;
         }
     }
