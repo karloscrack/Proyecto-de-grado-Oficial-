@@ -2028,7 +2028,8 @@ def limpieza_duplicados_startup():
     0. FASE 0: Elimina duplicados por URL exacta.
     1. FASE 1: Intenta calcular HASHES (si el archivo existe).
     2. FASE 2: Elimina por HASH (contenido idéntico).
-    3. FASE 3 (NUEVA): Elimina por NOMBRE + ESTUDIANTE (Atrapa lo que se escapó).
+    3. FASE 3: Elimina por NOMBRE + ESTUDIANTE (Heurística).
+    4. FASE 4: SINCRONIZACIÓN REAL CON NUBE (Pesos y Fantasmas).
     """
     print("🧹 INICIANDO PROTOCOLO DE LIMPIEZA Y MANTENIMIENTO...")
     
@@ -2073,7 +2074,7 @@ def limpieza_duplicados_startup():
                                 s3_client.download_fileobj(BUCKET_NAME, key, tmp)
                                 temp_path = tmp.name
                             file_hash = calcular_hash(temp_path)
-                    except: pass # Si falla (404), seguimos
+                    except: pass 
                 
                 if file_hash:
                     conn.execute("UPDATE Evidencias SET Hash = ? WHERE id = ?", (file_hash, row['id']))
@@ -2110,69 +2111,110 @@ def limpieza_duplicados_startup():
         if eliminados_2 > 0: print(f"   ✨ Fase 2: {eliminados_2} duplicados exactos eliminados.")
 
         # --- FASE 3 (HEURÍSTICA): NOMBRE DE ARCHIVO + ESTUDIANTE ---
-        # Si Juan subió "foto.jpg" dos veces, tendrán URLs distintas (por el timestamp),
-        # pero el nombre original al final es el mismo.
         print("🔍 FASE 3: Buscando duplicados por nombre de archivo...")
-        
-        # Traemos todo para analizar con Python (más seguro que SQL complejo)
         todas = conn.execute("SELECT id, CI_Estudiante, Url_Archivo, Tamanio_KB FROM Evidencias").fetchall()
-        
-        # Agrupar por Estudiante + NombreOriginal
         agrupados = {}
         import re
-        
         eliminados_3 = 0
         
         for ev in todas:
             url = ev['Url_Archivo']
             cedula = ev['CI_Estudiante']
-            
-            # Extraer nombre original (quitando timestamp inicial 123456_)
             filename = os.path.basename(url)
-            # Regex: busca digitos seguidos de guion bajo al inicio
             clean_name = re.sub(r'^\d+_', '', filename)
-            
-            # Clave única: Cédula + NombreLimpio (Ej: 175105... + foto.jpg)
             clave = f"{cedula}|{clean_name}"
             
-            if clave not in agrupados:
-                agrupados[clave] = []
+            if clave not in agrupados: agrupados[clave] = []
             agrupados[clave].append(ev)
             
-        # Analizar grupos
         for clave, lista in agrupados.items():
             if len(lista) > 1:
-                # Ordenar por ID (el menor es el más antiguo)
                 lista.sort(key=lambda x: x['id'])
-                
                 original = lista[0]
                 duplicados = lista[1:]
-                
                 for dup in duplicados:
-                    # Protección extra: Solo borrar si tienen un tamaño similar o si el duplicado es 0
-                    # (Evita borrar una corrección válida del mismo archivo)
-                    # Pero como quieres limpieza agresiva, borramos si el nombre es IDÉNTICO.
-                    
                     conn.execute("DELETE FROM Evidencias WHERE id = ?", (dup['id'],))
-                    
-                    # Intentar borrar físico S3
                     if s3_client and BUCKET_NAME in dup['Url_Archivo']:
                         try:
                             key = dup['Url_Archivo'].split(f"{BUCKET_NAME}/")[-1]
                             s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
                         except: pass
-                        
                     eliminados_3 += 1
 
+        if eliminados_3 > 0: print(f"   ✨ Fase 3: {eliminados_3} archivos eliminados por nombre.")
+
+        # --- FASE 4: SINCRONIZACIÓN CON BACKBLAZE (ESTO ARREGLA TUS NÚMEROS) ---
+        print("☁️ FASE 4: Auditando existencia real en la nube y actualizando pesos...")
+        
+        # Recargamos la lista actualizada después de los borrados anteriores
         conn.commit()
+        evidencias = conn.execute("SELECT id, Url_Archivo FROM Evidencias").fetchall()
+        
+        actualizados_peso = 0
+        eliminados_nube = 0
+        
+        for ev in evidencias:
+            url = ev['Url_Archivo']
+            existe = False
+            peso_kb = 0
+            
+            # A) Si es archivo en Nube
+            if s3_client and BUCKET_NAME in url:
+                try:
+                    key = url.split(f"{BUCKET_NAME}/")[-1]
+                    # Preguntamos a Backblaze la verdad
+                    meta = s3_client.head_object(Bucket=BUCKET_NAME, Key=key)
+                    peso_kb = meta['ContentLength'] / 1024
+                    existe = True
+                except Exception:
+                    existe = False # Si da error, es un fantasma
+            
+            # B) Si es archivo Local
+            elif "/local/" in url:
+                ruta_local = url.replace("/local/", "./") # Ajustar si usas Docker con ruta absoluta
+                # Parche para Docker si la ruta relativa falla
+                if not os.path.exists(ruta_local):
+                   ruta_local = os.path.join("/app", url.replace("/local/", "").lstrip("/"))
+
+                if os.path.exists(ruta_local):
+                    peso_kb = os.path.getsize(ruta_local) / 1024
+                    existe = True
+            
+            # ACCIONES FASE 4
+            if existe:
+                # Actualizamos el peso real
+                conn.execute("UPDATE Evidencias SET Tamanio_KB = ? WHERE id = ?", (peso_kb, ev['id']))
+                actualizados_peso += 1
+            else:
+                # Borramos el fantasma
+                # print(f"   👻 Eliminando fantasma ID {ev['id']} (No en nube)") # Descomentar para debug
+                conn.execute("DELETE FROM Evidencias WHERE id = ?", (ev['id'],))
+                eliminados_nube += 1
+        
+        conn.commit()
+        print(f"✅ FASE 4 COMPLETADA: {actualizados_peso} pesos actualizados, {eliminados_nube} fantasmas eliminados.")
+        
+        # --- FINALIZACIÓN ---
+        # Recalcular estadísticas inmediatamente
+        try:
+            stats = calcular_estadisticas_reales()
+            fecha_hoy = ahora_ecuador().date().isoformat()
+            conn.execute("""
+                INSERT OR REPLACE INTO Metricas_Sistema 
+                (Fecha, Total_Usuarios, Total_Evidencias, Solicitudes_Pendientes, Almacenamiento_MB)
+                VALUES (?, ?, ?, ?, ?)
+            """, (fecha_hoy, stats.get("usuarios_activos",0), stats.get("total_evidencias",0), 
+                  stats.get("solicitudes_pendientes",0), stats.get("almacenamiento_mb",0)))
+            conn.commit()
+        except: pass
+        
         conn.close()
         
-        total = eliminados_0 + eliminados_2 + eliminados_3
-        print(f"✅ MANTENIMIENTO FINALIZADO. Total eliminados: {total}")
-        if eliminados_3 > 0: print(f"   (La Fase 3 eliminó {eliminados_3} archivos por nombre repetido)")
+        total_limpieza = eliminados_0 + eliminados_2 + eliminados_3 + eliminados_nube
+        print(f"✅ MANTENIMIENTO TOTAL FINALIZADO. Total registros limpiados: {total_limpieza}")
 
     except Exception as e:
-        print(f"❌ Error en limpieza: {e}")
+        print(f"❌ Error en limpieza startup: {e}")
 
 if __name__ == "__main__":
     import uvicorn
