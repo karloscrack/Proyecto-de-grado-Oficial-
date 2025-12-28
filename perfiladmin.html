@@ -736,7 +736,10 @@
         .drop-zone * {
             pointer-events: none;
         }
-        .drop-zone button, .drop-zone input {
+        /* PERMITIMOS INTERACCIÓN EN BOTONES, INPUTS Y EL LOG (SCROLL) */
+        .drop-zone button, 
+        .drop-zone input, 
+        .drop-zone #uploadLog {   /* <--- ESTA ES LA CLAVE */
             pointer-events: auto;
         }
     </style>
@@ -1022,7 +1025,7 @@
                     </div>
                     <p id="progressText" style="margin-top:10px;">Procesando...</p>
                 </div>
-                <div id="uploadLog" style="text-align:left; margin-top:20px; max-height:200px; 
+               <div id="uploadLog" style="text-align:left; margin-top:20px; max-height:300px;
                      overflow-y:auto; font-size:0.9rem; padding:10px; background:var(--bg-input); 
                      border-radius:8px;"></div>
             </div>
