@@ -4,6 +4,6 @@ python-multipart
 boto3
 pydantic
 requests
-# Estas dos son NUEVAS y obligatorias para la IA avanzada:
 numpy
 opencv-python-headless
+pytz
