@@ -2934,12 +2934,21 @@
                 
                 const resultado = await respuesta.json();
                 
-                if (resultado.status === 'exito' || resultado.mensaje) {
-                    log.innerHTML += `<div style="color:var(--secondary);">✅ ${archivo.name} asignado correctamente</div>`;
+                // --- CORRECCIÓN AQUÍ ---
+                // Antes ignoraba el mensaje del servidor. Ahora lo mostramos.
+                if (resultado.status === 'exito') {
+                    // Usamos resultado.mensaje porque ahí vienen los NOMBRES
+                    log.innerHTML += `<div style="color:var(--secondary); margin-top:5px; padding:5px; border-bottom:1px solid #eee;">
+                        <strong>${archivo.name}:</strong><br>${resultado.mensaje}
+                    </div>`;
                 } else if (resultado.status === 'alerta') {
-                    log.innerHTML += `<div style="color:var(--warning);">⚠ ${archivo.name}: ${resultado.mensaje || 'Sin coincidencias'}</div>`;
+                    log.innerHTML += `<div style="color:var(--warning); margin-top:5px; padding:5px; border-bottom:1px solid #eee;">
+                        <strong>⚠ ${archivo.name}:</strong> ${resultado.mensaje}
+                    </div>`;
                 } else {
-                    log.innerHTML += `<div style="color:var(--error);">❌ ${archivo.name}: ${resultado.motivo || 'Error en el servidor'}</div>`;
+                    log.innerHTML += `<div style="color:var(--error); margin-top:5px; padding:5px; border-bottom:1px solid #eee;">
+                        <strong>❌ ${archivo.name}:</strong> ${resultado.mensaje || 'Error desconocido'}
+                    </div>`;
                 }
             } catch (error) {
                 log.innerHTML += `<div style="color:var(--error);">❌ ${archivo.name}: Error de conexión - ${error.message}</div>`;
@@ -2954,9 +2963,9 @@
         
         setTimeout(() => {
             cargarDatosIniciales();
-        }, 1000);
+        }, 1500);
     }
-
+    
     // ==========================================
     // 11. FUNCIONES DE CAMBIO DE CONTRASEÑA
     // ==========================================
