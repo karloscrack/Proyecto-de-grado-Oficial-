@@ -1728,6 +1728,105 @@ async def obtener_solicitudes(limit: int = 100):
     except Exception as e:
         return JSONResponse(content={"error": str(e)})
     
+# =========================================================================
+# 1. ENDPOINTS DE SOLICITUDES (LADO ESTUDIANTE) - ¡ESTO ES LO QUE TE FALTA!
+# =========================================================================
+
+@app.post("/solicitar_recuperacion")
+async def solicitar_recuperacion(
+    cedula: str = Form(...),
+    email: str = Form(...),
+    mensaje: Optional[str] = Form(None)
+):
+    """El estudiante pide recuperar contraseña desde login"""
+    try:
+        conn = get_db_connection()
+        # Verificar si el usuario existe
+        user = conn.execute("SELECT Nombre, Apellido FROM Usuarios WHERE CI=?", (cedula,)).fetchone()
+        if not user:
+            conn.close()
+            return JSONResponse({"status": "error", "mensaje": "La cédula no está registrada."})
+            
+        detalle = f"Solicitud de recuperación. Correo contacto: {email}. "
+        if mensaje: detalle += f"Mensaje: {mensaje}"
+        
+        conn.execute("""
+            INSERT INTO Solicitudes (Tipo, CI_Solicitante, Email, Detalle, Estado, Fecha)
+            VALUES ('RECUPERACION_CONTRASENA', ?, ?, ?, 'PENDIENTE', ?)
+        """, (cedula, email, detalle, ahora_ecuador()))
+        
+        conn.commit()
+        conn.close()
+        return JSONResponse({"status": "ok", "mensaje": "Solicitud enviada al administrador."})
+    except Exception as e:
+        return JSONResponse({"status": "error", "mensaje": str(e)})
+
+@app.post("/solicitar_subida")
+async def solicitar_subida(cedula: str = Form(...), archivo: UploadFile = File(...)):
+    """El estudiante sube un archivo para aprobación del admin"""
+    try:
+        # 1. Guardar temporalmente para subir a la nube
+        temp_dir = tempfile.mkdtemp()
+        path = os.path.join(temp_dir, archivo.filename)
+        with open(path, "wb") as f: shutil.copyfileobj(archivo.file, f)
+        
+        url_archivo = f"/local/{archivo.filename}"
+        if s3_client:
+            try:
+                # Nombre temporal (propuesta)
+                nombre_nube = f"evidencias/propuesta_{int(ahora_ecuador().timestamp())}_{archivo.filename}"
+                s3_client.upload_file(path, BUCKET_NAME, nombre_nube, ExtraArgs={'ACL': 'public-read'})
+                url_archivo = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nombre_nube}"
+            except: pass
+        
+        shutil.rmtree(temp_dir)
+        
+        conn = get_db_connection()
+        conn.execute("""
+            INSERT INTO Solicitudes (Tipo, CI_Solicitante, Detalle, Evidencia_Reportada_Url, Estado, Fecha)
+            VALUES ('SUBIR_EVIDENCIA', ?, 'El estudiante desea agregar esta evidencia.', ?, 'PENDIENTE', ?)
+        """, (cedula, url_archivo, ahora_ecuador()))
+        
+        conn.commit()
+        conn.close()
+        return JSONResponse({"status": "ok", "mensaje": "Archivo enviado a revisión."})
+    except Exception as e:
+        return JSONResponse({"status": "error", "mensaje": str(e)})
+
+@app.post("/reportar_evidencia")
+async def reportar_evidencia(cedula: str = Form(...), id_evidencia: int = Form(...), motivo: str = Form(...)):
+    """El estudiante reporta 'No soy yo'"""
+    try:
+        conn = get_db_connection()
+        
+        # Obtener URL para mostrarla al admin
+        ev = conn.execute("SELECT Url_Archivo FROM Evidencias WHERE id=?", (id_evidencia,)).fetchone()
+        url = ev['Url_Archivo'] if ev else ""
+        
+        conn.execute("""
+            INSERT INTO Solicitudes (Tipo, CI_Solicitante, Detalle, Id_Evidencia, Evidencia_Reportada_Url, Estado, Fecha)
+            VALUES ('REPORTE_EVIDENCIA', ?, ?, ?, ?, 'PENDIENTE', ?)
+        """, (cedula, motivo, id_evidencia, url, ahora_ecuador()))
+        
+        conn.commit()
+        conn.close()
+        return JSONResponse({"status": "ok", "mensaje": "Reporte enviado."})
+    except Exception as e:
+        return JSONResponse({"status": "error", "mensaje": str(e)})
+
+@app.get("/obtener_solicitudes_por_cedula")
+async def obtener_solicitudes_por_cedula(cedula: str):
+    try:
+        conn = get_db_connection()
+        rows = conn.execute("SELECT * FROM Solicitudes WHERE CI_Solicitante=? ORDER BY Fecha DESC", (cedula,)).fetchall()
+        conn.close()
+        return JSONResponse([dict(r) for r in rows])
+    except: return JSONResponse([])
+
+# =========================================================================
+# AQUI DEBERÍA SEGUIR TU FUNCIÓN @app.post("/gestionar_solicitud") ...
+# =========================================================================
+
 @app.post("/gestionar_solicitud")
 async def gestionar_solicitud(
     id_solicitud: int = Form(...),
