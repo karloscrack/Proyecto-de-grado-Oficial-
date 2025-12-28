@@ -1401,53 +1401,50 @@ from urllib.parse import urlparse
 @app.post("/optimizar_sistema")
 async def optimizar_sistema(background_tasks: BackgroundTasks):
     """
-    V3.0 - MANTENIMIENTO MAESTRO:
-    1. Elimina duplicados entre Bandeja y Estudiantes (Prioriza al estudiante).
-    2. Elimina duplicados dentro del mismo perfil (Si un alumno tiene 2 veces la foto).
-    3. Sincroniza pesos reales con la nube.
+    V3.1 - MANTENIMIENTO MAESTRO (FIX ROWCOUNT):
+    1. Elimina duplicados entre Bandeja y Estudiantes.
+    2. Elimina duplicados dentro del mismo perfil.
+    3. Sincroniza pesos reales.
     """
     try:
         def tarea_mantenimiento_profundo():
             print("🔧 INICIANDO LIMPIEZA PROFUNDA DE DUPLICADOS...")
             try:
                 conn = get_db_connection()
+                c = conn.cursor() # <--- CORRECCIÓN IMPORTANTE: Usamos cursor explícito
                 
                 # ---------------------------------------------------------
                 # PASO 1: LIMPIAR BANDEJA DE RECUPERADOS (CI: 9999999990)
-                # Regla: Si el archivo ya lo tiene ALGUIEN MÁS, bórralo de la bandeja.
                 # ---------------------------------------------------------
                 print("🧹 Paso 1: Eliminando redundancias en Bandeja Recuperados...")
                 
                 # Borrar por HASH idéntico
-                conn.execute("""
+                c.execute("""
                     DELETE FROM Evidencias 
                     WHERE CI_Estudiante = '9999999990' 
                     AND Hash IN (
                         SELECT Hash FROM Evidencias WHERE CI_Estudiante != '9999999990'
                     )
                 """)
-                borrados_hash = conn.rowcount
+                borrados_hash = c.rowcount # <--- Ahora sí funciona
                 
-                # Borrar por URL idéntica (por si el hash falló)
-                conn.execute("""
+                # Borrar por URL idéntica
+                c.execute("""
                     DELETE FROM Evidencias 
                     WHERE CI_Estudiante = '9999999990' 
                     AND Url_Archivo IN (
                         SELECT Url_Archivo FROM Evidencias WHERE CI_Estudiante != '9999999990'
                     )
                 """)
-                borrados_url = conn.rowcount
+                borrados_url = c.rowcount
                 print(f"   ✨ Se eliminaron {borrados_hash + borrados_url} archivos sobrantes de la bandeja.")
 
                 # ---------------------------------------------------------
                 # PASO 2: LIMPIAR DUPLICADOS EN PERFILES DE ESTUDIANTES
-                # Regla: Si Juan tiene la foto X dos veces, deja solo una.
                 # ---------------------------------------------------------
                 print("🧹 Paso 2: Eliminando duplicados internos en perfiles...")
                 
-                # Esta consulta mágica mantiene solo el registro más antiguo (MIN(id)) 
-                # de cada combinación (Estudiante + Hash)
-                conn.execute("""
+                c.execute("""
                     DELETE FROM Evidencias 
                     WHERE id NOT IN (
                         SELECT MIN(id) 
@@ -1455,14 +1452,15 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                         GROUP BY CI_Estudiante, Hash
                     )
                 """)
-                duplicados_perfil = conn.rowcount
+                duplicados_perfil = c.rowcount
                 print(f"   ✨ Se fusionaron {duplicados_perfil} evidencias duplicadas en perfiles.")
 
                 # ---------------------------------------------------------
-                # PASO 3: SINCRONIZACIÓN CON NUBE (PESOS Y FANTASMAS)
+                # PASO 3: SINCRONIZACIÓN CON NUBE
                 # ---------------------------------------------------------
                 print("☁️ Paso 3: Auditando existencia real en la nube...")
-                evidencias = conn.execute("SELECT id, Url_Archivo FROM Evidencias").fetchall()
+                # Para leer usamos execute directo o el cursor, ambos valen aquí
+                evidencias = c.execute("SELECT id, Url_Archivo FROM Evidencias").fetchall()
                 actualizados = 0
                 
                 for ev in evidencias:
@@ -1479,18 +1477,19 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                             existe = True
                         except Exception as e:
                             if "404" in str(e) or "Not Found" in str(e): existe = False
-                            else: existe = True # Asumimos que existe si es otro error
+                            else: existe = True 
                     elif "/local/" in url:
                         existe = True
 
                     if existe:
                         if peso_kb > 0:
-                            conn.execute("UPDATE Evidencias SET Tamanio_KB = ? WHERE id = ?", (peso_kb, ev['id']))
+                            # Usamos una nueva conexión o el cursor para updates individuales
+                            c.execute("UPDATE Evidencias SET Tamanio_KB = ? WHERE id = ?", (peso_kb, ev['id']))
                             actualizados += 1
                     else:
-                        conn.execute("DELETE FROM Evidencias WHERE id = ?", (ev['id'],))
+                        c.execute("DELETE FROM Evidencias WHERE id = ?", (ev['id'],))
                 
-                conn.execute("VACUUM")
+                c.execute("VACUUM")
                 conn.commit()
                 conn.close()
                 
@@ -1508,12 +1507,11 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
             except Exception as e:
                 print(f"❌ Error en limpieza profunda: {e}")
 
-        # Ejecutar en segundo plano
         background_tasks.add_task(tarea_mantenimiento_profundo)
         
         return JSONResponse({
             "status": "ok",
-            "mensaje": "🧹 Limpieza iniciada. Los duplicados desaparecerán en unos segundos."
+            "mensaje": "🧹 Limpieza iniciada. Revisa los logs en 30 segundos."
         })
         
     except Exception as e:
