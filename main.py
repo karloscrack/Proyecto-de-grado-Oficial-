@@ -842,6 +842,8 @@ async def eliminar_usuario(cedula: str):
 # 8. ENDPOINTS DE EVIDENCIAS
 # =========================================================================
 
+# --- REEMPLAZA TU FUNCIÓN subir_evidencia_ia POR ESTA VERSIÓN DETALLADA ---
+
 @app.post("/subir_evidencia_ia")
 async def subir_evidencia_ia(
     archivo: UploadFile = File(...),
@@ -855,23 +857,19 @@ async def subir_evidencia_ia(
         path = os.path.join(temp_dir, archivo.filename)
         with open(path, "wb") as f: shutil.copyfileobj(archivo.file, f)
         
-        # 2. Analizar rostros (¡Aquí ocurre la magia multi-rostro!)
-        cedulas = []
+        # 2. Verificar si es imagen válida
         ext = os.path.splitext(archivo.filename)[1].lower()
-        if ext in ['.jpg', '.jpeg', '.png', '.bmp'] and rekog:
-            cedulas = identificar_varios_rostros_aws(path)
-            
-            # Filtrar solo cédulas que existan en tu Base de Datos
-            conn = get_db_connection()
-            existentes = []
-            for c in cedulas:
-                if conn.execute("SELECT CI FROM Usuarios WHERE CI=?", (c,)).fetchone():
-                    existentes.append(c)
-            conn.close()
-            cedulas = existentes
+        if ext not in ['.jpg', '.jpeg', '.png', '.bmp']:
+            shutil.rmtree(temp_dir)
+            return JSONResponse({"status": "alerta", "mensaje": "Formato no compatible para IA (Solo JPG/PNG). Se guardó como archivo genérico."})
 
-        # 3. Subir archivo a la Nube/Local
-        # (Aquí usamos tu lógica de subida S3/Local tal cual)
+        # 3. Analizar rostros
+        cedulas_encontradas = []
+        if rekog:
+            # Esta función devuelve las Cédulas de AWS
+            cedulas_encontradas = identificar_varios_rostros_aws(path)
+
+        # 4. Subir archivo a la Nube/Local
         url_final = f"/local/{archivo.filename}"
         if s3_client:
             try:
@@ -880,26 +878,49 @@ async def subir_evidencia_ia(
                 url_final = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nube_name}"
             except: pass
 
-        # 4. Registrar en Base de Datos (Bucle Eficiente)
+        # 5. LÓGICA DE MENSAJE DETALLADO
         conn = get_db_connection()
         status = "alerta"
-        msg = "No se reconoció rostro. Guardado en Pendientes."
+        msg = ""
         
-        if cedulas:
-            # ¡Si hay 5 estudiantes, inserta 5 registros en 3 líneas!
-            for ced in cedulas:
-                conn.execute("""
-                    INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
-                    VALUES (?, ?, 1, 'imagen', 0, 1)
-                """, (ced, url_final))
-            status = "exito"
-            msg = f"Asignado a: {', '.join(cedulas)}"
+        if cedulas_encontradas:
+            # Buscar NOMBRES reales en la base de datos
+            nombres_asignados = []
+            cedulas_no_registradas = []
+            
+            for ced in cedulas_encontradas:
+                # Verificar si existe en DB y traer Nombre
+                usuario = conn.execute("SELECT Nombre, Apellido FROM Usuarios WHERE CI=?", (ced,)).fetchone()
+                
+                if usuario:
+                    # Asignar evidencia
+                    conn.execute("""
+                        INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
+                        VALUES (?, ?, 1, 'imagen', 0, 1)
+                    """, (ced, url_final))
+                    nombres_asignados.append(f"{usuario['Nombre']} {usuario['Apellido']}")
+                else:
+                    cedulas_no_registradas.append(ced)
+
+            # Construir el mensaje final
+            if nombres_asignados:
+                status = "exito"
+                msg = f"✅ Asignado correctamente a: {', '.join(nombres_asignados)}."
+                if cedulas_no_registradas:
+                    msg += f" (Nota: Se detectaron otros rostros no registrados en el sistema: {', '.join(cedulas_no_registradas)})"
+            else:
+                # Caso raro: La IA reconoció cédulas, pero esas cédulas no están en tu tabla Usuarios
+                status = "alerta"
+                msg = f"⚠️ La IA detectó rostros registrados en AWS ({', '.join(cedulas_no_registradas)}) pero NO existen en tu base de datos de Usuarios local. Revisa el registro."
+                # Guardar como pendiente
+                conn.execute("INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Estado, Asignado_Automaticamente) VALUES ('PENDIENTE', ?, 1, 0)", (url_final,))
+
         else:
-            # Si no reconoce a nadie, lo manda a la carpeta global 'PENDIENTE'
-            conn.execute("""
-                INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
-                VALUES ('PENDIENTE', ?, 1, 'imagen', 0, 0)
-            """, (url_final,))
+            # No se detectó ninguna cédula
+            status = "alerta"
+            msg = "⚠️ No se asignó automáticamente. Posibles causas: 1) Foto borrosa o rostros muy pequeños. 2) Estudiantes no tienen foto de perfil registrada. 3) Rostro de perfil (lado). Se guardó en 'Pendientes'."
+            # Guardar como pendiente
+            conn.execute("INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Estado, Asignado_Automaticamente) VALUES ('PENDIENTE', ?, 1, 0)", (url_final,))
             
         conn.commit()
         conn.close()
@@ -908,7 +929,7 @@ async def subir_evidencia_ia(
         return JSONResponse({"status": status, "mensaje": msg})
 
     except Exception as e:
-        return JSONResponse({"status": "error", "mensaje": str(e)})
+        return JSONResponse({"status": "error", "mensaje": f"Error interno: {str(e)}"})
     
 @app.post("/subir_manual")
 async def subir_manual(
