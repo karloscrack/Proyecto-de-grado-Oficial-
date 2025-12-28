@@ -1397,28 +1397,72 @@ async def descargar_multimedia_zip():
         return JSONResponse(content={"error": str(e)})
 
 from urllib.parse import urlparse
+import re
 
 @app.post("/optimizar_sistema")
 async def optimizar_sistema(background_tasks: BackgroundTasks):
     """
-    V3.2 - MANTENIMIENTO MAESTRO (FIX VACUUM):
-    1. Elimina duplicados entre Bandeja y Estudiantes.
-    2. Elimina duplicados dentro del mismo perfil.
-    3. Sincroniza pesos reales.
-    4. CORRECCIÓN: Ejecuta VACUUM fuera de la transacción.
+    V3.3 - LIMPIEZA INTELIGENTE (POR NOMBRE Y HASH):
+    1. Detecta duplicados visuales (mismo nombre base aunque tenga prefijos distintos).
+    2. Limpia la Bandeja de Recuperados si el alumno ya tiene el archivo.
+    3. Ejecuta VACUUM de forma segura.
     """
     try:
         def tarea_mantenimiento_profundo():
-            print("🔧 INICIANDO LIMPIEZA PROFUNDA DE DUPLICADOS...")
+            print("🔧 INICIANDO LIMPIEZA INTELIGENTE V3.3...")
             try:
                 conn = get_db_connection()
                 c = conn.cursor()
                 
-                # ---------------------------------------------------------
-                # PASO 1: LIMPIAR BANDEJA DE RECUPERADOS (CI: 9999999990)
-                # ---------------------------------------------------------
-                print("🧹 Paso 1: Eliminando redundancias en Bandeja Recuperados...")
+                # =========================================================
+                # PASO 1: LIMPIEZA LÓGICA (Comparando Nombres de Archivo)
+                # =========================================================
+                print("🧹 Paso 1: Analizando nombres de archivos...")
                 
+                # Traemos TODAS las evidencias
+                todas = c.execute("SELECT id, CI_Estudiante, Url_Archivo FROM Evidencias").fetchall()
+                
+                vistos = {} # Clave: CI + NombreLimpio -> Valor: ID_Original
+                ids_a_borrar = []
+                
+                for ev in todas:
+                    cedula = ev['CI_Estudiante']
+                    url = ev['Url_Archivo']
+                    id_ev = ev['id']
+                    
+                    # Limpieza del nombre: quitamos rutas y prefijos numéricos
+                    # Ejemplo: "https://.../17823_foto.jpg"  -> "foto.jpg"
+                    # Ejemplo: "/local/manual_999_foto.jpg" -> "foto.jpg"
+                    nombre_archivo = url.split('/')[-1]
+                    nombre_limpio = re.sub(r'^(manual_)?\d+_', '', nombre_archivo).lower()
+                    
+                    # Ignoramos nombres muy genéricos o vacíos para no borrar por error
+                    if len(nombre_limpio) < 4 or "imagen" in nombre_limpio or "whatsapp" in nombre_limpio:
+                        continue
+
+                    clave = f"{cedula}|{nombre_limpio}"
+                    
+                    if clave in vistos:
+                        # ¡DUPLICADO DETECTADO! (Ya vimos este nombre para este alumno)
+                        ids_a_borrar.append(id_ev)
+                    else:
+                        # Es el primero que vemos, lo guardamos como el "Original"
+                        vistos[clave] = id_ev
+                
+                # Ejecutamos el borrado masivo de los detectados por nombre
+                if ids_a_borrar:
+                    placeholders = ','.join(['?'] * len(ids_a_borrar))
+                    c.execute(f"DELETE FROM Evidencias WHERE id IN ({placeholders})", ids_a_borrar)
+                    print(f"   ✨ Se eliminaron {len(ids_a_borrar)} duplicados por nombre (Mellizos).")
+                else:
+                    print("   ✨ No se encontraron duplicados por nombre.")
+
+                # =========================================================
+                # PASO 2: LIMPIEZA EXACTA (Bandeja vs Usuarios)
+                # =========================================================
+                print("🧹 Paso 2: Limpiando Bandeja de Recuperados...")
+                
+                # Si el archivo (por Hash) ya lo tiene un alumno real, bórralo de la bandeja
                 c.execute("""
                     DELETE FROM Evidencias 
                     WHERE CI_Estudiante = '9999999990' 
@@ -1427,36 +1471,11 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                     )
                 """)
                 borrados_hash = c.rowcount
-                
-                c.execute("""
-                    DELETE FROM Evidencias 
-                    WHERE CI_Estudiante = '9999999990' 
-                    AND Url_Archivo IN (
-                        SELECT Url_Archivo FROM Evidencias WHERE CI_Estudiante != '9999999990'
-                    )
-                """)
-                borrados_url = c.rowcount
-                print(f"   ✨ Se eliminaron {borrados_hash + borrados_url} archivos sobrantes de la bandeja.")
+                print(f"   ✨ Se eliminaron {borrados_hash} archivos sobrantes de la bandeja.")
 
-                # ---------------------------------------------------------
-                # PASO 2: LIMPIAR DUPLICADOS EN PERFILES DE ESTUDIANTES
-                # ---------------------------------------------------------
-                print("🧹 Paso 2: Eliminando duplicados internos en perfiles...")
-                
-                c.execute("""
-                    DELETE FROM Evidencias 
-                    WHERE id NOT IN (
-                        SELECT MIN(id) 
-                        FROM Evidencias 
-                        GROUP BY CI_Estudiante, Hash
-                    )
-                """)
-                duplicados_perfil = c.rowcount
-                print(f"   ✨ Se fusionaron {duplicados_perfil} evidencias duplicadas en perfiles.")
-
-                # ---------------------------------------------------------
-                # PASO 3: SINCRONIZACIÓN CON NUBE
-                # ---------------------------------------------------------
+                # =========================================================
+                # PASO 3: SINCRONIZACIÓN CON NUBE Y VACUUM
+                # =========================================================
                 print("☁️ Paso 3: Auditando existencia real en la nube...")
                 evidencias = c.execute("SELECT id, Url_Archivo FROM Evidencias").fetchall()
                 actualizados = 0
@@ -1486,18 +1505,11 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                     else:
                         c.execute("DELETE FROM Evidencias WHERE id = ?", (ev['id'],))
                 
-                # --- CORRECCIÓN CRÍTICA PARA VACUUM ---
-                # 1. Guardamos todos los cambios pendientes PRIMERO
+                # --- GUARDADO Y VACUUM SEGURO ---
                 conn.commit()
-                
-                # 2. Ponemos la conexión en modo autocommit (necesario para VACUUM)
                 conn.isolation_level = None 
-                
-                # 3. Ahora sí ejecutamos VACUUM sin miedo
                 c.execute("VACUUM")
-                
                 conn.close()
-                # --------------------------------------
                 
                 # Actualizar estadísticas
                 stats = calcular_estadisticas_reales()
@@ -1508,16 +1520,16 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                 conn2.commit()
                 conn2.close()
                 
-                print("✅ LIMPIEZA MAESTRA FINALIZADA EXITOSAMENTE.")
+                print("✅ LIMPIEZA INTELIGENTE FINALIZADA EXITOSAMENTE.")
                 
             except Exception as e:
-                print(f"❌ Error en limpieza profunda: {e}")
+                print(f"❌ Error en limpieza inteligente: {e}")
 
         background_tasks.add_task(tarea_mantenimiento_profundo)
         
         return JSONResponse({
             "status": "ok",
-            "mensaje": "🧹 Limpieza iniciada. Revisa los logs en 30 segundos."
+            "mensaje": "🧹 Limpieza inteligente iniciada (Buscando duplicados por nombre)..."
         })
         
     except Exception as e:
