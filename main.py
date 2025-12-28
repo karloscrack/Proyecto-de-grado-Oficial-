@@ -576,40 +576,48 @@ def calcular_hash(file_path):
     return sha256_hash.hexdigest()
     
 def calcular_estadisticas_reales() -> dict:
-    """Calcula estadísticas REALES sumando el peso exacto de la base de datos"""
+    """Calcula estadísticas REALES filtrando SOLO ESTUDIANTES (Ignora Admins)"""
     try:
         conn = get_db_connection()
         c = conn.cursor()
         
-        # 1. Contar usuarios activos (USANDO ALIAS 'total')
-        c.execute("SELECT COUNT(*) as total FROM Usuarios WHERE Activo = 1")
+        # 1. Contar usuarios activos (Estudiantes Tipo 1 activos)
+        c.execute("SELECT COUNT(*) as total FROM Usuarios WHERE Tipo = 1 AND Activo = 1")
         fila_usuarios = c.fetchone()
-        # Accedemos por nombre ['total'], no por indice [0]
         usuarios_activos = fila_usuarios['total'] if fila_usuarios else 0
         
-        # 2. Contar evidencias
-        c.execute("SELECT COUNT(*) as total FROM Evidencias")
+        # 2. Contar evidencias (SOLO DE ESTUDIANTES - JOIN CON USUARIOS)
+        # Esto excluye automáticamente las fotos subidas al perfil del Admin
+        c.execute("""
+            SELECT COUNT(e.id) as total 
+            FROM Evidencias e
+            JOIN Usuarios u ON e.CI_Estudiante = u.CI
+            WHERE u.Tipo = 1
+        """)
         fila_evidencias = c.fetchone()
         total_evidencias = fila_evidencias['total'] if fila_evidencias else 0
         
-        # 3. Sumar peso (USANDO ALIAS 'peso_total')
-        c.execute("SELECT SUM(Tamanio_KB) as peso_total FROM Evidencias")
+        # 3. Sumar peso (SOLO DE ESTUDIANTES)
+        c.execute("""
+            SELECT SUM(e.Tamanio_KB) as peso_total 
+            FROM Evidencias e
+            JOIN Usuarios u ON e.CI_Estudiante = u.CI
+            WHERE u.Tipo = 1
+        """)
         fila_peso = c.fetchone()
-        # Si es None (tabla vacía), ponemos 0
         resultado_kb = fila_peso['peso_total'] if fila_peso and fila_peso['peso_total'] else 0
         
         # Lógica de estimación
         total_kb = resultado_kb
-        nota_almacenamiento = "Calculado exacto de DB"
+        nota_almacenamiento = "Calculado exacto (Solo Estudiantes)"
         
-        # Corrección para cuando hay archivos pero pesan 0 (migración antigua)
+        # Corrección para cuando hay archivos pero pesan 0
         if total_kb == 0 and total_evidencias > 0:
             total_kb = total_evidencias * 2500 
-            nota_almacenamiento = "Estimado (sube archivos nuevos para corregir)"
 
         tamanio_total_mb = total_kb / 1024
         
-        # Costos
+        # Costos (Basados solo en consumo de estudiantes)
         costo_rekognition = (total_evidencias / 1000) * 1.0
         costo_almacenamiento = (tamanio_total_mb / 1024) * 0.023
         
@@ -635,7 +643,6 @@ def calcular_estadisticas_reales() -> dict:
         }
     except Exception as e:
         print(f"Error estadisticas: {e}")
-        # En caso de error, devolvemos ceros para que el frontend no falle
         return {
             "usuarios_activos": 0, "total_evidencias": 0, 
             "almacenamiento_mb": 0, "almacenamiento_gb": 0,
