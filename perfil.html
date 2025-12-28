@@ -941,7 +941,7 @@
                 const res = await fetch(`${API_URL}/buscar_estudiante`, { method: "POST", body: fd });
                 const data = await res.json();
                 
-                if (data.encontrado) {
+                if (data.exito) {
                     actualizarUI(data.datos);
                     // Cargar notificaciones del estudiante (incluyendo respuestas a solicitudes)
                     await cargarNotificacionesEstudiante(cedula);
