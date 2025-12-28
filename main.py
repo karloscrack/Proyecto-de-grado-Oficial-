@@ -2363,6 +2363,40 @@ async def recuperar_evidencias_nube(background_tasks: BackgroundTasks):
     background_tasks.add_task(tarea_rescate)
     return JSONResponse({"mensaje": "🚑 Rescate iniciado. Revisa los logs en 2 minutos."})
 
+class ReasignarRequest(BaseModel):
+    ids: str
+    cedula_destino: str
+
+@app.post("/reasignar_evidencias")
+async def reasignar_evidencias(datos: ReasignarRequest):
+    """Mueve las evidencias seleccionadas a otro estudiante"""
+    try:
+        if not datos.ids or not datos.cedula_destino:
+            return JSONResponse({"error": "Faltan datos"})
+            
+        ids_list = [id.strip() for id in datos.ids.split(',') if id.strip()]
+        
+        conn = get_db_connection()
+        # Verificar que el destino existe
+        destino = conn.execute("SELECT Nombre, Apellido FROM Usuarios WHERE CI=?", (datos.cedula_destino,)).fetchone()
+        if not destino:
+            conn.close()
+            return JSONResponse({"error": "Usuario destino no existe"})
+            
+        # Actualizar dueño
+        placeholders = ','.join(['?'] * len(ids_list))
+        sql = f"UPDATE Evidencias SET CI_Estudiante = ?, Asignado_Automaticamente = 0 WHERE id IN ({placeholders})"
+        conn.execute(sql, (datos.cedula_destino, *ids_list))
+        
+        conn.commit()
+        conn.close()
+        
+        return JSONResponse({
+            "mensaje": f"Se movieron {len(ids_list)} archivos a {destino['Nombre']} {destino['Apellido']}"
+        })
+    except Exception as e:
+        return JSONResponse({"error": str(e)})
+
 if __name__ == "__main__":
     import uvicorn
     

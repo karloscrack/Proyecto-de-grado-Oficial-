@@ -1270,6 +1270,10 @@
             <strong style="font-size:1.2rem;"><span id="countSelection" style="color:var(--secondary);">0</span> archivos</strong>
         </div>
         <button class="btn-float" onclick="descargarSeleccionadas()"><i class="fas fa-download"></i> Descargar</button>
+        
+        <button class="btn-float" onclick="abrirModalReasignar()" style="background:var(--info);">
+            <i class="fas fa-exchange-alt"></i> Reasignar
+        </button>
         <button class="btn-float danger" onclick="eliminarSeleccionadas()"><i class="fas fa-trash"></i> Eliminar</button>
         <button class="btn-float-cancel" onclick="cancelarSeleccion()" title="Cancelar">&times;</button>
     </div>
@@ -1356,6 +1360,29 @@
             </button>
             <div id="modalSolicitudContenido">
                 <!-- Contenido cargado dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalReasignar">
+        <div class="modal-card">
+            <button onclick="cerrarModal('modalReasignar')" 
+                    style="position:absolute; top:15px; right:15px; border:none; background:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+            <h3 style="color:var(--primary); margin-bottom:15px;"><i class="fas fa-exchange-alt"></i> Mover a otro estudiante</h3>
+            
+            <p style="margin-bottom:15px;">Selecciona el estudiante al que pertenecen los archivos seleccionados:</p>
+            
+            <div class="form-group">
+                <input type="text" id="busquedaReasignar" class="form-control" 
+                       placeholder="Buscar por nombre o cédula..." 
+                       onkeyup="filtrarUsuariosReasignar(this.value)">
+            </div>
+            
+            <div id="listaUsuariosReasignar" style="max-height:250px; overflow-y:auto; border:1px solid var(--border-color); border-radius:8px;">
+                </div>
+            
+            <div style="margin-top:15px; text-align:right;">
+                <button class="btn-primary" onclick="cerrarModal('modalReasignar')" style="background:#555;">Cancelar</button>
             </div>
         </div>
     </div>
@@ -1509,7 +1536,7 @@
         }
         elemento.textContent = valorFinal;
     }
-    
+
     async function cargarDatosIniciales() {
         try {
             // Cargar datos en paralelo
@@ -3320,6 +3347,88 @@
             // Simulamos que viene de un input para no romper tu código actual
             handleUploadIA({ files: files, value: '' });
         }, false);
+    }
+    // ==========================================
+    // 14. LÓGICA DE REASIGNACIÓN (NUEVO)
+    // ==========================================
+    
+    function abrirModalReasignar() {
+        if (evidenciasSeleccionadas.length === 0) return;
+        
+        const lista = document.getElementById('listaUsuariosReasignar');
+        lista.innerHTML = usuarios
+            .filter(u => u.tipo == 1 && u.cedula !== '9999999990') // Solo estudiantes reales
+            .map(u => `
+                <div onclick="ejecutarReasignacion('${u.cedula}', '${u.nombre} ${u.apellido}')" 
+                     style="padding:10px; border-bottom:1px solid #eee; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <strong>${u.nombre} ${u.apellido}</strong><br>
+                        <small>${u.cedula}</small>
+                    </div>
+                    <i class="fas fa-chevron-right" style="color:#ccc;"></i>
+                </div>
+            `).join('');
+            
+        document.getElementById('modalReasignar').classList.add('active');
+    }
+
+    function filtrarUsuariosReasignar(texto) {
+        const busqueda = texto.toLowerCase();
+        const lista = document.getElementById('listaUsuariosReasignar');
+        
+        lista.innerHTML = usuarios
+            .filter(u => u.tipo == 1 && u.cedula !== '9999999990')
+            .filter(u => (u.nombre + ' ' + u.apellido + u.cedula).toLowerCase().includes(busqueda))
+            .map(u => `
+                <div onclick="ejecutarReasignacion('${u.cedula}', '${u.nombre} ${u.apellido}')" 
+                     style="padding:10px; border-bottom:1px solid #eee; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <strong>${u.nombre} ${u.apellido}</strong><br>
+                        <small>${u.cedula}</small>
+                    </div>
+                    <i class="fas fa-chevron-right" style="color:#ccc;"></i>
+                </div>
+            `).join('');
+    }
+
+    async function ejecutarReasignacion(cedulaDestino, nombreDestino) {
+        const confirmacion = await Swal.fire({
+            title: `¿Mover a ${nombreDestino}?`,
+            text: `Se asignarán ${evidenciasSeleccionadas.length} archivos a este estudiante.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#6A0DAD',
+            confirmButtonText: 'Sí, mover'
+        });
+
+        if (!confirmacion.isConfirmed) return;
+
+        try {
+            mostrarMensaje('Moviendo archivos...', 'info');
+            
+            const respuesta = await fetch(`${API_URL}/reasignar_evidencias`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    ids: evidenciasSeleccionadas.join(','),
+                    cedula_destino: cedulaDestino
+                })
+            });
+
+            const res = await respuesta.json();
+            
+            if (res.mensaje) {
+                mostrarMensaje(res.mensaje, 'success');
+                cerrarModal('modalReasignar');
+                cancelarSeleccion();
+                // Recargar para ver los cambios
+                if (estudianteActual) verEvidenciasEstudiante(estudianteActual);
+            } else {
+                mostrarMensaje('Error: ' + res.error, 'error');
+            }
+        } catch (e) {
+            mostrarMensaje('Error de conexión', 'error');
+        }
     }
     </script>
 </body>
