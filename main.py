@@ -1384,43 +1384,101 @@ async def descargar_multimedia_zip():
         return JSONResponse(content={"error": str(e)})
 
 @app.post("/optimizar_sistema")
-async def optimizar_sistema():
-    """Ejecuta tareas de optimización del sistema"""
+async def optimizar_sistema(background_tasks: BackgroundTasks):
+    """
+    Ejecuta MANTENIMIENTO REAL:
+    1. Sincroniza existencia de archivos con S3 (Borra fantasmas).
+    2. Actualiza el peso real (KB) de cada evidencia.
+    3. Optimiza la base de datos (VACUUM).
+    """
     try:
-        # Optimizar base de datos
-        optimizado = optimizar_sistema_db()
+        # Definimos la tarea pesada para que corra en segundo plano
+        def tarea_sincronizacion_total():
+            print("🔄 INICIANDO SINCRONIZACIÓN TOTAL CON NUBE...")
+            try:
+                conn = get_db_connection()
+                # Traemos todas las evidencias para auditarlas una por una
+                evidencias = conn.execute("SELECT id, Url_Archivo FROM Evidencias").fetchall()
+                
+                actualizados = 0
+                eliminados = 0
+                
+                for ev in evidencias:
+                    url = ev['Url_Archivo']
+                    existe_realmente = False
+                    peso_real_kb = 0
+                    
+                    # CASO A: Archivo en Nube (Backblaze/S3)
+                    if s3_client and BUCKET_NAME in url:
+                        try:
+                            # Extraemos la clave (nombre del archivo en la nube)
+                            # Ejemplo: https://.../evidencias/foto.jpg -> evidencias/foto.jpg
+                            key = url.split(f"{BUCKET_NAME}/")[-1]
+                            
+                            # LE PREGUNTAMOS A BACKBLAZE (LA VERDADERA FUENTE):
+                            # 1. ¿Existes? (Si no, da error y va al except)
+                            # 2. ¿Cuánto pesas? (ContentLength)
+                            meta = s3_client.head_object(Bucket=BUCKET_NAME, Key=key)
+                            
+                            peso_real_kb = meta['ContentLength'] / 1024
+                            existe_realmente = True
+                        except Exception:
+                            # Si Backblaze dice "No encontrado" (404), es un fantasma
+                            existe_realmente = False
+                    
+                    # CASO B: Archivo Local (Por si usas modo local)
+                    elif "/local/" in url:
+                        ruta_local = url.replace("/local/", "./") 
+                        # Ajuste para rutas relativas si es necesario
+                        if not os.path.exists(ruta_local):
+                            # Intentar ruta absoluta si estás en Docker
+                            ruta_local = os.path.join(BASE_DIR, url.replace("/local/", "").lstrip("/"))
+                            
+                        if os.path.exists(ruta_local):
+                            peso_real_kb = os.path.getsize(ruta_local) / 1024
+                            existe_realmente = True
+                    
+                    # --- ACCIONES ---
+                    if existe_realmente:
+                        # Actualizamos el peso real en la BD para que el resumen sea exacto
+                        conn.execute("UPDATE Evidencias SET Tamanio_KB = ? WHERE id = ?", (peso_real_kb, ev['id']))
+                        actualizados += 1
+                    else:
+                        # ¡AQUÍ ESTÁ LA MAGIA DE BORRAR!
+                        # Si no existe en la nube, lo borramos de la BD para que deje de sumar peso
+                        print(f"👻 Eliminando evidencia fantasma ID {ev['id']} (No existe en nube)")
+                        conn.execute("DELETE FROM Evidencias WHERE id = ?", (ev['id'],))
+                        eliminados += 1
+                
+                # Finalmente, compactamos la base de datos para recuperar espacio en disco local
+                conn.execute("VACUUM")
+                conn.commit()
+                conn.close()
+                
+                # Recalcular métricas para el dashboard inmediatamente
+                stats = calcular_estadisticas_reales()
+                conn2 = get_db_connection()
+                fecha_hoy = ahora_ecuador().date().isoformat()
+                conn2.execute("""
+                    INSERT OR REPLACE INTO Metricas_Sistema 
+                    (Fecha, Total_Usuarios, Total_Evidencias, Solicitudes_Pendientes, Almacenamiento_MB)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (fecha_hoy, stats.get("usuarios_activos",0), stats.get("total_evidencias",0), 
+                      stats.get("solicitudes_pendientes",0), stats.get("almacenamiento_mb",0)))
+                conn2.commit()
+                conn2.close()
+                
+                print(f"✅ SINCRONIZACIÓN FINALIZADA: {actualizados} verificados, {eliminados} fantasmas eliminados.")
+                
+            except Exception as e:
+                print(f"❌ Error en tarea de sincronización: {e}")
+
+        # Lanzamos la tarea en segundo plano para no congelar la página
+        background_tasks.add_task(tarea_sincronizacion_total)
         
-        # Actualizar estadísticas
-        stats = calcular_estadisticas_reales()
-        
-        # Registrar en métricas
-        conn = get_db_connection()
-        c = conn.cursor()
-        
-        fecha_hoy = ahora_ecuador().date().isoformat()
-        c.execute("""
-            INSERT OR REPLACE INTO Metricas_Sistema 
-            (Fecha, Total_Usuarios, Total_Evidencias, Solicitudes_Pendientes, Almacenamiento_MB)
-            VALUES (?, ?, ?, ?, ?)
-        """, (
-            fecha_hoy,
-            stats.get("usuarios_activos", 0),
-            stats.get("total_evidencias", 0),
-            stats.get("solicitudes_pendientes", 0),
-            stats.get("almacenamiento_mb", 0)
-        ))
-        
-        conn.commit()
-        conn.close()
-        
-        registrar_auditoria("OPTIMIZACION_SISTEMA", "Sistema optimizado y métricas actualizadas")
-        
-        return JSONResponse(content={
+        return JSONResponse({
             "status": "ok",
-            "mensaje": "Sistema optimizado correctamente",
-            "optimizado": optimizado,
-            "estadisticas": stats,
-            "fecha": ahora_ecuador().isoformat()
+            "mensaje": "⏳ Sincronización iniciada. El sistema está verificando archivo por archivo en Backblaze. Actualiza en 1 minuto."
         })
         
     except Exception as e:
