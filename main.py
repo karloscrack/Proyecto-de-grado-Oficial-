@@ -435,8 +435,10 @@ def identificar_varios_rostros_aws(imagen_path: str, confidence_threshold: float
     
 def buscar_estudiantes_por_texto(imagen_path: str, conn) -> List[str]:
     """
-    Versión MEJORADA (Fuzzy): Capaz de leer tipografías difíciles (Góticas, Manuscritas).
-    Busca similitud palabra por palabra en lugar de texto exacto.
+    Versión DEFINITIVA (OCR Flexible):
+    1. 'Bag of Words': Busca en TODA la imagen mezclada, no importa si el nombre está en dos renglones.
+    2. 'Fuzzy Low': Acepta hasta 35% de error para entender letra Gótica (ej: 'Pcrez' = 'Pérez').
+    3. Asignación Múltiple: Si hay dos nombres en la carátula, detectará a ambos.
     """
     if not rekog: return []
     cedulas_encontradas = set()
@@ -445,47 +447,61 @@ def buscar_estudiantes_por_texto(imagen_path: str, conn) -> List[str]:
         with open(imagen_path, 'rb') as image_file:
             image_bytes = image_file.read()
             
-        # 1. Pedir a AWS que lea LÍNEAS de texto
+        # 1. Detectar TODAS las palabras sueltas (Type='WORD')
         response = rekog.detect_text(Image={'Bytes': image_bytes})
-        lineas_detectadas = [t['DetectedText'].lower() for t in response.get('TextDetections', []) if t['Type'] == 'LINE']
         
-        if not lineas_detectadas: return []
+        # Juntamos todas las palabras que la IA vio en una sola lista desordenada
+        palabras_imagen = [t['DetectedText'].lower() for t in response.get('TextDetections', []) if t['Type'] == 'WORD']
         
-        print(f"📖 Texto crudo detectado: {lineas_detectadas}") # Para depurar en los logs
+        if not palabras_imagen: return []
+        
+        print(f"📖 Palabras leídas en imagen: {palabras_imagen}") # Debug en logs
 
-        # 2. Traer estudiantes
+        # 2. Traer todos los estudiantes activos
         estudiantes = conn.execute("SELECT Nombre, Apellido, CI FROM Usuarios WHERE Tipo=1").fetchall()
         
-        # 3. Lógica de Búsqueda Difusa (Fuzzy Matching)
         for est in estudiantes:
-            # Limpiamos el nombre del estudiante (ej: "Juan" y "Perez")
-            nombre_partes = f"{est['Nombre']} {est['Apellido']}".lower().split()
-            if not nombre_partes: continue
+            # Limpiamos el nombre del estudiante de la base de datos
+            nombres = est['Nombre'].lower().split()   # Ej: ["juan", "carlos"]
+            apellidos = est['Apellido'].lower().split() # Ej: ["perez", "lopez"]
             
-            # Buscamos en cada línea de texto encontrada en la imagen
-            for linea in lineas_detectadas:
-                palabras_linea = linea.split()
+            # --- ESTRATEGIA A: Nombre Completo (Más segura) ---
+            # Busca "Juan", "Carlos", "Perez", "Lopez" en cualquier lugar de la hoja
+            if coincidencia_difusa(nombres + apellidos, palabras_imagen, umbral=0.80):
+                cedulas_encontradas.add(est['CI'])
+                continue 
                 
-                # Contamos cuántas partes del nombre encontramos en esta línea
-                coincidencias = 0
-                for parte_nombre in nombre_partes:
-                    # Buscamos si alguna palabra de la línea se parece a esta parte del nombre
-                    # cutoff=0.80 significa que aceptamos 20% de error (ej: "Pcrez" vs "Perez")
-                    mejores_matches = difflib.get_close_matches(parte_nombre, palabras_linea, n=1, cutoff=0.80)
-                    if mejores_matches:
-                        coincidencias += 1
-                
-                # Si encontramos al menos el 100% de las palabras del nombre (Nombre + Apellido)
-                # O si el nombre es muy largo, al menos la mayoría
-                if coincidencias >= len(nombre_partes):
-                    print(f"✅ Coincidencia difusa encontrada: '{linea}' se parece a '{est['Nombre']} {est['Apellido']}'")
-                    cedulas_encontradas.add(est['CI'])
-                    break # Ya encontramos a este estudiante, pasamos al siguiente
+            # --- ESTRATEGIA B: Nombre Corto (Más flexible para Gótica) ---
+            # Busca solo "Juan" y "Perez". 
+            # Usamos umbral 0.65 para tolerar fallos de lectura en letra gótica.
+            nombre_corto = [nombres[0], apellidos[0]]
+            if coincidencia_difusa(nombre_corto, palabras_imagen, umbral=0.65):
+                cedulas_encontradas.add(est['CI'])
+                print(f"✅ Coincidencia difusa encontrada para: {est['Nombre']} {est['Apellido']}")
 
     except Exception as e:
-        print(f"⚠️ Error leyendo texto (Fuzzy): {e}")
+        print(f"⚠️ Error OCR: {e}")
         
     return list(cedulas_encontradas)
+
+def coincidencia_difusa(partes_buscadas, palabras_en_imagen, umbral):
+    """
+    Verifica si TODAS las 'partes_buscadas' están presentes en 'palabras_en_imagen'
+    con cierta tolerancia a errores (umbral).
+    """
+    aciertos = 0
+    # Usamos una copia para no afectar búsquedas de otros estudiantes
+    pool = palabras_en_imagen.copy()
+    
+    for parte in partes_buscadas:
+        # Busca la palabra más parecida en la 'bolsa' de palabras de la imagen
+        matches = difflib.get_close_matches(parte, pool, n=1, cutoff=umbral)
+        if matches:
+            aciertos += 1
+            # Opcional: pool.remove(matches[0]) si quisieras evitar repetir palabras
+            
+    # Éxito si encontramos TODAS las partes (Ej: Encontró "Juan" Y encontró "Perez")
+    return aciertos == len(partes_buscadas)
 
 # Función auxiliar por si no la tienes
 def calcular_hash(file_path):
