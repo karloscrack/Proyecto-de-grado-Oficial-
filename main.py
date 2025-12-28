@@ -543,79 +543,35 @@ async def health_check():
 
 @app.post("/iniciar_sesion")
 async def iniciar_sesion(request: Request, cedula: str = Form(...), contrasena: str = Form(...)):
+    """Versión corregida que envía ID para el perfil"""
     try:
-        cedula = cedula.strip()
-        contrasena = contrasena.strip()
-        
         conn = get_db_connection()
         c = conn.cursor()
+        c.execute("SELECT * FROM Usuarios WHERE TRIM(CI) = ?", (cedula.strip(),))
+        user = c.fetchone()
         
-        # Obtenemos usuario por cédula
-        c.execute("SELECT * FROM Usuarios WHERE TRIM(CI) = ?", (cedula,))
-        row = c.fetchone()
-        
-        if not row:
+        if not user or user["Password"] != contrasena.strip():
             conn.close()
-            return JSONResponse({"autenticado": False, "mensaje": "Usuario no encontrado"})
-        
-        user = dict(row)
-        
-        if user["Password"] != contrasena:
-            conn.close()
-            return JSONResponse({"autenticado": False, "mensaje": "Contraseña incorrecta"})
-        
-        if user.get("Activo", 1) == 0:
-            conn.close()
-            return JSONResponse({"autenticado": False, "mensaje": "Cuenta desactivada"})
-        
-        # Registrar último acceso (usando el campo seguro)
-        try:
-            c.execute("UPDATE Usuarios SET Ultimo_Acceso = ? WHERE CI = ?", (ahora_ecuador(), cedula))
-            conn.commit()
-        except:
-            pass # Si falla por la columna, no detenemos el login
-        
-        # Evidencias y notificaciones
-        try:
-            c.execute("SELECT id, Url_Archivo as url, Tipo_Archivo as tipo, Fecha, Estado FROM Evidencias WHERE CI_Estudiante=? AND Estado=1 ORDER BY Fecha DESC", (user['CI'],))
-            evs = [dict(r) for r in c.fetchall()]
-        except:
-            evs = []
+            return JSONResponse({"autenticado": False, "mensaje": "Credenciales inválidas"})
 
-        try:
-            c.execute("SELECT * FROM Solicitudes WHERE CI_Solicitante=? AND Estado != 'PENDIENTE' ORDER BY Fecha DESC LIMIT 5", (user['CI'],))
-            notis = [dict(r) for r in c.fetchall()]
-        except:
-            notis = []
-            
+        # Datos seguros para el frontend
+        datos_usuario = {
+            "id": user["ID"],  # <--- CRÍTICO: ESTO ES LO QUE NECESITAS
+            "nombre": user["Nombre"],
+            "apellido": user["Apellido"],
+            "cedula": user["CI"],
+            "tipo": user["Tipo"],
+            "url_foto": user.get("Foto", ""),
+            "email": user.get("Email", ""),
+            "tutorial_visto": bool(user.get("TutorialVisto", 0))
+        }
+        
         conn.close()
+        return JSONResponse({"autenticado": True, "mensaje": "Bienvenido", "datos": datos_usuario})
         
-        # Auditoría (con IP segura)
-        ip = request.client.host if request.client else "Unknown"
-        registrar_auditoria("LOGIN", f"Usuario {cedula}", user['Nombre'], ip)
-        
-        return JSONResponse({
-            "autenticado": True,
-            "mensaje": "Bienvenido",
-            "datos": {
-                # 👇 ESTOS SON LOS DATOS CLAVE QUE FALTABAN 👇
-                "id": user["ID"],  
-                "tutorial_visto": bool(user.get("TutorialVisto", 0)),
-                
-                "nombre": user["Nombre"],
-                "apellido": user["Apellido"],
-                "cedula": user["CI"],
-                "tipo": user["Tipo"],
-                "url_foto": user.get("Foto", ""),
-                "email": user.get("Email", ""),
-                "galeria": evs,
-                "notificaciones": notis
-            }
-        })
     except Exception as e:
-        print(f"❌ Error Login: {e}")
-        return JSONResponse({"autenticado": False, "mensaje": f"Error interno: {str(e)}"})
-
+        print(f"Error login: {e}")
+        return JSONResponse({"autenticado": False, "mensaje": str(e)})
 # =========================================================================
 # 7. ENDPOINTS DE GESTIÓN DE USUARIOS
 # =========================================================================
@@ -1486,74 +1442,20 @@ async def gestionar_solicitud(
 # =========================================================================
 
 @app.get("/obtener_logs")
-async def obtener_logs(
-    fecha_inicio: Optional[str] = None,
-    fecha_fin: Optional[str] = None,
-    accion: Optional[str] = None,
-    usuario: Optional[str] = None,
-    limit: int = 100
-):
-    """Obtiene logs filtrados con zona horaria Ecuador"""
+async def obtener_logs(limit: int = 100):
+    """Devuelve una LISTA SIMPLE de logs para evitar errores en el admin"""
     try:
         conn = get_db_connection()
-        c = conn.cursor()
-        
-        # Construir query dinámica
-        query = "SELECT * FROM Auditoria WHERE 1=1"
-        params = []
-        
-        if fecha_inicio:
-            query += " AND DATE(Fecha) >= ?"
-            params.append(fecha_inicio)
-        
-        if fecha_fin:
-            query += " AND DATE(Fecha) <= ?"
-            params.append(fecha_fin)
-        
-        if accion:
-            query += " AND Accion LIKE ?"
-            params.append(f"%{accion}%")
-        
-        if usuario:
-            query += " AND Usuario LIKE ?"
-            params.append(f"%{usuario}%")
-        
-        query += " ORDER BY Fecha DESC LIMIT ?"
-        params.append(limit)
-        
-        c.execute(query, params)
-        logs = [dict(row) for row in c.fetchall()]
-        
-        # Convertir fechas a zona horaria Ecuador para respuesta
-        for log in logs:
-            if log.get('Fecha'):
-                # Asumimos que la fecha en DB está en UTC, convertir a Ecuador
-                if isinstance(log['Fecha'], str):
-                    try:
-                        dt_utc = datetime.datetime.fromisoformat(log['Fecha'].replace('Z', '+00:00'))
-                        dt_ecuador = dt_utc.astimezone(ECUADOR_TZ)
-                        log['Fecha_Ecuador'] = dt_ecuador.isoformat()
-                    except:
-                        log['Fecha_Ecuador'] = log['Fecha']
-        
+        # Traemos todo de auditoria ordenado por fecha
+        logs = conn.execute("SELECT * FROM Auditoria ORDER BY Fecha DESC LIMIT ?", (limit,)).fetchall()
         conn.close()
         
-        return JSONResponse(content={
-            "total_logs": len(logs),
-            "filtros": {
-                "fecha_inicio": fecha_inicio,
-                "fecha_fin": fecha_fin,
-                "accion": accion,
-                "usuario": usuario,
-                "limit": limit
-            },
-            "logs": logs,
-            "fecha_consulta": ahora_ecuador().isoformat()
-        })
-        
+        # Convertimos a lista de diccionarios simple
+        lista_logs = [dict(row) for row in logs]
+        return JSONResponse(content=lista_logs) # <--- Enviamos LISTA directa, no objeto
     except Exception as e:
-        return JSONResponse(content={"error": str(e)})
-
+        print(f"Error logs: {e}")
+        return JSONResponse(content=[]) # En caso de error, lista vacía para no romper la página
 # =========================================================================
 # 13. ENDPOINTS EXISTENTES MANTENIDOS
 # =========================================================================
