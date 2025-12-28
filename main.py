@@ -876,47 +876,24 @@ async def subir_evidencia_ia(
         
         # Registrar en base de datos
         conn = get_db_connection()
-        cursor = conn.cursor()
         
-        cursor.execute("""
-            INSERT INTO Evidencias 
-            (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            cedula_identificada,
-            url_archivo,
-            hash_archivo,
-            estado_evidencia,
-            tipo_archivo,
-            tamanio_kb,
-            asignado_auto
-        ))
-        
-        id_evidencia = cursor.lastrowid
-        
-        # Si requiere asignación manual, crear solicitud
-        if cedula_identificada == "PENDIENTE_ASIGNACION":
-            detalle = f"Subida automática pendiente de asignación: {archivo.filename}"
-            if comentario:
-                detalle += f" | Comentario: {comentario}"
+        if cedula_identificada:
+            # CASO 1: La IA reconoció el rostro -> Asignar directo al estudiante
+            conn.execute("INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Estado, Asignado_Automaticamente) VALUES (?,?,1,1)",
+                         (cedula_identificada, url_archivo))
+            msg = f"Reconocido: {cedula_identificada}"
+            status = "exito"
+        else:
+            # CASO 2: No reconoció -> Guardar como 'PENDIENTE' en la carpeta general
+            # Usamos 'PENDIENTE' como CI para que el admin lo vea en la lista global y lo reasigne
+            conn.execute("INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Estado, Asignado_Automaticamente) VALUES ('PENDIENTE',?,1,0)",
+                         (url_archivo,))
+            msg = "No se reconoció rostro. Guardado como pendiente de asignación."
+            status = "alerta"
             
-            cursor.execute("""
-                INSERT INTO Solicitudes 
-                (Tipo, CI_Solicitante, Id_Evidencia, Evidencia_Reportada_Url, Detalle, Estado)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (
-                "ASIGNACION_MANUAL",
-                "SISTEMA",
-                id_evidencia,
-                url_archivo,
-                detalle,
-                "PENDIENTE"
-            ))
-        
         conn.commit()
         conn.close()
-        
-        # Limpiar archivos temporales
+
         shutil.rmtree(temp_dir)
         
         # Registrar auditoría
@@ -942,123 +919,54 @@ async def subir_evidencia_ia(
             "mensaje": f"Error al subir archivo: {str(e)}"
         })
 
-@app.post("/subir_evidencia_manual")
-async def subir_evidencia_manual(
-    cedulas: str = Form(...),  # String con cédulas separadas por comas
-    archivo: UploadFile = File(...),
+@app.post("/subir_manual")
+async def subir_manual(
+    cedulas: str = Form(...), 
+    archivo: UploadFile = File(...), 
     comentario: Optional[str] = Form(None)
 ):
-    """Sube evidencia asignándola manualmente a múltiples estudiantes"""
     try:
-        if not archivo:
-            return JSONResponse(content={"error": "No se recibió ningún archivo"})
-        
         # Procesar lista de cédulas
         lista_cedulas = [c.strip() for c in cedulas.split(",") if c.strip()]
         if not lista_cedulas:
             return JSONResponse(content={"error": "Debe especificar al menos una cédula"})
         
-        # Crear directorio temporal
+        # Guardar archivo temporalmente
         temp_dir = tempfile.mkdtemp()
-        archivo_path = os.path.join(temp_dir, archivo.filename)
-        
-        # Guardar archivo
-        with open(archivo_path, "wb") as f:
+        path = os.path.join(temp_dir, archivo.filename)
+        with open(path, "wb") as f:
             shutil.copyfileobj(archivo.file, f)
-        
-        # Calcular hash y tamaño
-        hash_archivo = calcular_hash(archivo_path)
-        tamanio_kb = obtener_tamanio_archivo_kb(archivo_path)
-        
-        # Determinar tipo de archivo
-        ext = os.path.splitext(archivo.filename)[1].lower()
-        tipo_archivo = "documento"
-        if ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp']:
-            tipo_archivo = "imagen"
-        elif ext in ['.mp4', '.avi', '.mov', '.wmv']:
-            tipo_archivo = "video"
-        
-        # Subir a almacenamiento
-        timestamp = int(ahora_ecuador().timestamp())
-        nombre_nube = f"evidencias/manual_{timestamp}_{hash_archivo[:8]}_{archivo.filename}"
-        url_archivo = ""
-        
+            
+        # Determinar URL (S3 o Local)
+        url_archivo = f"/local/{archivo.filename}"
         if s3_client:
             try:
-                s3_client.upload_file(
-                    archivo_path,
-                    BUCKET_NAME,
-                    nombre_nube,
-                    ExtraArgs={
-                        'ACL': 'public-read',
-                        'ContentType': archivo.content_type or 'application/octet-stream'
-                    }
-                )
+                nombre_nube = f"evidencias/manual_{int(ahora_ecuador().timestamp())}_{archivo.filename}"
+                s3_client.upload_file(path, BUCKET_NAME, nombre_nube, ExtraArgs={'ACL': 'public-read'})
                 url_archivo = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nombre_nube}"
-            except Exception as e:
-                print(f"⚠️ Error subiendo a S3: {e}")
-                url_archivo = f"/local/evidencias/{archivo.filename}"
-        else:
-            url_archivo = f"/local/evidencias/{archivo.filename}"
-        
-        # Registrar para cada estudiante
+            except: pass
+            
         conn = get_db_connection()
-        cursor = conn.cursor()
-        ids_evidencias = []
+        c = conn.cursor()
         
-        for cedula in lista_cedulas:
-            # Verificar que el estudiante existe
-            cursor.execute("SELECT CI FROM Usuarios WHERE CI = ? AND Tipo = 1", (cedula,))
-            if not cursor.fetchone():
-                print(f"⚠️ Cédula {cedula} no encontrada o no es estudiante, omitiendo")
-                continue
-            
-            # Insertar evidencia
-            cursor.execute("""
-                INSERT INTO Evidencias 
-                (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB)
-                VALUES (?, ?, ?, 1, ?, ?)
-            """, (cedula, url_archivo, hash_archivo, tipo_archivo, tamanio_kb))
-            
-            id_evidencia = cursor.lastrowid
-            ids_evidencias.append(id_evidencia)
-            
-            # Crear registro de actividad
-            detalle = f"Evidencia manual asignada: {archivo.filename}"
-            if comentario:
-                detalle += f" | {comentario}"
-            
-            cursor.execute("""
-                INSERT INTO Solicitudes 
-                (Tipo, CI_Solicitante, Id_Evidencia, Detalle, Estado)
-                VALUES (?, ?, ?, ?, ?)
-            """, ("ASIGNACION_MANUAL", cedula, id_evidencia, detalle, "APROBADA"))
+        # Guardar evidencia para cada estudiante
+        count = 0
+        for ced in lista_cedulas:
+            # Verificar si existe el usuario
+            if c.execute("SELECT CI FROM Usuarios WHERE CI=?", (ced,)).fetchone():
+                c.execute("""
+                    INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
+                    VALUES (?, ?, 1, 'documento', 0, 0)
+                """, (ced, url_archivo))
+                count += 1
         
         conn.commit()
         conn.close()
-        
-        # Limpiar archivos temporales
         shutil.rmtree(temp_dir)
         
-        # Registrar auditoría
-        registrar_auditoria(
-            "SUBIDA_EVIDENCIA_MANUAL",
-            f"Archivo {archivo.filename} asignado a {len(ids_evidencias)} estudiantes"
-        )
-        
-        return JSONResponse(content={
-            "status": "ok",
-            "mensaje": f"Archivo asignado a {len(ids_evidencias)} estudiantes",
-            "ids_evidencias": ids_evidencias,
-            "cedulas_asignadas": lista_cedulas,
-            "url": url_archivo,
-            "hash": hash_archivo
-        })
-        
+        return JSONResponse({"status": "ok", "mensaje": f"Asignado a {count} estudiantes"})
     except Exception as e:
-        print(f"❌ Error en subir_evidencia_manual: {e}")
-        return JSONResponse(content={"error": str(e)})
-
+        return JSONResponse({"error": str(e)})
 # =========================================================================
 # 9. ENDPOINTS DE BACKUP Y MANTENIMIENTO
 # =========================================================================
@@ -1693,6 +1601,48 @@ async def cors_debug():
 # =========================================================================
 # 15. INICIO DE LA APLICACIÓN
 # =========================================================================
+
+class PasswordRequest(BaseModel):
+    cedula: str
+    nueva_contrasena: str
+
+@app.post("/cambiar_contrasena")
+async def cambiar_contrasena(datos: PasswordRequest):
+    try:
+        conn = get_db_connection()
+        conn.execute("UPDATE Usuarios SET Password = ? WHERE CI = ?", (datos.nueva_contrasena, datos.cedula))
+        conn.commit()
+        conn.close()
+        return JSONResponse({"mensaje": "Contraseña actualizada correctamente"})
+    except Exception as e:
+        return JSONResponse({"error": str(e)})
+    
+@app.post("/descargar_evidencias_zip")
+async def descargar_evidencias_zip(ids: str = Form(...)):
+    try:
+        id_list = ids.split(',')
+        zip_buffer = io.BytesIO()
+        
+        conn = get_db_connection()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for id_ev in id_list:
+                row = conn.execute("SELECT Url_Archivo FROM Evidencias WHERE id=?", (id_ev,)).fetchone()
+                if row:
+                    url = row['Url_Archivo']
+                    filename = url.split('/')[-1]
+                    # Aquí simulamos el archivo creando un txt con la URL
+                    # (Para descarga real necesitarías descargar de S3 primero)
+                    zip_file.writestr(filename + ".txt", f"Archivo ubicado en: {url}")
+        
+        conn.close()
+        zip_buffer.seek(0)
+        return StreamingResponse(
+            zip_buffer, 
+            media_type="application/zip",
+            headers={"Content-Disposition": "attachment; filename=seleccion_evidencias.zip"}
+        )
+    except Exception as e:
+        return JSONResponse({"error": str(e)})
 
 if __name__ == "__main__":
     import uvicorn
