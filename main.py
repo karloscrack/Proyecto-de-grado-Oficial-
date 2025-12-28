@@ -198,12 +198,15 @@ def init_db_completa():
             ("Usuarios", "Telefono", "TEXT"),
             ("Usuarios", "Ultimo_Acceso", "TIMESTAMP NULL"),
             ("Usuarios", "Fecha_Desactivacion", "TIMESTAMP NULL"),
+            
+            # 👇👇 AGREGA ESTA LÍNEA NUEVA PARA ARREGLAR EL ERROR DE AHORA 👇👇
+            ("Usuarios", "Fecha_Registro", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+            
             ("Evidencias", "Tipo_Archivo", "TEXT DEFAULT 'documento'"),
             ("Evidencias", "Tamanio_KB", "REAL DEFAULT 0"),
             ("Evidencias", "Asignado_Automaticamente", "INTEGER DEFAULT 0"),
             ("Solicitudes", "Fecha_Resolucion", "TIMESTAMP NULL"),
             ("Auditoria", "Usuario", "TEXT"),
-            # 👇👇 ESTA ES LA LÍNEA NUEVA QUE DEBES PEGAR AL FINAL 👇👇
             ("Auditoria", "IP", "TEXT")
         ]
         
