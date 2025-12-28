@@ -1429,18 +1429,23 @@ from urllib.parse import urlparse
 import re
 import os
 
+from urllib.parse import urlparse
+import re
+import os
+
 @app.post("/optimizar_sistema")
 async def optimizar_sistema(background_tasks: BackgroundTasks):
     """
-    V4.1 - MANTENIMIENTO TOTAL (MAESTRA):
-    1. 🧲 IMÁN: Recupera archivos perdidos a la Bandeja.
-    2. 👻 CAZAFANTASMAS: Elimina registros de archivos que no existen (Local/Nube).
-    3. 🤖 TERMINATOR: Elimina duplicados físicos reales.
-    4. 🧹 VACUUM: Optimización final.
+    V4.2 - LIMPIEZA TOTAL + ANTI-ZOMBIES:
+    1. 🧲 IMÁN: Recupera archivos perdidos.
+    2. 🧟 ZOMBIES: Borra evidencias de usuarios eliminados.
+    3. 👻 FANTASMAS: Borra archivos inexistentes.
+    4. 🤖 TERMINATOR: Borra duplicados físicos.
+    5. 🧹 VACUUM: Compacta DB.
     """
     try:
         def tarea_mantenimiento_profundo():
-            print("🔧 INICIANDO MANTENIMIENTO MAESTRO V4.1...")
+            print("🔧 INICIANDO MANTENIMIENTO MAESTRO V4.2...")
             try:
                 conn = get_db_connection()
                 c = conn.cursor()
@@ -1454,13 +1459,26 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                     SET CI_Estudiante = '9999999990' 
                     WHERE CI_Estudiante IS NULL OR CI_Estudiante = 'PENDIENTE' OR CI_Estudiante = ''
                 """)
-                if c.rowcount > 0:
-                    print(f"   🎉 Se recuperaron {c.rowcount} archivos invisibles.")
 
                 # =========================================================
-                # PASO 2: CAZAFANTASMAS (Borrar lo que NO existe)
+                # PASO 2: ELIMINAR ZOMBIES (CRÍTICO PARA TU PROBLEMA DE LOS 3 ARCHIVOS)
                 # =========================================================
-                print("👻 Paso 2: Cazando fantasmas (Archivos inexistentes)...")
+                print("🧟 Paso 2: Eliminando Zombies (Evidencias sin dueño)...")
+                # Borra evidencias cuyo CI no existe en la tabla Usuarios
+                c.execute("""
+                    DELETE FROM Evidencias 
+                    WHERE CI_Estudiante NOT IN (SELECT CI FROM Usuarios)
+                """)
+                zombies = c.rowcount
+                if zombies > 0:
+                    print(f"   💀 ¡SE ELIMINARON {zombies} ARCHIVOS ZOMBIE! (Esto arregla el conteo)")
+                else:
+                    print("   ✨ No se encontraron zombies.")
+
+                # =========================================================
+                # PASO 3: CAZAFANTASMAS (Borrar lo que NO existe físicamente)
+                # =========================================================
+                print("👻 Paso 3: Cazando fantasmas (Archivos inexistentes)...")
                 evidencias = c.execute("SELECT id, Url_Archivo FROM Evidencias").fetchall()
                 fantasmas = 0
                 
@@ -1479,12 +1497,11 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                             existe = True
                         except Exception as e:
                             if "404" in str(e) or "Not Found" in str(e): existe = False
-                            else: existe = True # Ante duda, no borrar
+                            else: existe = True 
                     
-                    # B. Verificación LOCAL (Aquí tenías el problema de los 3 archivos)
+                    # B. Verificación LOCAL 
                     elif "/local/" in url:
                         ruta_fisica = url.replace("/local/", "./").lstrip("/")
-                        # Asegurar ruta absoluta en Railway
                         if not os.path.exists(ruta_fisica):
                             ruta_fisica = os.path.join(os.getcwd(), url.replace("/local/", "").lstrip("/"))
                         
@@ -1492,7 +1509,6 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                             existe = True
                             peso_kb = os.path.getsize(ruta_fisica) / 1024
                         else:
-                            print(f"   👻 Fantasma Local: {url}")
                             existe = False
 
                     # ACCIÓN
@@ -1506,9 +1522,9 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                 print(f"   ✨ {fantasmas} fantasmas eliminados.")
 
                 # =========================================================
-                # PASO 3: TERMINATOR (Borrado de Duplicados Físicos)
+                # PASO 4: TERMINATOR (Borrado de Duplicados Físicos)
                 # =========================================================
-                print("🤖 Paso 3: Eliminando duplicados físicos...")
+                print("🤖 Paso 4: Eliminando duplicados físicos...")
                 
                 def borrar_de_nube_real(url_archivo):
                     if s3_client and BUCKET_NAME in url_archivo:
@@ -1519,7 +1535,6 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                             print(f"   🗑️ Borrado S3: {key}")
                         except: pass
 
-                # Recargamos lista tras borrar fantasmas
                 todas = c.execute("SELECT id, CI_Estudiante, Url_Archivo, Hash FROM Evidencias").fetchall()
                 vistos = {}
                 ids_a_borrar = []
@@ -1531,13 +1546,12 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                     nombre_archivo = url.split('/')[-1]
                     nombre_limpio = re.sub(r'^(manual_)?\d+_', '', nombre_archivo).lower()
                     
-                    # Clave única: Estudiante + (Hash o Nombre)
                     clave = f"{cedula}|{ev.get('Hash')}" if ev.get('Hash') and ev.get('Hash') != 'PENDIENTE' else f"{cedula}|{nombre_limpio}"
                     
                     if clave in vistos:
                         original = vistos[clave]
                         if url != original['Url_Archivo']: 
-                            borrar_de_nube_real(url) # Borra físico si la URL es distinta
+                            borrar_de_nube_real(url)
                         ids_a_borrar.append(ev['id'])
                     else:
                         vistos[clave] = ev
@@ -1548,7 +1562,7 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                     print(f"   ✨ {len(ids_a_borrar)} duplicados eliminados.")
 
                 # =========================================================
-                # PASO 4: FINALIZACIÓN
+                # PASO 5: FINALIZACIÓN
                 # =========================================================
                 conn.commit()
                 conn.isolation_level = None 
@@ -1564,13 +1578,13 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                 conn2.commit()
                 conn2.close()
                 
-                print("✅ MANTENIMIENTO MAESTRO V4.1 FINALIZADO.")
+                print("✅ MANTENIMIENTO V4.2 (ANTI-ZOMBIES) FINALIZADO.")
                 
             except Exception as e:
                 print(f"❌ Error en mantenimiento: {e}")
 
         background_tasks.add_task(tarea_mantenimiento_profundo)
-        return JSONResponse({"status": "ok", "mensaje": "🛠️ Protocolo Maestro V4.1 iniciado."})
+        return JSONResponse({"status": "ok", "mensaje": "🛠️ Protocolo Anti-Zombies V4.2 iniciado."})
         
     except Exception as e:
         return JSONResponse(content={"error": str(e)})
