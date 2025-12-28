@@ -358,8 +358,7 @@ def optimizar_sistema_db():
 
 def identificar_varios_rostros_aws(imagen_path: str, confidence_threshold: float = 80.0) -> List[str]:
     """
-    Versión AVANZADA: Detecta múltiples rostros (grupos/certificados), 
-    recorta cada uno y los busca en AWS.
+    Versión CORREGIDA: Lee el ExternalImageId (Cédula) en lugar del FaceId (UUID).
     """
     if not rekog:
         return []
@@ -376,7 +375,7 @@ def identificar_varios_rostros_aws(imagen_path: str, confidence_threshold: float
         with open(imagen_path, 'rb') as image_file:
             image_bytes = image_file.read()
             
-        # 3. Detectar TODAS las caras primero (clave para grupos y certificados)
+        # 3. Detectar TODAS las caras primero
         response_detect = rekog.detect_faces(Image={'Bytes': image_bytes})
         
         if not response_detect['FaceDetails']:
@@ -392,20 +391,18 @@ def identificar_varios_rostros_aws(imagen_path: str, confidence_threshold: float
             w = int(bbox['Width'] * width)
             h = int(bbox['Height'] * height)
             
-            # Ajustar márgenes para no salir de la imagen
+            # Ajustar márgenes
             x, y = max(0, x), max(0, y)
             w, h = min(width - x, w), min(height - y, h)
             
-            # Recortar solo la carita
             face_crop = img[y:y+h, x:x+w]
-            
             if face_crop.size == 0: continue
 
-            # Convertir a jpg en memoria
+            # Convertir a jpg
             _, buffer = cv2.imencode('.jpg', face_crop)
             crop_bytes = buffer.tobytes()
             
-            # 5. Buscar quién es esta persona específica
+            # 5. Buscar quién es esta persona
             try:
                 search_res = rekog.search_faces_by_image(
                     CollectionId=COLLECTION_ID,
@@ -415,18 +412,26 @@ def identificar_varios_rostros_aws(imagen_path: str, confidence_threshold: float
                 )
                 
                 if search_res['FaceMatches']:
-                    ced = search_res['FaceMatches'][0]['Face']['FaceId']
-                    cedulas_encontradas.add(ced)
-                    print(f"Rostro encontrado: {ced}")
-            except:
-                continue # Si no reconoce a uno del grupo, sigue con los otros
+                    # --- CORRECCIÓN AQUÍ ---
+                    # Antes leía 'FaceId' (UUID), ahora lee 'ExternalImageId' (Cédula)
+                    face_data = search_res['FaceMatches'][0]['Face']
+                    ced = face_data.get('ExternalImageId') 
+                    
+                    if ced:
+                        cedulas_encontradas.add(ced)
+                        print(f"✅ Rostro identificado correctamente: {ced}")
+                    else:
+                        print("⚠️ Rostro encontrado pero sin Cédula asociada en AWS")
+                        
+            except Exception as e_inner:
+                continue 
 
         return list(cedulas_encontradas)
         
     except Exception as e:
         print(f"Error IA: {e}")
         return []
-
+    
 # Función auxiliar por si no la tienes
 def calcular_hash(file_path):
     sha256_hash = hashlib.sha256()
