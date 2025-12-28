@@ -237,6 +237,19 @@ def init_db_completa():
         c.execute("CREATE INDEX IF NOT EXISTS idx_evidencias_ci ON Evidencias(CI_Estudiante)")
         c.execute("CREATE INDEX IF NOT EXISTS idx_evidencias_fecha ON Evidencias(Fecha)")
         c.execute("CREATE INDEX IF NOT EXISTS idx_solicitudes_estado ON Solicitudes(Estado)")
+        c.execute("SELECT CI FROM Usuarios WHERE CI='9999999990'")
+        if not c.fetchone():
+            # Usamos CI 9999999990, Tipo 1 (Estudiante) para que aparezca en el panel
+            c.execute("""INSERT INTO Usuarios (Nombre, Apellido, CI, Password, Tipo, Activo, Foto) 
+                         VALUES ('Bandeja', 'Recuperados', '9999999990', '123456', 1, 1, '')""")
+            print("✅ Usuario contenedor 'Bandeja Recuperados' creado")
+
+        # 2. MOVER TODOS LOS HUÉRFANOS A ESTA BANDEJA
+        # Todo lo que diga 'PENDIENTE' ahora será de este usuario
+        c.execute("UPDATE Evidencias SET CI_Estudiante='9999999990' WHERE CI_Estudiante='PENDIENTE' OR CI_Estudiante IS NULL")
+        if c.rowcount > 0:
+            print(f"📦 {c.rowcount} evidencias recuperadas movidas a la Bandeja de Recuperados.")
+
         
         conn.commit()
         conn.close()
@@ -2327,7 +2340,7 @@ async def recuperar_evidencias_nube(background_tasks: BackgroundTasks):
                             try:
                                 conn.execute("""
                                     INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
-                                    VALUES ('PENDIENTE', ?, 'RECUPERADO', 1, 'desconocido', 0, 0)
+                                    VALUES ('9999999990', ?, 'RECUPERADO', 1, 'desconocido', 0, 0)
                                 """, (url_archivo,))
                                 restaurados += 1
                             except: pass
