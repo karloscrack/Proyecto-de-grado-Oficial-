@@ -199,11 +199,14 @@ def init_db_completa():
             ("Usuarios", "Telefono", "TEXT"),
             ("Usuarios", "Ultimo_Acceso", "TIMESTAMP NULL"),
             ("Usuarios", "Fecha_Desactivacion", "TIMESTAMP NULL"),
-            ("Usuarios", "Fecha_Registro", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+            
+            # 👇 CAMBIO CLAVE AQUÍ: Quitamos 'DEFAULT CURRENT_TIMESTAMP' y lo dejamos como 'TEXT' 👇
+            ("Usuarios", "Fecha_Registro", "TEXT"), 
+            # 👆 Esto permite que la columna se cree sin errores en bases de datos viejas
+            
             ("Evidencias", "Tipo_Archivo", "TEXT DEFAULT 'documento'"),
             ("Evidencias", "Tamanio_KB", "REAL DEFAULT 0"),
             ("Evidencias", "Asignado_Automaticamente", "INTEGER DEFAULT 0"),
-            # 👇 AGREGA ESTA LÍNEA OBLIGATORIAMENTE 👇
             ("Evidencias", "Hash", "TEXT DEFAULT 'PENDIENTE'"), 
             
             ("Solicitudes", "Fecha_Resolucion", "TIMESTAMP NULL"),
@@ -565,36 +568,42 @@ def calcular_estadisticas_reales() -> dict:
         conn = get_db_connection()
         c = conn.cursor()
         
-        # Contar usuarios activos
-        c.execute("SELECT COUNT(*) FROM Usuarios WHERE Activo = 1")
-        usuarios_activos = c.fetchone()[0]
+        # 1. Contar usuarios activos (USANDO ALIAS 'total')
+        c.execute("SELECT COUNT(*) as total FROM Usuarios WHERE Activo = 1")
+        fila_usuarios = c.fetchone()
+        # Accedemos por nombre ['total'], no por indice [0]
+        usuarios_activos = fila_usuarios['total'] if fila_usuarios else 0
         
-        # Contar evidencias
-        c.execute("SELECT COUNT(*) FROM Evidencias")
-        total_evidencias = c.fetchone()[0]
+        # 2. Contar evidencias
+        c.execute("SELECT COUNT(*) as total FROM Evidencias")
+        fila_evidencias = c.fetchone()
+        total_evidencias = fila_evidencias['total'] if fila_evidencias else 0
         
-        # CORRECCIÓN: Sumar el peso REAL (Tamanio_KB) de todas las evidencias
-        c.execute("SELECT SUM(Tamanio_KB) FROM Evidencias")
-        resultado_kb = c.fetchone()[0]
-        total_kb = resultado_kb if resultado_kb else 0
+        # 3. Sumar peso (USANDO ALIAS 'peso_total')
+        c.execute("SELECT SUM(Tamanio_KB) as peso_total FROM Evidencias")
+        fila_peso = c.fetchone()
+        # Si es None (tabla vacía), ponemos 0
+        resultado_kb = fila_peso['peso_total'] if fila_peso and fila_peso['peso_total'] else 0
         
-        # Si la suma es 0 pero hay evidencias (archivos viejos sin peso registrado), usamos estimación
-        # Esto corregirá tu problema de 0.17GB vs 1GB conforme subas archivos nuevos o se actualicen
+        # Lógica de estimación
+        total_kb = resultado_kb
+        nota_almacenamiento = "Calculado exacto de DB"
+        
+        # Corrección para cuando hay archivos pero pesan 0 (migración antigua)
         if total_kb == 0 and total_evidencias > 0:
-            total_kb = total_evidencias * 2500 # Estimado 2.5MB solo si no hay datos
+            total_kb = total_evidencias * 2500 
             nota_almacenamiento = "Estimado (sube archivos nuevos para corregir)"
-        else:
-            nota_almacenamiento = "Calculado exacto de DB"
 
         tamanio_total_mb = total_kb / 1024
         
-        # Costos aproximados (Rekognition + S3)
+        # Costos
         costo_rekognition = (total_evidencias / 1000) * 1.0
         costo_almacenamiento = (tamanio_total_mb / 1024) * 0.023
         
-        # Solicitudes pendientes
-        c.execute("SELECT COUNT(*) FROM Solicitudes WHERE Estado = 'PENDIENTE'")
-        solicitudes_pendientes = c.fetchone()[0]
+        # 4. Solicitudes pendientes
+        c.execute("SELECT COUNT(*) as total FROM Solicitudes WHERE Estado = 'PENDIENTE'")
+        fila_solicitudes = c.fetchone()
+        solicitudes_pendientes = fila_solicitudes['total'] if fila_solicitudes else 0
         
         conn.close()
         
@@ -602,7 +611,7 @@ def calcular_estadisticas_reales() -> dict:
             "usuarios_activos": usuarios_activos,
             "total_evidencias": total_evidencias,
             "almacenamiento_mb": round(tamanio_total_mb, 2),
-            "almacenamiento_gb": round(tamanio_total_mb / 1024, 4), # 4 decimales para precisión
+            "almacenamiento_gb": round(tamanio_total_mb / 1024, 4),
             "costo_estimado_usd": {
                 "rekognition": round(costo_rekognition, 2),
                 "almacenamiento": round(costo_almacenamiento, 4),
@@ -613,7 +622,12 @@ def calcular_estadisticas_reales() -> dict:
         }
     except Exception as e:
         print(f"Error estadisticas: {e}")
-        return {}
+        # En caso de error, devolvemos ceros para que el frontend no falle
+        return {
+            "usuarios_activos": 0, "total_evidencias": 0, 
+            "almacenamiento_mb": 0, "almacenamiento_gb": 0,
+            "solicitudes_pendientes": 0
+        }
 
 # =========================================================================
 # 4. CONFIGURACIÓN FASTAPI
@@ -796,6 +810,10 @@ async def registrar_usuario(
         
         # Insertar usuario con fecha de Ecuador
         fecha_registro = ahora_ecuador()
+        
+        # 👇 CAMBIO CLAVE: Convertimos la fecha a texto simple para evitar errores
+        fecha_str = fecha_registro.strftime("%Y-%m-%d %H:%M:%S") 
+        
         c.execute("""
             INSERT INTO Usuarios 
             (Nombre, Apellido, CI, Password, Tipo, Foto, Activo, Email, Telefono, Fecha_Registro)
@@ -809,7 +827,7 @@ async def registrar_usuario(
             url_foto,
             email,
             telefono,
-            fecha_registro
+            fecha_str  # <--- Usamos la versión texto, no el objeto fecha
         ))
         
         # Si es estudiante, agregar a colección de rostros AWS
