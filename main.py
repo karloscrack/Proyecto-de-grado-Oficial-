@@ -1057,6 +1057,7 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
         
         if rekog:
             if es_imagen:
+                # Nota: identificar_varios_rostros_aws ya está configurado con MaxFaces=5
                 rostros = identificar_varios_rostros_aws(path)
                 cedulas_detectadas.update(rostros)
                 
@@ -1082,7 +1083,7 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
                     if len(cedulas_detectadas) > 10: break
                 cap.release()
 
-        # 5. VERIFICAR SI EL ARCHIVO YA EXISTE FÍSICAMENTE (Para no subirlo 2 veces)
+        # 5. VERIFICAR SI EL ARCHIVO YA EXISTE FÍSICAMENTE
         conn = get_db_connection()
         archivo_existente = conn.execute("SELECT Url_Archivo, Tamanio_KB FROM Evidencias WHERE Hash = ? LIMIT 1", (file_hash,)).fetchone()
         
@@ -1090,12 +1091,10 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
         tamanio_kb = 0
         
         if archivo_existente:
-            # ¡GENIAL! El archivo ya está en la nube. Reusamos el link.
             url_final = archivo_existente['Url_Archivo']
             tamanio_kb = archivo_existente['Tamanio_KB']
             print(f"♻️ Archivo existente detectado. Reusando URL: {url_final}")
         else:
-            # NO EXISTE. Toca subirlo.
             path = garantizar_limite_storage(path, limite_mb=1000)
             tamanio_kb = os.path.getsize(path) / 1024
             
@@ -1108,63 +1107,63 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
                     url_final = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nube}"
                 except: pass
 
-        # 6. ASIGNACIÓN INTELIGENTE (EL CORAZÓN DE TU SOLICITUD)
+        # 6. ASIGNACIÓN INTELIGENTE (FILTRANDO ADMINS)
         asignados_nuevos = []
         ya_lo_tenian = []
         
         if cedulas_detectadas:
             for ced in cedulas_detectadas:
-                # Paso A: Ver si el usuario existe
-                u = conn.execute("SELECT Nombre, Apellido FROM Usuarios WHERE CI=?", (ced,)).fetchone()
-                if u:
+                # Paso A: Traemos también el 'Tipo' del usuario
+                u = conn.execute("SELECT Nombre, Apellido, Tipo FROM Usuarios WHERE CI=?", (ced,)).fetchone()
+                
+                # --- FILTRO DE SEGURIDAD: SOLO ESTUDIANTES (Tipo 1) ---
+                if u and u['Tipo'] == 1:
                     nombre_completo = f"{u['Nombre']} {u['Apellido']}"
                     
-                    # Paso B: ¿Este usuario YA tiene esta evidencia exacta?
+                    # Paso B: ¿Ya lo tiene?
                     ya_existe = conn.execute("""
                         SELECT id FROM Evidencias 
                         WHERE CI_Estudiante = ? AND Hash = ?
                     """, (ced, file_hash)).fetchone()
                     
                     if ya_existe:
-                        # Si ya la tiene, lo anotamos pero NO insertamos de nuevo
                         ya_lo_tenian.append(nombre_completo)
                     else:
-                        # Si NO la tiene, SE LA ASIGNAMOS
                         conn.execute("""
                             INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente) 
                             VALUES (?, ?, ?, 1, ?, ?, 1)
                         """, (ced, url_final, file_hash, tipo_archivo, tamanio_kb))
                         asignados_nuevos.append(nombre_completo)
-            
-            # Generar Mensaje de Respuesta
+                
+                # Si u['Tipo'] == 0 (Admin), simplemente no hacemos nada y el bucle continúa.
+
+            # Generar Mensaje
             if asignados_nuevos:
                 msg = f"✅ Asignado a: {', '.join(asignados_nuevos)}."
                 status = "exito"
                 if ya_lo_tenian:
-                    msg += f" (Omitidos porque ya la tenían: {', '.join(ya_lo_tenian)})"
+                    msg += f" (Omitidos: {', '.join(ya_lo_tenian)})"
             elif ya_lo_tenian:
-                msg = f"⚠️ Evidencia duplicada. Todos los usuarios detectados ya la tienen ({', '.join(ya_lo_tenian)})."
+                msg = f"⚠️ Evidencia ya existente para: {', '.join(ya_lo_tenian)}."
                 status = "alerta"
             else:
-                # Detectó rostros pero no estaban en la base de datos de usuarios
-                # En este caso, sí creamos un PENDIENTE si el hash no existe como pendiente
+                # Detectó rostros pero eran Admins o no registrados
                 check_pendiente = conn.execute("SELECT id FROM Evidencias WHERE Hash = ? AND CI_Estudiante = 'PENDIENTE'", (file_hash,)).fetchone()
                 if not check_pendiente:
                     conn.execute("""
                         INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente) 
                         VALUES ('PENDIENTE', ?, ?, 1, ?, ?, 0)
                     """, (url_final, file_hash, tipo_archivo, tamanio_kb))
-                msg = "⚠️ Rostros detectados pero no coinciden con estudiantes registrados."
+                msg = "⚠️ Rostros detectados pero no son estudiantes activos."
                 status = "alerta"
 
         else:
-            # 7. CASO: NADIE DETECTADO (Ni Rostro Ni Texto)
-            # Aquí sí aplicamos la lógica de "Si ya existe el hash genérico, es duplicado"
+            # 7. NADIE DETECTADO
             check_pendiente = conn.execute("SELECT id FROM Evidencias WHERE Hash = ?", (file_hash,)).fetchone()
             
             if check_pendiente:
                 status = "error"
-                msg = "⚠️ DUPLICADO: Este archivo ya existe y la IA no encontró nuevos estudiantes en él."
+                msg = "⚠️ DUPLICADO: Este archivo ya existe y la IA no encontró nuevos estudiantes."
             else:
                 conn.execute("""
                     INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente) 
@@ -1172,7 +1171,7 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
                 """, (url_final, file_hash, tipo_archivo, tamanio_kb))
                 
                 muestras_texto = ", ".join(texto_debug[:5]) if texto_debug else "Nada legible"
-                msg = f"⚠️ No se identificó alumno. Guardado como pendiente. (IA leyó: {muestras_texto}...)"
+                msg = f"⚠️ No se identificó alumno. Guardado como pendiente. (Texto: {muestras_texto}...)"
                 status = "alerta"
 
         conn.commit()
