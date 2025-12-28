@@ -1068,19 +1068,45 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
             elif es_video:
                 cap = cv2.VideoCapture(path)
                 fps = cap.get(cv2.CAP_PROP_FPS) or 24
-                intervalo = int(fps * 2)
+                
+                # --- CAMBIO 1: MENOS CARGA DE PROCESAMIENTO ---
+                # Antes analizábamos cada 2 segundos. Ahora cada 4 segundos para ahorrar RAM.
+                intervalo = int(fps * 4) 
+                
                 curr = 0
                 max_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-                while curr < max_frames:
+                
+                # --- CAMBIO 2: LÍMITE DE SEGURIDAD ---
+                # Si el video es muy largo, solo analizamos los primeros 10 análisis para no saturar
+                contador_analisis = 0
+                MAX_ANALISIS_POR_VIDEO = 8 
+                
+                while curr < max_frames and contador_analisis < MAX_ANALISIS_POR_VIDEO:
                     cap.set(cv2.CAP_PROP_POS_FRAMES, curr)
                     ret, frame = cap.read()
                     if not ret: break
+                    
+                    # Redimensionar frame si es muy grande (4K -> HD) para ahorrar memoria
+                    if frame.shape[1] > 1280:
+                        scale = 1280 / frame.shape[1]
+                        frame = cv2.resize(frame, None, fx=scale, fy=scale)
+
                     frame_path = os.path.join(temp_dir, f"frame_{curr}.jpg")
                     cv2.imwrite(frame_path, frame)
+                    
                     rostros = identificar_varios_rostros_aws(frame_path)
                     cedulas_detectadas.update(rostros)
+                    
+                    # Limpiamos el frame del disco inmediatamente
+                    try: os.remove(frame_path) 
+                    except: pass
+                    
                     curr += intervalo
-                    if len(cedulas_detectadas) > 10: break
+                    contador_analisis += 1
+                    
+                    # Si ya encontramos gente, no necesitamos seguir machacando el servidor
+                    if len(cedulas_detectadas) >= 5: break
+                
                 cap.release()
 
         # 5. VERIFICAR SI EL ARCHIVO YA EXISTE FÍSICAMENTE
