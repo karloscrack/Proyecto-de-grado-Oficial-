@@ -433,12 +433,15 @@ def identificar_varios_rostros_aws(imagen_path: str, confidence_threshold: float
         print(f"Error IA: {e}")
         return []
     
+# --- REEMPLAZA TU FUNCIÓN DE LECTURA POR ESTA VERSIÓN 'TODO TERRENO' ---
+
 def buscar_estudiantes_por_texto(imagen_path: str, conn) -> List[str]:
     """
-    Versión ULTRA-FLEXIBLE para fuentes Góticas/Difíciles:
-    1. Lee PALABRAS y LÍNEAS completas.
-    2. Usa un umbral de similitud muy bajo (0.50) para tolerar errores graves de OCR.
-    3. Imprime exactamente qué leyó AWS para que puedas depurar.
+    Versión TODO TERRENO:
+    1. Obtiene TODAS las partes del nombre del estudiante (1er nombre, 2do nombre, apellidos).
+    2. Busca si AL MENOS 2 de esas partes aparecen en la imagen.
+    3. Tolerancia extrema (0.50) para letra Gótica.
+    4. Sin filtro de confianza (lee todo).
     """
     if not rekog: return []
     cedulas_encontradas = set()
@@ -447,57 +450,56 @@ def buscar_estudiantes_por_texto(imagen_path: str, conn) -> List[str]:
         with open(imagen_path, 'rb') as image_file:
             image_bytes = image_file.read()
             
-        # 1. Detectar TODO el texto (Palabras y Líneas)
+        # 1. Detectar TODO el texto sin filtro de confianza
         response = rekog.detect_text(Image={'Bytes': image_bytes})
         
-        # Guardamos palabras sueltas Y líneas completas para tener más oportunidades
-        textos_detectados = []
+        # Guardamos TODAS las palabras detectadas
+        palabras_imagen = []
         for t in response.get('TextDetections', []):
-            if t['Confidence'] > 40: # Solo si AWS está mínimamente seguro
-                textos_detectados.append(t['DetectedText'].lower())
+            # Guardamos solo palabras (WORD), no líneas, para comparar palabra por palabra
+            if t['Type'] == 'WORD':
+                palabras_imagen.append(t['DetectedText'].lower())
         
-        if not textos_detectados: 
-            print("⚠️ OCR: No se detectó ningún texto en la imagen.")
+        if not palabras_imagen: 
+            print("⚠️ OCR: La imagen parece vacía de texto.")
             return []
         
-        print(f"👀 OCR LEYÓ ESTO (Debug): {textos_detectados}") # ¡MIRA ESTO EN TUS LOGS!
+        print(f"👀 IA LEYÓ ESTAS PALABRAS: {palabras_imagen}") 
+        # ^^^ IMPORTANTE: Mira este log en Railway para ver si la IA está leyendo "Karlos" o "Rarlos"
 
         # 2. Traer estudiantes
         estudiantes = conn.execute("SELECT Nombre, Apellido, CI FROM Usuarios WHERE Tipo=1").fetchall()
         
         for est in estudiantes:
-            # Preparamos las partes del nombre del estudiante
-            nombres = est['Nombre'].lower().split()
-            apellidos = est['Apellido'].lower().split()
-            nombre_completo_str = f"{est['Nombre']} {est['Apellido']}".lower()
+            # Desarmamos el nombre completo en piezas únicas
+            # Ej: "Juan Karlos" + "Ayala Perez" -> ["juan", "karlos", "ayala", "perez"]
+            partes_nombre = set(est['Nombre'].lower().split() + est['Apellido'].lower().split())
             
-            # --- ESTRATEGIA 1: Búsqueda exacta de frase (La mejor para líneas) ---
-            # Si AWS leyó "honorable karlos ayala", esto lo encontrará.
-            encontrado_en_frase = False
-            for texto_ocr in textos_detectados:
-                # Verificamos si el nombre corto (Nombre + Apellido) está DENTRO de una línea detectada
-                # Usamos fuzzy match incluso para la frase completa
-                if difflib.SequenceMatcher(None, f"{nombres[0]} {apellidos[0]}", texto_ocr).ratio() > 0.60:
-                    encontrado_en_frase = True
-                    break
-            
-            if encontrado_en_frase:
-                print(f"✅ (Estrategia Frase) Se detectó a: {est['Nombre']} {est['Apellido']}")
-                cedulas_encontradas.add(est['CI'])
-                continue
+            coincidencias = 0
+            matches_encontrados = []
 
-            # --- ESTRATEGIA 2: Bolsa de Palabras (Bag of Words) ---
-            # Busca "Karlos" por un lado y "Ayala" por el otro, con tolerancia alta a fallos.
+            # 3. Comparación "Todo contra Todo"
+            for parte in partes_nombre:
+                if len(parte) < 3: continue # Ignoramos nombres muy cortos como "De" o "La"
+                
+                # Buscamos esta parte del nombre en TODAS las palabras de la imagen
+                # cutoff=0.50 significa que acepta 50% de error (Ideal para Gótica)
+                match = difflib.get_close_matches(parte, palabras_imagen, n=1, cutoff=0.50)
+                
+                if match:
+                    coincidencias += 1
+                    matches_encontrados.append(f"{parte}≈{match[0]}")
             
-            # Buscamos el PRIMER Nombre con umbral 0.50 (Muy tolerante para letra Gótica)
-            match_nombre = difflib.get_close_matches(nombres[0], textos_detectados, n=1, cutoff=0.50)
-            
-            # Buscamos el PRIMER Apellido con umbral 0.50
-            match_apellido = difflib.get_close_matches(apellidos[0], textos_detectados, n=1, cutoff=0.50)
-            
-            if match_nombre and match_apellido:
-                print(f"✅ (Estrategia Palabras) Se juntó '{match_nombre[0]}' + '{match_apellido[0]}' -> {est['Nombre']} {est['Apellido']}")
+            # 4. Regla de Aceptación:
+            # Si encontramos al menos 2 piezas del nombre (Ej: "Karlos" y "Ayala"), es válido.
+            # O si el estudiante solo tiene 1 nombre y 1 apellido y encontramos ambos.
+            if coincidencias >= 2:
+                print(f"✅ ¡MATCH ENCONTRADO! {est['Nombre']} {est['Apellido']} (Matches: {matches_encontrados})")
                 cedulas_encontradas.add(est['CI'])
+            
+            # Caso especial: Si el estudiante tiene un nombre muy único y largo (ej: "Rigoberto")
+            # y la coincidencia es muy fuerte, podríamos aceptarlo con 1 sola coincidencia, 
+            # pero por seguridad lo dejamos en 2.
 
     except Exception as e:
         print(f"⚠️ Error OCR: {e}")
