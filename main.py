@@ -447,7 +447,7 @@ def buscar_estudiantes_por_texto(imagen_path: str, conn):
         # 1. Obtener BYTES SEGUROS (Comprimidos < 5MB)
         image_bytes = preparar_imagen_aws(imagen_path)
             
-        # 2. Detectar texto (Ahora sí aceptará la imagen)
+        # 2. Detectar texto
         response = rekog.detect_text(Image={'Bytes': image_bytes})
         
         palabras_sueltas = []
@@ -456,37 +456,52 @@ def buscar_estudiantes_por_texto(imagen_path: str, conn):
         for t in response.get('TextDetections', []):
             txt = t['DetectedText'].lower()
             if t['Type'] == 'WORD':
-                palabras_sueltas.append(txt)
-                texto_leido_debug.append(txt) # Guardamos todo para debug
+                # Filtramos palabras basura muy cortas (de 1 o 2 letras) que causan ruido
+                if len(txt) > 2: 
+                    palabras_sueltas.append(txt)
+                    texto_leido_debug.append(txt)
             elif t['Type'] == 'LINE':
                 lineas_completas.append(txt)
         
-        if not palabras_sueltas: return [], ["(Imagen ilegible o sin texto)"]
+        if not palabras_sueltas: return [], ["(Imagen ilegible)"]
 
-        # 3. Lógica de Búsqueda (Igual que antes)
+        # 3. Lógica de Búsqueda
         estudiantes = conn.execute("SELECT Nombre, Apellido, CI FROM Usuarios WHERE Tipo=1").fetchall()
         
         for est in estudiantes:
+            # Partes del nombre: "Taylor", "Swift"
             partes = est['Nombre'].lower().split() + est['Apellido'].lower().split()
+            # Filtramos conectores como "de", "la"
             piezas_validas = {p for p in partes if len(p) > 2}
             
-            # Estrategia Líneas
+            # --- ESTRATEGIA A: LÍNEAS (Contexto exacto) ---
+            # Si la línea dice literalmente "award to karlos ayala", es un match seguro
             match_linea = False
             nombre_corto = f"{est['Nombre'].split()[0]} {est['Apellido'].split()[0]}".lower()
+            
             for linea in lineas_completas:
-                if difflib.SequenceMatcher(None, nombre_corto, linea).find_longest_match(0, len(nombre_corto), 0, len(linea)).size > 4:
-                     if difflib.get_close_matches(nombre_corto, [linea], n=1, cutoff=0.60): 
+                # Buscamos la frase dentro de la línea con tolerancia media (65%)
+                s = difflib.SequenceMatcher(None, nombre_corto, linea)
+                match = s.find_longest_match(0, len(nombre_corto), 0, len(linea))
+                if match.size > 4: # Si coinciden más de 4 letras seguidas en orden
+                     if difflib.get_close_matches(nombre_corto, [linea], n=1, cutoff=0.65): 
                         cedulas_encontradas.add(est['CI'])
                         match_linea = True
                         break
             if match_linea: continue
 
-            # Estrategia Palabras (Bolsa de palabras)
+            # --- ESTRATEGIA B: BOLSA DE PALABRAS (Filtro Dinámico) ---
             coincidencias = 0
             for pieza in piezas_validas:
-                if difflib.get_close_matches(pieza, palabras_sueltas, n=1, cutoff=0.45):
+                # AQUÍ ESTÁ EL TRUCO:
+                # Palabras cortas (< 5 letras): Filtro DURO (0.85). Evita que 'Smith' se confunda con 'Swift'.
+                # Palabras largas (>= 5 letras): Filtro SUAVE (0.60). Permite leer 'Karlos' en gótico ('Rarlos').
+                umbral = 0.85 if len(pieza) < 5 else 0.60
+                
+                if difflib.get_close_matches(pieza, palabras_sueltas, n=1, cutoff=umbral):
                     coincidencias += 1
             
+            # Reglas de Aprobación
             if coincidencias >= 2:
                 cedulas_encontradas.add(est['CI'])
             elif len(piezas_validas) == 2 and coincidencias == 2:
