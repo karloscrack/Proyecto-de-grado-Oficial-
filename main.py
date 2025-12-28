@@ -1396,102 +1396,124 @@ async def descargar_multimedia_zip():
     except Exception as e:
         return JSONResponse(content={"error": str(e)})
 
+from urllib.parse import urlparse
+
 @app.post("/optimizar_sistema")
 async def optimizar_sistema(background_tasks: BackgroundTasks):
     """
-    Ejecuta MANTENIMIENTO REAL:
-    1. Sincroniza existencia de archivos con S3 (Borra fantasmas).
-    2. Actualiza el peso real (KB) de cada evidencia.
-    3. Optimiza la base de datos (VACUUM).
+    V3.0 - MANTENIMIENTO MAESTRO:
+    1. Elimina duplicados entre Bandeja y Estudiantes (Prioriza al estudiante).
+    2. Elimina duplicados dentro del mismo perfil (Si un alumno tiene 2 veces la foto).
+    3. Sincroniza pesos reales con la nube.
     """
     try:
-        # Definimos la tarea pesada para que corra en segundo plano
-        def tarea_sincronizacion_total():
-            print("🔄 INICIANDO SINCRONIZACIÓN TOTAL CON NUBE...")
+        def tarea_mantenimiento_profundo():
+            print("🔧 INICIANDO LIMPIEZA PROFUNDA DE DUPLICADOS...")
             try:
                 conn = get_db_connection()
-                # Traemos todas las evidencias para auditarlas una por una
-                evidencias = conn.execute("SELECT id, Url_Archivo FROM Evidencias").fetchall()
                 
+                # ---------------------------------------------------------
+                # PASO 1: LIMPIAR BANDEJA DE RECUPERADOS (CI: 9999999990)
+                # Regla: Si el archivo ya lo tiene ALGUIEN MÁS, bórralo de la bandeja.
+                # ---------------------------------------------------------
+                print("🧹 Paso 1: Eliminando redundancias en Bandeja Recuperados...")
+                
+                # Borrar por HASH idéntico
+                conn.execute("""
+                    DELETE FROM Evidencias 
+                    WHERE CI_Estudiante = '9999999990' 
+                    AND Hash IN (
+                        SELECT Hash FROM Evidencias WHERE CI_Estudiante != '9999999990'
+                    )
+                """)
+                borrados_hash = conn.rowcount
+                
+                # Borrar por URL idéntica (por si el hash falló)
+                conn.execute("""
+                    DELETE FROM Evidencias 
+                    WHERE CI_Estudiante = '9999999990' 
+                    AND Url_Archivo IN (
+                        SELECT Url_Archivo FROM Evidencias WHERE CI_Estudiante != '9999999990'
+                    )
+                """)
+                borrados_url = conn.rowcount
+                print(f"   ✨ Se eliminaron {borrados_hash + borrados_url} archivos sobrantes de la bandeja.")
+
+                # ---------------------------------------------------------
+                # PASO 2: LIMPIAR DUPLICADOS EN PERFILES DE ESTUDIANTES
+                # Regla: Si Juan tiene la foto X dos veces, deja solo una.
+                # ---------------------------------------------------------
+                print("🧹 Paso 2: Eliminando duplicados internos en perfiles...")
+                
+                # Esta consulta mágica mantiene solo el registro más antiguo (MIN(id)) 
+                # de cada combinación (Estudiante + Hash)
+                conn.execute("""
+                    DELETE FROM Evidencias 
+                    WHERE id NOT IN (
+                        SELECT MIN(id) 
+                        FROM Evidencias 
+                        GROUP BY CI_Estudiante, Hash
+                    )
+                """)
+                duplicados_perfil = conn.rowcount
+                print(f"   ✨ Se fusionaron {duplicados_perfil} evidencias duplicadas en perfiles.")
+
+                # ---------------------------------------------------------
+                # PASO 3: SINCRONIZACIÓN CON NUBE (PESOS Y FANTASMAS)
+                # ---------------------------------------------------------
+                print("☁️ Paso 3: Auditando existencia real en la nube...")
+                evidencias = conn.execute("SELECT id, Url_Archivo FROM Evidencias").fetchall()
                 actualizados = 0
-                eliminados = 0
                 
                 for ev in evidencias:
                     url = ev['Url_Archivo']
-                    existe_realmente = False
-                    peso_real_kb = 0
+                    peso_kb = 0
+                    existe = False
                     
-                    # CASO A: Archivo en Nube (Backblaze/S3)
                     if s3_client and BUCKET_NAME in url:
                         try:
-                            # Extraemos la clave (nombre del archivo en la nube)
-                            # Ejemplo: https://.../evidencias/foto.jpg -> evidencias/foto.jpg
-                            key = url.split(f"{BUCKET_NAME}/")[-1]
-                            
-                            # LE PREGUNTAMOS A BACKBLAZE (LA VERDADERA FUENTE):
-                            # 1. ¿Existes? (Si no, da error y va al except)
-                            # 2. ¿Cuánto pesas? (ContentLength)
+                            parsed = urlparse(url)
+                            key = parsed.path.lstrip('/')
                             meta = s3_client.head_object(Bucket=BUCKET_NAME, Key=key)
-                            
-                            peso_real_kb = meta['ContentLength'] / 1024
-                            existe_realmente = True
-                        except Exception:
-                            # Si Backblaze dice "No encontrado" (404), es un fantasma
-                            existe_realmente = False
-                    
-                    # CASO B: Archivo Local (Por si usas modo local)
+                            peso_kb = meta['ContentLength'] / 1024
+                            existe = True
+                        except Exception as e:
+                            if "404" in str(e) or "Not Found" in str(e): existe = False
+                            else: existe = True # Asumimos que existe si es otro error
                     elif "/local/" in url:
-                        ruta_local = url.replace("/local/", "./") 
-                        # Ajuste para rutas relativas si es necesario
-                        if not os.path.exists(ruta_local):
-                            # Intentar ruta absoluta si estás en Docker
-                            ruta_local = os.path.join(BASE_DIR, url.replace("/local/", "").lstrip("/"))
-                            
-                        if os.path.exists(ruta_local):
-                            peso_real_kb = os.path.getsize(ruta_local) / 1024
-                            existe_realmente = True
-                    
-                    # --- ACCIONES ---
-                    if existe_realmente:
-                        # Actualizamos el peso real en la BD para que el resumen sea exacto
-                        conn.execute("UPDATE Evidencias SET Tamanio_KB = ? WHERE id = ?", (peso_real_kb, ev['id']))
-                        actualizados += 1
+                        existe = True
+
+                    if existe:
+                        if peso_kb > 0:
+                            conn.execute("UPDATE Evidencias SET Tamanio_KB = ? WHERE id = ?", (peso_kb, ev['id']))
+                            actualizados += 1
                     else:
-                        # ¡AQUÍ ESTÁ LA MAGIA DE BORRAR!
-                        # Si no existe en la nube, lo borramos de la BD para que deje de sumar peso
-                        print(f"👻 Eliminando evidencia fantasma ID {ev['id']} (No existe en nube)")
                         conn.execute("DELETE FROM Evidencias WHERE id = ?", (ev['id'],))
-                        eliminados += 1
                 
-                # Finalmente, compactamos la base de datos para recuperar espacio en disco local
                 conn.execute("VACUUM")
                 conn.commit()
                 conn.close()
                 
-                # Recalcular métricas para el dashboard inmediatamente
+                # Actualizar estadísticas
                 stats = calcular_estadisticas_reales()
                 conn2 = get_db_connection()
-                fecha_hoy = ahora_ecuador().date().isoformat()
-                conn2.execute("""
-                    INSERT OR REPLACE INTO Metricas_Sistema 
-                    (Fecha, Total_Usuarios, Total_Evidencias, Solicitudes_Pendientes, Almacenamiento_MB)
-                    VALUES (?, ?, ?, ?, ?)
-                """, (fecha_hoy, stats.get("usuarios_activos",0), stats.get("total_evidencias",0), 
-                      stats.get("solicitudes_pendientes",0), stats.get("almacenamiento_mb",0)))
+                fecha = ahora_ecuador().date().isoformat()
+                conn2.execute("INSERT OR REPLACE INTO Metricas_Sistema (Fecha, Total_Evidencias, Almacenamiento_MB) VALUES (?, ?, ?)", 
+                            (fecha, stats.get('total_evidencias',0), stats.get('almacenamiento_mb',0)))
                 conn2.commit()
                 conn2.close()
                 
-                print(f"✅ SINCRONIZACIÓN FINALIZADA: {actualizados} verificados, {eliminados} fantasmas eliminados.")
+                print("✅ LIMPIEZA MAESTRA FINALIZADA EXITOSAMENTE.")
                 
             except Exception as e:
-                print(f"❌ Error en tarea de sincronización: {e}")
+                print(f"❌ Error en limpieza profunda: {e}")
 
-        # Lanzamos la tarea en segundo plano para no congelar la página
-        background_tasks.add_task(tarea_sincronizacion_total)
+        # Ejecutar en segundo plano
+        background_tasks.add_task(tarea_mantenimiento_profundo)
         
         return JSONResponse({
             "status": "ok",
-            "mensaje": "⏳ Sincronización iniciada. El sistema está verificando archivo por archivo en Backblaze. Actualiza en 1 minuto."
+            "mensaje": "🧹 Limpieza iniciada. Los duplicados desaparecerán en unos segundos."
         })
         
     except Exception as e:
