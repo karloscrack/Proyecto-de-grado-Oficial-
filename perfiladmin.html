@@ -2500,6 +2500,9 @@
     }
 
     function volverAEvidencias() {
+        // Detener videos antes de salir
+        document.querySelectorAll('video, audio').forEach(media => media.pause());
+        
         modoSeleccion = false;
         evidenciasSeleccionadas = [];
         document.getElementById('floatingBar').classList.remove('active');
@@ -2553,8 +2556,12 @@
     }
 
     function cerrarLightbox() {
-        document.getElementById('lightbox').classList.remove('active');
+        const lightbox = document.getElementById('lightbox');
+        lightbox.classList.remove('active');
         document.body.style.overflow = '';
+        
+        // SOLUCIÓN: Limpiar el contenido HTML mata el reproductor de video/audio
+        document.getElementById('lightboxContent').innerHTML = '';
     }
 
     function cerrarLightboxSiFondo(evento) {
@@ -2965,7 +2972,7 @@
             cargarDatosIniciales();
         }, 1500);
     }
-    
+
     // ==========================================
     // 11. FUNCIONES DE CAMBIO DE CONTRASEÑA
     // ==========================================
