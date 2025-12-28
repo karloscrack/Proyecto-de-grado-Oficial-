@@ -1401,24 +1401,24 @@ from urllib.parse import urlparse
 @app.post("/optimizar_sistema")
 async def optimizar_sistema(background_tasks: BackgroundTasks):
     """
-    V3.1 - MANTENIMIENTO MAESTRO (FIX ROWCOUNT):
+    V3.2 - MANTENIMIENTO MAESTRO (FIX VACUUM):
     1. Elimina duplicados entre Bandeja y Estudiantes.
     2. Elimina duplicados dentro del mismo perfil.
     3. Sincroniza pesos reales.
+    4. CORRECCIÓN: Ejecuta VACUUM fuera de la transacción.
     """
     try:
         def tarea_mantenimiento_profundo():
             print("🔧 INICIANDO LIMPIEZA PROFUNDA DE DUPLICADOS...")
             try:
                 conn = get_db_connection()
-                c = conn.cursor() # <--- CORRECCIÓN IMPORTANTE: Usamos cursor explícito
+                c = conn.cursor()
                 
                 # ---------------------------------------------------------
                 # PASO 1: LIMPIAR BANDEJA DE RECUPERADOS (CI: 9999999990)
                 # ---------------------------------------------------------
                 print("🧹 Paso 1: Eliminando redundancias en Bandeja Recuperados...")
                 
-                # Borrar por HASH idéntico
                 c.execute("""
                     DELETE FROM Evidencias 
                     WHERE CI_Estudiante = '9999999990' 
@@ -1426,9 +1426,8 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                         SELECT Hash FROM Evidencias WHERE CI_Estudiante != '9999999990'
                     )
                 """)
-                borrados_hash = c.rowcount # <--- Ahora sí funciona
+                borrados_hash = c.rowcount
                 
-                # Borrar por URL idéntica
                 c.execute("""
                     DELETE FROM Evidencias 
                     WHERE CI_Estudiante = '9999999990' 
@@ -1459,7 +1458,6 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                 # PASO 3: SINCRONIZACIÓN CON NUBE
                 # ---------------------------------------------------------
                 print("☁️ Paso 3: Auditando existencia real en la nube...")
-                # Para leer usamos execute directo o el cursor, ambos valen aquí
                 evidencias = c.execute("SELECT id, Url_Archivo FROM Evidencias").fetchall()
                 actualizados = 0
                 
@@ -1483,15 +1481,23 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
 
                     if existe:
                         if peso_kb > 0:
-                            # Usamos una nueva conexión o el cursor para updates individuales
                             c.execute("UPDATE Evidencias SET Tamanio_KB = ? WHERE id = ?", (peso_kb, ev['id']))
                             actualizados += 1
                     else:
                         c.execute("DELETE FROM Evidencias WHERE id = ?", (ev['id'],))
                 
-                c.execute("VACUUM")
+                # --- CORRECCIÓN CRÍTICA PARA VACUUM ---
+                # 1. Guardamos todos los cambios pendientes PRIMERO
                 conn.commit()
+                
+                # 2. Ponemos la conexión en modo autocommit (necesario para VACUUM)
+                conn.isolation_level = None 
+                
+                # 3. Ahora sí ejecutamos VACUUM sin miedo
+                c.execute("VACUUM")
+                
                 conn.close()
+                # --------------------------------------
                 
                 # Actualizar estadísticas
                 stats = calcular_estadisticas_reales()
