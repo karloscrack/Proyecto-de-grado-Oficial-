@@ -742,6 +742,27 @@
         .drop-zone #uploadLog {   /* <--- ESTA ES LA CLAVE */
             pointer-events: auto;
         }
+        .modal-overlay {
+        z-index: 10000 !important; /* Fuerza al modal a estar encima de todo */
+    }
+
+    /* ESTILO PARA SELECCIONAR VARIOS USUARIOS */
+    .usuario-item {
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background 0.2s;
+    }
+    .usuario-item:hover {
+        background-color: #f5f5f5;
+    }
+    .usuario-item.seleccionado {
+        background-color: #e0f7fa; /* Azul claro cuando está seleccionado */
+        border-left: 4px solid var(--info);
+    }
     </style>
 </head>
 
@@ -1365,25 +1386,30 @@
     </div>
 
     <div class="modal-overlay" id="modalReasignar">
-        <div class="modal-card">
+        <div class="modal-card" style="max-height: 80vh; display: flex; flex-direction: column;">
             <button onclick="cerrarModal('modalReasignar')" 
                     style="position:absolute; top:15px; right:15px; border:none; background:none; font-size:1.5rem; cursor:pointer;">&times;</button>
-            <h3 style="color:var(--primary); margin-bottom:15px;"><i class="fas fa-exchange-alt"></i> Mover a otro estudiante</h3>
             
-            <p style="margin-bottom:15px;">Selecciona el estudiante al que pertenecen los archivos seleccionados:</p>
+            <h3 style="color:var(--primary); margin-bottom:10px;">
+                <i class="fas fa-users"></i> Reasignar a Estudiantes
+            </h3>
+            
+            <p style="font-size:0.9rem; color:#666; margin-bottom:10px;">
+                Selecciona 1 o más estudiantes. El archivo se copiará a todos los seleccionados.
+            </p>
             
             <div class="form-group">
                 <input type="text" id="busquedaReasignar" class="form-control" 
-                       placeholder="Buscar por nombre o cédula..." 
+                       placeholder="Buscar estudiante..." 
                        onkeyup="filtrarUsuariosReasignar(this.value)">
             </div>
             
-            <div id="listaUsuariosReasignar" style="max-height:250px; overflow-y:auto; border:1px solid var(--border-color); border-radius:8px;">
+            <div id="listaUsuariosReasignar" style="flex:1; overflow-y:auto; border:1px solid #ddd; border-radius:8px; margin-bottom:15px;">
                 </div>
             
-            <div style="margin-top:15px; text-align:right;">
-                <button class="btn-primary" onclick="cerrarModal('modalReasignar')" style="background:#555;">Cancelar</button>
-            </div>
+            <button class="btn-primary" onclick="enviarReasignacionMasiva()" style="width:100%; justify-content:center;">
+                <i class="fas fa-check-circle"></i> CONFIRMAR ASIGNACIÓN
+            </button>
         </div>
     </div>
 
@@ -3352,66 +3378,77 @@
     // 14. LÓGICA DE REASIGNACIÓN (NUEVO)
     // ==========================================
     
+    let destinosSeleccionados = new Set(); // Almacén de cédulas seleccionadas
+
     function abrirModalReasignar() {
         if (evidenciasSeleccionadas.length === 0) return;
-        
-        const lista = document.getElementById('listaUsuariosReasignar');
-        lista.innerHTML = usuarios
-            .filter(u => u.tipo == 1 && u.cedula !== '9999999990') // Solo estudiantes reales
-            .map(u => `
-                <div onclick="ejecutarReasignacion('${u.cedula}', '${u.nombre} ${u.apellido}')" 
-                     style="padding:10px; border-bottom:1px solid #eee; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <strong>${u.nombre} ${u.apellido}</strong><br>
-                        <small>${u.cedula}</small>
-                    </div>
-                    <i class="fas fa-chevron-right" style="color:#ccc;"></i>
-                </div>
-            `).join('');
-            
+        destinosSeleccionados.clear(); // Limpiar selección anterior
+        renderizarListaReasignar(usuarios); // Mostrar todos los usuarios
         document.getElementById('modalReasignar').classList.add('active');
+    }
+
+    function renderizarListaReasignar(listaUsuarios) {
+        const contenedor = document.getElementById('listaUsuariosReasignar');
+        // Filtramos para no mostrar la bandeja ni administradores
+        const usuariosValidos = listaUsuarios.filter(u => u.tipo == 1 && u.cedula !== '9999999990');
+
+        contenedor.innerHTML = usuariosValidos.map(u => {
+            // Verificamos si ya estaba seleccionado para pintarlo azul
+            const isSelected = destinosSeleccionados.has(u.cedula) ? 'seleccionado' : '';
+            const iconCheck = destinosSeleccionados.has(u.cedula) 
+                ? '<i class="fas fa-check-square" style="color:var(--info);"></i>' 
+                : '<i class="far fa-square" style="color:#ccc;"></i>';
+            
+            return `
+            <div class="usuario-item ${isSelected}" onclick="toggleDestino('${u.cedula}')" id="user-row-${u.cedula}">
+                <div>
+                    <strong>${u.nombre} ${u.apellido}</strong><br>
+                    <small>${u.cedula}</small>
+                </div>
+                ${iconCheck}
+            </div>
+        `}).join('');
+    }
+
+    function toggleDestino(cedula) {
+        // Si ya está, lo quita. Si no está, lo agrega.
+        if (destinosSeleccionados.has(cedula)) {
+            destinosSeleccionados.delete(cedula);
+        } else {
+            destinosSeleccionados.add(cedula);
+        }
+        // Refrescamos la lista visualmente manteniendo el filtro de búsqueda
+        const textoBusqueda = document.getElementById('busquedaReasignar').value;
+        filtrarUsuariosReasignar(textoBusqueda);
     }
 
     function filtrarUsuariosReasignar(texto) {
         const busqueda = texto.toLowerCase();
-        const lista = document.getElementById('listaUsuariosReasignar');
-        
-        lista.innerHTML = usuarios
-            .filter(u => u.tipo == 1 && u.cedula !== '9999999990')
-            .filter(u => (u.nombre + ' ' + u.apellido + u.cedula).toLowerCase().includes(busqueda))
-            .map(u => `
-                <div onclick="ejecutarReasignacion('${u.cedula}', '${u.nombre} ${u.apellido}')" 
-                     style="padding:10px; border-bottom:1px solid #eee; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <strong>${u.nombre} ${u.apellido}</strong><br>
-                        <small>${u.cedula}</small>
-                    </div>
-                    <i class="fas fa-chevron-right" style="color:#ccc;"></i>
-                </div>
-            `).join('');
+        // Filtramos la lista global de usuarios
+        const filtrados = usuarios.filter(u => 
+            (u.tipo == 1 && u.cedula !== '9999999990') &&
+            (u.nombre + ' ' + u.apellido + u.cedula).toLowerCase().includes(busqueda)
+        );
+        renderizarListaReasignar(filtrados);
     }
 
-    async function ejecutarReasignacion(cedulaDestino, nombreDestino) {
-        const confirmacion = await Swal.fire({
-            title: `¿Mover a ${nombreDestino}?`,
-            text: `Se asignarán ${evidenciasSeleccionadas.length} archivos a este estudiante.`,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#6A0DAD',
-            confirmButtonText: 'Sí, mover'
-        });
+    async function enviarReasignacionMasiva() {
+        if (destinosSeleccionados.size === 0) {
+            Swal.fire('Atención', 'Selecciona al menos un estudiante.', 'warning');
+            return;
+        }
 
-        if (!confirmacion.isConfirmed) return;
-
+        const cedulasArray = Array.from(destinosSeleccionados);
+        
         try {
-            mostrarMensaje('Moviendo archivos...', 'info');
+            mostrarMensaje('Procesando asignación...', 'info');
             
             const respuesta = await fetch(`${API_URL}/reasignar_evidencias`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     ids: evidenciasSeleccionadas.join(','),
-                    cedula_destino: cedulaDestino
+                    cedula_destino: cedulasArray.join(',') // Enviamos lista separada por comas
                 })
             });
 
@@ -3421,7 +3458,7 @@
                 mostrarMensaje(res.mensaje, 'success');
                 cerrarModal('modalReasignar');
                 cancelarSeleccion();
-                // Recargar para ver los cambios
+                // Recargar para ver los cambios si estamos viendo un perfil
                 if (estudianteActual) verEvidenciasEstudiante(estudianteActual);
             } else {
                 mostrarMensaje('Error: ' + res.error, 'error');

@@ -2412,31 +2412,57 @@ class ReasignarRequest(BaseModel):
 
 @app.post("/reasignar_evidencias")
 async def reasignar_evidencias(datos: ReasignarRequest):
-    """Mueve las evidencias seleccionadas a otro estudiante"""
+    """
+    V2.0 - Reasignación Multi-Destino:
+    - Permite enviar una lista de cédulas destino (separadas por comas).
+    - Al primer destino le MUEVE el archivo.
+    - A los siguientes destinos les crea una COPIA (Clon) en la base de datos.
+    """
     try:
         if not datos.ids or not datos.cedula_destino:
             return JSONResponse({"error": "Faltan datos"})
             
-        ids_list = [id.strip() for id in datos.ids.split(',') if id.strip()]
+        ids_evidencias = [id.strip() for id in datos.ids.split(',') if id.strip()]
+        cedulas_destino = [ced.strip() for ced in datos.cedula_destino.split(',') if ced.strip()]
         
+        if not ids_evidencias or not cedulas_destino:
+             return JSONResponse({"error": "Selección inválida"})
+
         conn = get_db_connection()
-        # Verificar que el destino existe
-        destino = conn.execute("SELECT Nombre, Apellido FROM Usuarios WHERE CI=?", (datos.cedula_destino,)).fetchone()
-        if not destino:
-            conn.close()
-            return JSONResponse({"error": "Usuario destino no existe"})
-            
-        # Actualizar dueño
-        placeholders = ','.join(['?'] * len(ids_list))
-        sql = f"UPDATE Evidencias SET CI_Estudiante = ?, Asignado_Automaticamente = 0 WHERE id IN ({placeholders})"
-        conn.execute(sql, (datos.cedula_destino, *ids_list))
+        c = conn.cursor()
         
+        movidos = 0
+        clonados = 0
+        
+        # 1. Obtener datos originales de las evidencias antes de moverlas
+        placeholders = ','.join(['?'] * len(ids_evidencias))
+        evidencias_originales = c.execute(f"SELECT * FROM Evidencias WHERE id IN ({placeholders})", ids_evidencias).fetchall()
+
+        # 2. PROCESAR CADA EVIDENCIA
+        for ev in evidencias_originales:
+            # A) Mover al PRIMER estudiante de la lista (UPDATE)
+            primer_destino = cedulas_destino[0]
+            c.execute("UPDATE Evidencias SET CI_Estudiante = ?, Asignado_Automaticamente = 0 WHERE id = ?", (primer_destino, ev['id']))
+            movidos += 1
+            
+            # B) Clonar para el RESTO de estudiantes (INSERT)
+            if len(cedulas_destino) > 1:
+                for otro_destino in cedulas_destino[1:]:
+                    c.execute("""
+                        INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
+                        VALUES (?, ?, ?, ?, ?, ?, 0)
+                    """, (otro_destino, ev['Url_Archivo'], ev['Hash'], ev['Estado'], ev['Tipo_Archivo'], ev['Tamanio_KB']))
+                    clonados += 1
+
         conn.commit()
         conn.close()
         
-        return JSONResponse({
-            "mensaje": f"Se movieron {len(ids_list)} archivos a {destino['Nombre']} {destino['Apellido']}"
-        })
+        mensaje = f"✅ Archivos movidos a 1 estudiante."
+        if clonados > 0:
+            mensaje += f" Y se crearon copias para {len(cedulas_destino)-1} estudiantes más."
+        
+        return JSONResponse({"mensaje": mensaje})
+        
     except Exception as e:
         return JSONResponse({"error": str(e)})
 
