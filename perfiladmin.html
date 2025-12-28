@@ -1815,77 +1815,82 @@
     }
 
     async function cambiarEstadoUsuario(cedula, nuevoEstado) {
-        const usuario = usuarios.find(u => u.cedula === cedula);
-        if (!usuario) return;
-        
-        const accion = nuevoEstado == 1 ? 'activar' : 'desactivar';
-        const confirmacion = await Swal.fire({
-            title: `¿${accion.charAt(0).toUpperCase() + accion.slice(1)} usuario?`,
-            text: `¿Estás seguro de querer ${accion} a ${usuario.nombre} ${usuario.apellido}?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: nuevoEstado == 1 ? '#2E8B57' : '#d32f2f',
-            cancelButtonColor: '#5f6368',
-            confirmButtonText: `Sí, ${accion}`,
-            cancelButtonText: 'Cancelar'
+    const usuario = usuarios.find(u => u.cedula === cedula);
+    if (!usuario) return;
+
+    const accion = nuevoEstado == 1 ? 'activar' : 'desactivar';
+    
+    const confirmacion = await Swal.fire({
+        title: `¿${accion.charAt(0).toUpperCase() + accion.slice(1)} usuario?`,
+        text: `¿Estás seguro de querer ${accion} a ${usuario.nombre} ${usuario.apellido}?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: nuevoEstado == 1 ? '#2E8B57' : '#d32f2f',
+        cancelButtonColor: '#5f6368',
+        confirmButtonText: `Sí, ${accion}`,
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (!confirmacion.isConfirmed) return;
+
+    try {
+        const respuesta = await fetch(`${API_URL}/cambiar_estado_usuario`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cedula: cedula, activo: nuevoEstado })
         });
-        
-        if (!confirmacion.isConfirmed) return;
-        
-        try {
-            const respuesta = await fetch(`${API_URL}/cambiar_estado_usuario`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    cedula: cedula,
-                    activo: nuevoEstado
-                })
-            });
-            
-            const resultado = await respuesta.json();
-            
-            if (resultado.mensaje) {
-                // Actualización inmediata en el DOM sin recargar
-                const statusBadge = document.getElementById(`user-status-${cedula}`);
-                if (statusBadge) {
-                    statusBadge.textContent = nuevoEstado == 1 ? 'Activo' : 'Inactivo';
-                    statusBadge.className = nuevoEstado == 1 ? 'badge-resolved' : 'badge-rejected';
-                    statusBadge.style.fontSize = '0.75rem';
-                    statusBadge.style.padding = '3px 8px';
-                }
+
+        const resultado = await respuesta.json();
+
+        if (resultado.mensaje) {
+            // 1. Actualizar memoria
+            const usuarioIndex = usuarios.findIndex(u => u.cedula === cedula);
+            if (usuarioIndex !== -1) usuarios[usuarioIndex].activo = nuevoEstado;
+
+            // 2. Actualizar Badge de estado (sin borrar estilos)
+            const statusBadge = document.getElementById(`user-status-${cedula}`);
+            if (statusBadge) {
+                statusBadge.textContent = nuevoEstado == 1 ? 'Activo' : 'Inactivo';
+                // Mantenemos la clase base 'request-badge' si existe en tu CSS, o usamos las tuyas directas
+                statusBadge.className = nuevoEstado == 1 ? 'request-badge badge-resolved' : 'request-badge badge-rejected';
+                statusBadge.style.fontSize = '0.75rem';
+                statusBadge.style.padding = '3px 8px';
+            }
+
+            // 3. ACTUALIZACIÓN DEL BOTÓN (Aquí estaba el error)
+            const fila = document.getElementById(`user-row-${cedula}`);
+            if (fila) {
+                // Buscamos el botón por la clase que tiene AHORA antes de cambiarlo
+                const btn = fila.querySelector(nuevoEstado == 1 ? '.btn-activate' : '.btn-deactivate');
                 
-                // Actualizar botones
-                const fila = document.getElementById(`user-row-${cedula}`);
-                if (fila) {
-                    const botonesCell = fila.cells[4];
+                if (btn) {
                     if (nuevoEstado == 1) {
-                        botonesCell.innerHTML = botonesCell.innerHTML.replace('btn-activate', 'btn-deactivate')
-                            .replace('fa-user-check', 'fa-user-slash')
-                            .replace('Activar usuario', 'Desactivar usuario');
+                        // Cambiar a estado ACTIVO (Botón rojo para desactivar)
+                        btn.className = 'action-btn btn-deactivate';
+                        btn.title = 'Desactivar';
+                        btn.innerHTML = '<i class="fas fa-user-slash"></i>';
+                        // IMPORTANTE: Actualizamos el onclick para que la próxima vez envíe 0
+                        btn.setAttribute('onclick', `cambiarEstadoUsuario('${cedula}', 0)`);
                     } else {
-                        botonesCell.innerHTML = botonesCell.innerHTML.replace('btn-deactivate', 'btn-activate')
-                            .replace('fa-user-slash', 'fa-user-check')
-                            .replace('Desactivar usuario', 'Activar usuario');
+                        // Cambiar a estado INACTIVO (Botón verde para activar)
+                        btn.className = 'action-btn btn-activate';
+                        btn.title = 'Activar';
+                        btn.innerHTML = '<i class="fas fa-user-check"></i>';
+                        // IMPORTANTE: Actualizamos el onclick para que la próxima vez envíe 1
+                        btn.setAttribute('onclick', `cambiarEstadoUsuario('${cedula}', 1)`);
                     }
                 }
-                
-                // Actualizar el objeto usuario en memoria
-                const usuarioIndex = usuarios.findIndex(u => u.cedula === cedula);
-                if (usuarioIndex !== -1) {
-                    usuarios[usuarioIndex].activo = nuevoEstado;
-                }
-                
-                mostrarMensaje(`Usuario ${accion}do correctamente`, 'success');
-            } else {
-                mostrarMensaje('Error al cambiar estado', 'error');
             }
-        } catch (error) {
-            mostrarMensaje('Error de conexión', 'error');
-        }
-    }
 
+            mostrarMensaje(`Usuario ${accion}do correctamente`, 'success');
+        } else {
+            mostrarMensaje('Error al cambiar estado', 'error');
+        }
+    } catch (error) {
+        console.error(error);
+        mostrarMensaje('Error de conexión', 'error');
+    }
+}
     function verUsuario(cedula) {
         const usuario = usuarios.find(u => u.cedula === cedula);
         if (usuario) {
