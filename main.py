@@ -435,14 +435,17 @@ def identificar_varios_rostros_aws(imagen_path: str, confidence_threshold: float
     
 # --- REEMPLAZA TU FUNCIÓN DE LECTURA POR ESTA VERSIÓN 'TODO TERRENO' ---
 
-def buscar_estudiantes_por_texto(imagen_path: str, conn) -> List[str]:
+# --- REEMPLAZA TU FUNCIÓN 'buscar_estudiantes_por_texto' POR ESTA VERSIÓN CON DEBUG VISUAL ---
+
+def buscar_estudiantes_por_texto(imagen_path: str, conn): # Quitamos el tipo de retorno estricto para devolver tupla
     """
-    Versión 'COINCIDENCIA PARCIAL' (Subset Matching):
-    Ideal cuando en la DB tienes 4 nombres (Karlos Andres Ayala Lopez) 
-    pero en el certificado solo aparecen 2 (Karlos Ayala).
+    Versión HÍBRIDA + DEBUG:
+    1. Busca en LÍNEAS completas (mejor contexto) y PALABRAS sueltas.
+    2. Retorna las cédulas encontradas Y TAMBIÉN el texto que leyó (para mostrarlo si falla).
     """
-    if not rekog: return []
+    if not rekog: return [], []
     cedulas_encontradas = set()
+    texto_leido_debug = [] # Aquí guardaremos lo que ve la IA
     
     try:
         with open(imagen_path, 'rb') as image_file:
@@ -451,56 +454,64 @@ def buscar_estudiantes_por_texto(imagen_path: str, conn) -> List[str]:
         # 1. Detectar TODO el texto
         response = rekog.detect_text(Image={'Bytes': image_bytes})
         
-        # Guardamos TODAS las palabras que la IA ve (en minúsculas)
-        palabras_imagen = []
+        # Recopilar todo lo que ve (Líneas y Palabras)
+        palabras_sueltas = []
+        lineas_completas = []
+        
         for t in response.get('TextDetections', []):
+            txt = t['DetectedText'].lower()
             if t['Type'] == 'WORD':
-                palabras_imagen.append(t['DetectedText'].lower())
+                palabras_sueltas.append(txt)
+                if t['Confidence'] > 50: texto_leido_debug.append(txt) # Solo para el reporte visual
+            elif t['Type'] == 'LINE':
+                lineas_completas.append(txt)
         
-        if not palabras_imagen: return []
-        
-        print(f"👀 IA LEYÓ: {palabras_imagen}") # Revisa esto en los logs si falla
+        if not palabras_sueltas: return [], ["(Imagen vacía o ilegible)"]
 
         # 2. Traer estudiantes
         estudiantes = conn.execute("SELECT Nombre, Apellido, CI FROM Usuarios WHERE Tipo=1").fetchall()
         
         for est in estudiantes:
-            # 3. DESGLOSE TOTAL DEL NOMBRE
-            # BD: "Karlos Andres" + "Ayala Lopez" -> piezas: ["karlos", "andres", "ayala", "lopez"]
-            nombres_db = est['Nombre'].lower().split()
-            apellidos_db = est['Apellido'].lower().split()
-            piezas_nombre_usuario = set(nombres_db + apellidos_db)
+            # Preparamos las piezas del nombre (Ej: "Karlos", "Andres", "Ayala")
+            partes = est['Nombre'].lower().split() + est['Apellido'].lower().split()
+            piezas_validas = {p for p in partes if len(p) > 2}
             
-            # Filtramos palabras muy cortas (ej: "de", "la") para evitar falsos positivos
-            piezas_validas = {p for p in piezas_nombre_usuario if len(p) > 2}
+            # --- ESTRATEGIA A: BÚSQUEDA EN LÍNEAS (Contexto) ---
+            # Si una línea dice "award to karlos ayala", esto lo atrapa mejor que palabra por palabra
+            match_linea = False
+            nombre_corto = f"{est['Nombre'].split()[0]} {est['Apellido'].split()[0]}".lower() # "karlos ayala"
             
-            coincidencias_encontradas = 0
-            detalles_match = []
+            for linea in lineas_completas:
+                # Si el nombre corto aparece casi igual en una línea
+                if difflib.SequenceMatcher(None, nombre_corto, linea).find_longest_match(0, len(nombre_corto), 0, len(linea)).size > 4:
+                    # Chequeo doble con fuzzy
+                    if difflib.get_close_matches(nombre_corto, [linea], n=1, cutoff=0.60): 
+                        cedulas_encontradas.add(est['CI'])
+                        match_linea = True
+                        break
+            
+            if match_linea: continue # Si ya lo encontramos por línea, siguiente estudiante
 
-            # 4. Buscamos cada pieza del nombre en la "bolsa" de palabras de la imagen
+            # --- ESTRATEGIA B: BOLSA DE PALABRAS (Fuerza Bruta) ---
+            coincidencias = 0
             for pieza in piezas_validas:
-                # Usamos un umbral BAJO (0.50) porque la letra Gótica confunde a la IA
-                # Ej: Busca "karlos" en la imagen. Si la IA leyó "kcrlds", lo aceptará.
-                match = difflib.get_close_matches(pieza, palabras_imagen, n=1, cutoff=0.50)
-                
-                if match:
-                    coincidencias_encontradas += 1
-                    detalles_match.append(f"{pieza}≈{match[0]}")
+                # Umbral 0.45: Extremadamente tolerante (acepta casi cualquier garabato parecido)
+                if difflib.get_close_matches(pieza, palabras_sueltas, n=1, cutoff=0.45):
+                    coincidencias += 1
             
-            # 5. REGLA DE ORO:
-            # Si encontramos al menos 2 piezas del nombre (Ej: 'Karlos' y 'Ayala'), es un match.
-            # (Incluso si el usuario tiene 4 nombres en total)
-            if coincidencias_encontradas >= 2:
-                print(f"✅ ¡MATCH PARCIAL! Usuario: {est['Nombre']} {est['Apellido']} | Encontrado: {detalles_match}")
+            # Si encontramos 2 piezas o más (Karlos + Ayala)
+            if coincidencias >= 2:
                 cedulas_encontradas.add(est['CI'])
-                
-            # Caso especial: Si el usuario SOLO tiene 1 nombre y 1 apellido registrados (ej: "Karlos Ayala")
-            # y encontramos los 2, también pasa.
+            
+            # Si el estudiante solo tiene 1 nombre y 1 apellido (ej: "Will Smith") y encontramos ambos
+            elif len(piezas_validas) == 2 and coincidencias == 2:
+                cedulas_encontradas.add(est['CI'])
 
     except Exception as e:
         print(f"⚠️ Error OCR: {e}")
+        return [], [f"Error: {str(e)}"]
         
-    return list(cedulas_encontradas)
+    return list(cedulas_encontradas), texto_leido_debug
 
 def coincidencia_difusa(partes_buscadas, palabras_en_imagen, umbral):
     """
@@ -935,6 +946,8 @@ async def eliminar_usuario(cedula: str):
 
 # --- REEMPLAZA TU FUNCIÓN subir_evidencia_ia POR ESTA VERSIÓN FINAL (ROSTROS + VIDEO + TEXTO) ---
 
+# --- REEMPLAZA TU FUNCIÓN 'subir_evidencia_ia' POR ESTA ---
+
 @app.post("/subir_evidencia_ia")
 async def subir_evidencia_ia(archivo: UploadFile = File(...)):
     try:
@@ -948,50 +961,41 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
         es_video = ext in ['.mp4', '.avi', '.mov', '.mkv']
         
         cedulas_detectadas = set() 
-        conn = get_db_connection() # Abrimos conexión aquí para usarla en lectura de texto
+        texto_debug = [] # Para saber qué leyó si falla
+        conn = get_db_connection()
         
         # 2. ANÁLISIS INTELIGENTE
         if rekog:
             if es_imagen:
-                # A) Buscar Rostros
+                # A) Rostros
                 rostros = identificar_varios_rostros_aws(path)
                 cedulas_detectadas.update(rostros)
                 
-                # B) NUEVO: Si no hay rostros (o además de ellos), buscar TEXTO
-                # Esto sirve para carátulas, listas o fotos de trabajos con nombre
-                textos = buscar_estudiantes_por_texto(path, conn)
-                cedulas_detectadas.update(textos)
+                # B) Texto (Recibimos Cédulas Y Texto Leído)
+                textos_ceds, debug_ocr = buscar_estudiantes_por_texto(path, conn)
+                cedulas_detectadas.update(textos_ceds)
+                if debug_ocr: texto_debug = debug_ocr # Guardamos lo que leyó para el reporte
                 
             elif es_video:
-                # VIDEO: ANÁLISIS POR INTERVALOS
+                # Video (Lógica simplificada para brevedad, mantenemos la que tenías)
                 cap = cv2.VideoCapture(path)
-                fps = cap.get(cv2.CAP_PROP_FPS)
-                if fps == 0: fps = 24
-                
-                intervalo_frames = int(fps * 2) # Cada 2 seg
-                frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-                current_frame = 0
-                
-                while current_frame < frame_count:
-                    cap.set(cv2.CAP_PROP_POS_FRAMES, current_frame)
+                fps = cap.get(cv2.CAP_PROP_FPS) or 24
+                intervalo = int(fps * 2)
+                curr = 0
+                max_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                while curr < max_frames:
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, curr)
                     ret, frame = cap.read()
                     if not ret: break
-                    
-                    frame_path = os.path.join(temp_dir, f"frame_{current_frame}.jpg")
+                    frame_path = os.path.join(temp_dir, f"frame_{curr}.jpg")
                     cv2.imwrite(frame_path, frame)
-                    
-                    # Analizar rostros en el video
-                    rostros_frame = identificar_varios_rostros_aws(frame_path)
-                    cedulas_detectadas.update(rostros_frame)
-                    
-                    # (Opcional) Podrías leer texto en el video también, pero consume muchos recursos.
-                    # Por ahora lo dejamos solo en rostros para video para mantener velocidad.
-                    
-                    current_frame += intervalo_frames
-                    if len(cedulas_detectadas) > 10: break 
+                    rostros = identificar_varios_rostros_aws(frame_path)
+                    cedulas_detectadas.update(rostros)
+                    curr += intervalo
+                    if len(cedulas_detectadas) > 10: break
                 cap.release()
 
-        # 3. Subir archivo original
+        # 3. Subir archivo
         url_final = f"/local/{archivo.filename}"
         if s3_client:
             try:
@@ -1001,7 +1005,7 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
                 url_final = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nube}"
             except: pass
 
-        # 4. Guardar en Base de Datos
+        # 4. Guardar y Responder
         status = "alerta"
         msg = ""
         tipo_archivo = "video" if es_video else ("imagen" if es_imagen else "documento")
@@ -1016,14 +1020,16 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
             
             if nombres:
                 status = "exito"
-                # Mensaje personalizado según qué encontró
                 msg = f"✅ Asignado a: {', '.join(nombres)}"
             else:
                 conn.execute("INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Estado, Tipo_Archivo, Asignado_Automaticamente) VALUES ('PENDIENTE',?,1,?,0)", (url_final, tipo_archivo))
-                msg = "⚠️ Se detectaron datos pero no coinciden con usuarios registrados."
+                msg = "⚠️ Se detectaron datos pero no coinciden con usuarios activos."
         else:
             conn.execute("INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Estado, Tipo_Archivo, Asignado_Automaticamente) VALUES ('PENDIENTE',?,1,?,0)", (url_final, tipo_archivo))
-            msg = "⚠️ No se detectaron rostros ni nombres escritos. Guardado en Pendientes."
+            
+            # --- MENSAJE DEPURADO INTELIGENTE ---
+            muestras_texto = ", ".join(texto_debug[:5]) if texto_debug else "Nada legible"
+            msg = f"⚠️ No se identificó alumno. La IA leyó: [{muestras_texto}...]. Verifique si el nombre está registrado así."
 
         conn.commit()
         conn.close()
