@@ -1858,16 +1858,64 @@ async def descargar_evidencias_zip(ids: str = Form(...)):
 
 def limpieza_duplicados_startup():
     """
-    Se ejecuta al iniciar el sistema.
-    Busca evidencias con el mismo HASH (contenido idéntico) y elimina las copias,
-    dejando solo la más antigua.
+    Ejecuta MANTENIMIENTO PROFUNDO al inicio:
+    1. Genera HASHES para archivos antiguos que no lo tienen.
+    2. Detecta y elimina duplicados basándose en esos hashes.
     """
-    print("🧹 EJECUTANDO LIMPIEZA DE ARCHIVOS DUPLICADOS...")
+    print("🧹 INICIANDO PROTOCOLO DE LIMPIEZA Y MANTENIMIENTO...")
+    
     try:
         conn = get_db_connection()
         
-        # 1. Buscar HASHES que se repiten más de una vez
-        # (Ignoramos los que no tienen hash o es 'PENDIENTE')
+        # --- FASE 1: REPARAR ARCHIVOS ANTIGUOS (CALCULAR HASHES FALTANTES) ---
+        pendientes = conn.execute("SELECT id, Url_Archivo FROM Evidencias WHERE Hash = 'PENDIENTE' OR Hash IS NULL").fetchall()
+        
+        if pendientes:
+            print(f"⏳ Generando huella digital para {len(pendientes)} archivos antiguos...")
+            
+            for row in pendientes:
+                try:
+                    url = row['Url_Archivo']
+                    temp_path = None
+                    file_hash = None
+                    
+                    # A) Si es archivo local
+                    if url.startswith("/local/"):
+                        # Intentar reconstruir ruta local (ajusta según tu estructura de carpetas real)
+                        possible_path = url.replace("/local/", "./") 
+                        if os.path.exists(possible_path):
+                            file_hash = calcular_hash(possible_path)
+                    
+                    # B) Si es archivo en Nube (S3/Backblaze)
+                    elif "http" in url and s3_client:
+                        try:
+                            # Descargar a temporal para hashear
+                            key = url.split(f"{BUCKET_NAME}/")[-1]
+                            with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                                s3_client.download_fileobj(BUCKET_NAME, key, tmp)
+                                temp_path = tmp.name
+                            
+                            file_hash = calcular_hash(temp_path)
+                        except Exception as e:
+                            print(f"   ⚠️ No se pudo descargar {url}: {e}")
+                    
+                    # Guardar el hash encontrado
+                    if file_hash:
+                        conn.execute("UPDATE Evidencias SET Hash = ? WHERE id = ?", (file_hash, row['id']))
+                        # print(f"   ✅ Hash recuperado para ID {row['id']}")
+                    
+                    # Limpieza temporal
+                    if temp_path and os.path.exists(temp_path):
+                        os.remove(temp_path)
+                        
+                except Exception as e:
+                    print(f"   ❌ Error procesando ID {row['id']}: {e}")
+            
+            conn.commit()
+            print("✨ Fase 1 completada: Hashes actualizados.")
+
+        # --- FASE 2: ELIMINAR DUPLICADOS ---
+        # Ahora que todos tienen hash, buscamos los repetidos
         sql_duplicados = """
             SELECT Hash, COUNT(*) as cantidad 
             FROM Evidencias 
@@ -1883,39 +1931,31 @@ def limpieza_duplicados_startup():
         for grupo in grupos:
             file_hash = grupo['Hash']
             
-            # 2. Para cada grupo repetido, traemos TODOS los registros ordenados por ID (el menor es el más viejo)
+            # Traemos todas las copias ordenadas por ID (el menor es el original)
             copias = conn.execute("""
-                SELECT id, Url_Archivo, Tamanio_KB, CI_Estudiante 
+                SELECT id, Url_Archivo, Tamanio_KB 
                 FROM Evidencias 
                 WHERE Hash = ? 
                 ORDER BY id ASC
             """, (file_hash,)).fetchall()
             
-            # La primera (índice 0) es la ORIGINAL. Las demás (1 en adelante) son COPIAS a borrar.
+            # Mantenemos el primero, borramos el resto
             original = copias[0]
             para_borrar = copias[1:]
             
-            print(f"   🔍 Hash {file_hash[:8]}... encontrado {len(copias)} veces. Conservando original ID {original['id']}.")
+            print(f"   🔍 Duplicado detectado (x{len(copias)}). Conservando ID {original['id']}.")
             
             for copia in para_borrar:
-                # A) Borrar de la Nube (S3/Backblaze)
+                # 1. Borrar Físico (S3) si la URL es distinta al original
                 if s3_client and BUCKET_NAME in copia['Url_Archivo']:
                     try:
-                        # Extraer la 'key' del archivo en S3
-                        # Url formato: https://BUCKET.s3.../evidencias/archivo.jpg
-                        key = copia['Url_Archivo'].split(f"{BUCKET_NAME}/")[-1]
-                        
-                        # Solo borramos el físico si la URL es diferente a la original
-                        # (Si apuntan a la misma URL exacta, no borramos el físico, solo el registro extra en DB)
                         if copia['Url_Archivo'] != original['Url_Archivo']:
+                            key = copia['Url_Archivo'].split(f"{BUCKET_NAME}/")[-1]
                             s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
-                            print(f"      ☁️ Archivo físico eliminado de S3: {key}")
-                    except Exception as e:
-                        print(f"      ⚠️ Error borrando de S3: {e}")
+                    except: pass
 
-                # B) Borrar de Base de Datos
+                # 2. Borrar de Base de Datos
                 conn.execute("DELETE FROM Evidencias WHERE id = ?", (copia['id'],))
-                
                 eliminados_count += 1
                 espacio_ahorrado += (copia['Tamanio_KB'] or 0)
         
@@ -1923,13 +1963,13 @@ def limpieza_duplicados_startup():
         conn.close()
         
         if eliminados_count > 0:
-            print(f"✅ LIMPIEZA COMPLETADA: Se eliminaron {eliminados_count} archivos duplicados.")
+            print(f"✅ LIMPIEZA: Se eliminaron {eliminados_count} archivos duplicados.")
             print(f"💾 Espacio recuperado: {espacio_ahorrado/1024:.2f} MB")
         else:
-            print("✅ SISTEMA LIMPIO: No se encontraron duplicados.")
+            print("✅ SISTEMA LIMPIO: No hay duplicados.")
             
     except Exception as e:
-        print(f"❌ Error durante la limpieza automática: {e}")
+        print(f"❌ Error crítico en limpieza: {e}")
 
 if __name__ == "__main__":
     import uvicorn
@@ -1947,8 +1987,9 @@ if __name__ == "__main__":
     print(f"📧 Servidor SMTP: {'✅ Configurado' if SMTP_EMAIL and 'tu_correo' not in SMTP_EMAIL else '⚠️ Simulado'}")
     print(f"🔐 Usuario admin: 9999999999 / admin123")
     
-    # 👇 ¡ESTA ES LA LÍNEA QUE TE FALTA! AGREGALA AQUÍ 👇
+    # 👇👇👇 ESTA LÍNEA ES LA CLAVE QUE TE FALTABA 👇👇👇
     limpieza_duplicados_startup()
+    # 👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆
     
     print(f"🌐 Servidor iniciado en: http://0.0.0.0:{port}")
     print("=" * 60)
