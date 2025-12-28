@@ -1540,6 +1540,25 @@ async def resumen_estudiantes_con_evidencias():
     except Exception as e:
         return JSONResponse(content={"error": str(e)})
 
+@app.get("/todas_evidencias")
+async def todas_evidencias(cedula: str):
+    """Obtiene todas las evidencias de un estudiante específico"""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("""
+            SELECT id, Url_Archivo, Tipo_Archivo, Fecha, Estado, Tamanio_KB
+            FROM Evidencias
+            WHERE CI_Estudiante = ?
+            ORDER BY Fecha DESC
+        """, (cedula,))
+        rows = c.fetchall()
+        conn.close()
+        # Convertimos las filas a diccionarios
+        return JSONResponse([dict(r) for r in rows])
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
 @app.delete("/eliminar_evidencia/{id_evidencia}")
 async def eliminar_evidencia(id_evidencia: int):
     """Elimina una evidencia del sistema"""

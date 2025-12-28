@@ -1491,7 +1491,16 @@
                 foto: u.Foto || u.foto || ''
             }));
 
-            evidencias = await resEvidencias.json();
+            const evidenciasRaw = await resEvidencias.json();
+            evidencias = evidenciasRaw.map(e => ({
+                // Traducimos de Mayúsculas (Backend) a Minúsculas (Frontend)
+                nombre: e.Nombre || '',
+                apellido: e.Apellido || '',
+                cedula: e.CI || '',          // <--- ESTO ARREGLA EL "cedula=undefined"
+                foto: e.Foto || '',          // <--- ESTO ARREGLA QUE NO SALGA EL ROSTRO
+                total_evidencias: e.total_evidencias || 0,
+                total_kb: e.total_kb || 0
+            }));
             solicitudes = await resSolicitudes.json();
             logs = await resLogs.json();
 
@@ -2380,10 +2389,10 @@
             // Mostrar información del estudiante
             const infoContainer = document.getElementById('studentInfoContainer');
             infoContainer.innerHTML = `
-                <img src="${estudiante.foto || 'https://via.placeholder.com/150'}" 
-                     class="student-avatar" 
-                     onerror="this.src='https://via.placeholder.com/150'"
-                     alt="${estudiante.nombre} ${estudiante.apellido}">
+                <img src="${estudiante.foto || 'Img/Logo_pestaña.png'}" 
+                 class="student-avatar" 
+                 onerror="this.src='Img/Logo_pestaña.png'"
+                 alt="${estudiante.nombre} ${estudiante.apellido}">
                 <div>
                     <h3 style="color:var(--primary); margin-bottom:5px;">${estudiante.nombre} ${estudiante.apellido}</h3>
                     <p style="color:var(--text-sec); margin-bottom:5px;">Cédula: ${estudiante.cedula}</p>
