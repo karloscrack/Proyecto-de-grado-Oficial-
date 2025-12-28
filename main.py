@@ -1424,34 +1424,27 @@ async def descargar_multimedia_zip():
 
 from urllib.parse import urlparse
 import re
-
-from urllib.parse import urlparse
-import re
-import os
-
-from urllib.parse import urlparse
-import re
 import os
 
 @app.post("/optimizar_sistema")
 async def optimizar_sistema(background_tasks: BackgroundTasks):
     """
-    V4.2 - LIMPIEZA TOTAL + ANTI-ZOMBIES:
+    V4.3 - MANTENIMIENTO COMPLETO + REPORTE SHERLOCK:
     1. 🧲 IMÁN: Recupera archivos perdidos.
     2. 🧟 ZOMBIES: Borra evidencias de usuarios eliminados.
-    3. 👻 FANTASMAS: Borra archivos inexistentes.
-    4. 🤖 TERMINATOR: Borra duplicados físicos.
-    5. 🧹 VACUUM: Compacta DB.
+    3. 👻 CAZAFANTASMAS: Borra archivos inexistentes (Local/Nube).
+    4. 🤖 TERMINATOR: Borra duplicados físicos reales en S3.
+    5. 🕵️ SHERLOCK: Imprime lista de dueños de archivos.
     """
     try:
         def tarea_mantenimiento_profundo():
-            print("🔧 INICIANDO MANTENIMIENTO MAESTRO V4.2...")
+            print("🔧 INICIANDO MANTENIMIENTO SHERLOCK V4.3 (MODO COMPLETO)...")
             try:
                 conn = get_db_connection()
                 c = conn.cursor()
 
                 # =========================================================
-                # PASO 1: EL IMÁN (Recoger evidencias perdidas/invisibles)
+                # PASO 1: EL IMÁN (Recuperar perdidos)
                 # =========================================================
                 print("🧲 Paso 1: Atrayendo archivos huérfanos a la Bandeja...")
                 c.execute("""
@@ -1461,24 +1454,17 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                 """)
 
                 # =========================================================
-                # PASO 2: ELIMINAR ZOMBIES (CRÍTICO PARA TU PROBLEMA DE LOS 3 ARCHIVOS)
+                # PASO 2: ELIMINAR ZOMBIES (Usuarios borrados)
                 # =========================================================
-                print("🧟 Paso 2: Eliminando Zombies (Evidencias sin dueño)...")
-                # Borra evidencias cuyo CI no existe en la tabla Usuarios
-                c.execute("""
-                    DELETE FROM Evidencias 
-                    WHERE CI_Estudiante NOT IN (SELECT CI FROM Usuarios)
-                """)
-                zombies = c.rowcount
-                if zombies > 0:
-                    print(f"   💀 ¡SE ELIMINARON {zombies} ARCHIVOS ZOMBIE! (Esto arregla el conteo)")
-                else:
-                    print("   ✨ No se encontraron zombies.")
+                print("🧟 Paso 2: Eliminando Zombies...")
+                c.execute("DELETE FROM Evidencias WHERE CI_Estudiante NOT IN (SELECT CI FROM Usuarios)")
+                if c.rowcount > 0:
+                    print(f"   💀 {c.rowcount} zombies eliminados.")
 
                 # =========================================================
-                # PASO 3: CAZAFANTASMAS (Borrar lo que NO existe físicamente)
+                # PASO 3: CAZAFANTASMAS (Verificación REAL en Nube/Disco)
                 # =========================================================
-                print("👻 Paso 3: Cazando fantasmas (Archivos inexistentes)...")
+                print("👻 Paso 3: Cazando fantasmas (Validación física)...")
                 evidencias = c.execute("SELECT id, Url_Archivo FROM Evidencias").fetchall()
                 fantasmas = 0
                 
@@ -1503,6 +1489,7 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                     elif "/local/" in url:
                         ruta_fisica = url.replace("/local/", "./").lstrip("/")
                         if not os.path.exists(ruta_fisica):
+                            # Intento ruta absoluta para Docker
                             ruta_fisica = os.path.join(os.getcwd(), url.replace("/local/", "").lstrip("/"))
                         
                         if os.path.exists(ruta_fisica):
@@ -1522,9 +1509,9 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                 print(f"   ✨ {fantasmas} fantasmas eliminados.")
 
                 # =========================================================
-                # PASO 4: TERMINATOR (Borrado de Duplicados Físicos)
+                # PASO 4: TERMINATOR (Borrado Físico de Duplicados S3)
                 # =========================================================
-                print("🤖 Paso 4: Eliminando duplicados físicos...")
+                print("🤖 Paso 4: Eliminando duplicados físicos en S3...")
                 
                 def borrar_de_nube_real(url_archivo):
                     if s3_client and BUCKET_NAME in url_archivo:
@@ -1542,7 +1529,6 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                 for ev in todas:
                     cedula = ev['CI_Estudiante']
                     url = ev['Url_Archivo']
-                    
                     nombre_archivo = url.split('/')[-1]
                     nombre_limpio = re.sub(r'^(manual_)?\d+_', '', nombre_archivo).lower()
                     
@@ -1551,7 +1537,7 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                     if clave in vistos:
                         original = vistos[clave]
                         if url != original['Url_Archivo']: 
-                            borrar_de_nube_real(url)
+                            borrar_de_nube_real(url) # ¡ESTA ES LA LÍNEA CLAVE QUE BORRA EN LA NUBE!
                         ids_a_borrar.append(ev['id'])
                     else:
                         vistos[clave] = ev
@@ -1560,31 +1546,55 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                     placeholders = ','.join(['?'] * len(ids_a_borrar))
                     c.execute(f"DELETE FROM Evidencias WHERE id IN ({placeholders})", ids_a_borrar)
                     print(f"   ✨ {len(ids_a_borrar)} duplicados eliminados.")
+                
+                conn.commit() # Guardamos limpieza antes del reporte
 
                 # =========================================================
-                # PASO 5: FINALIZACIÓN
+                # 🕵️ PASO 5: REPORTE SHERLOCK HOLMES
                 # =========================================================
-                conn.commit()
+                print("\n📋 === REPORTE DE EVIDENCIAS (¿Quién tiene los 87?) ===")
+                
+                usuarios_con_fotos = c.execute("""
+                    SELECT u.Nombre, u.Apellido, u.CI, u.Tipo, u.Activo, COUNT(e.id) as Cantidad
+                    FROM Usuarios u
+                    JOIN Evidencias e ON u.CI = e.CI_Estudiante
+                    GROUP BY u.CI
+                    ORDER BY Cantidad DESC
+                """).fetchall()
+
+                total_revisado = 0
+                for u in usuarios_con_fotos:
+                    estado = "🟢 ACTIVO" if u['Activo'] == 1 else "🔴 INACTIVO"
+                    rol = "👮 ADMIN" if u['Tipo'] == 0 else "🎓 ESTUDIANTE"
+                    print(f"   👤 {u['Nombre']} {u['Apellido']} ({u['CI']})")
+                    print(f"      Estado: {estado} | Rol: {rol} | 📂 Archivos: {u['Cantidad']}")
+                    total_revisado += u['Cantidad']
+                
+                print(f"   🔢 TOTAL SUMADO: {total_revisado}")
+                print("============================================\n")
+
+                # =========================================================
+                # FINALIZACIÓN
+                # =========================================================
                 conn.isolation_level = None 
                 c.execute("VACUUM")
                 conn.close()
                 
-                # Actualizar estadísticas
+                # Actualizar métricas
                 stats = calcular_estadisticas_reales()
                 conn2 = get_db_connection()
-                fecha = ahora_ecuador().date().isoformat()
                 conn2.execute("INSERT OR REPLACE INTO Metricas_Sistema (Fecha, Total_Evidencias, Almacenamiento_MB) VALUES (?, ?, ?)", 
-                            (fecha, stats.get('total_evidencias',0), stats.get('almacenamiento_mb',0)))
+                            (ahora_ecuador().date().isoformat(), stats.get('total_evidencias',0), stats.get('almacenamiento_mb',0)))
                 conn2.commit()
                 conn2.close()
                 
-                print("✅ MANTENIMIENTO V4.2 (ANTI-ZOMBIES) FINALIZADO.")
+                print("✅ MANTENIMIENTO COMPLETO FINALIZADO.")
                 
             except Exception as e:
                 print(f"❌ Error en mantenimiento: {e}")
 
         background_tasks.add_task(tarea_mantenimiento_profundo)
-        return JSONResponse({"status": "ok", "mensaje": "🛠️ Protocolo Anti-Zombies V4.2 iniciado."})
+        return JSONResponse({"status": "ok", "mensaje": "🕵️ Investigando y limpiando a fondo..."})
         
     except Exception as e:
         return JSONResponse(content={"error": str(e)})
