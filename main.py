@@ -432,6 +432,47 @@ def identificar_varios_rostros_aws(imagen_path: str, confidence_threshold: float
         print(f"Error IA: {e}")
         return []
     
+def buscar_estudiantes_por_texto(imagen_path: str, conn) -> List[str]:
+    """
+    Usa AWS Rekognition para leer texto en la imagen y buscar nombres de estudiantes.
+    Retorna lista de cédulas encontradas.
+    """
+    if not rekog: return []
+    cedulas_encontradas = set()
+    
+    try:
+        with open(imagen_path, 'rb') as image_file:
+            image_bytes = image_file.read()
+            
+        # 1. Pedir a AWS que lea todo el texto
+        response = rekog.detect_text(Image={'Bytes': image_bytes})
+        textDetections = response.get('TextDetections', [])
+        
+        if not textDetections: return []
+        
+        # 2. Unir todo el texto encontrado en una sola línea minúscula para buscar fácil
+        texto_completo = " ".join([t['DetectedText'] for t in textDetections]).lower()
+        print(f"📖 Texto leído en imagen: {texto_completo[:100]}...") # Log para depurar
+        
+        # 3. Traer lista de estudiantes de la base de datos para comparar
+        # Optimización: Traemos solo Nombre, Apellido y CI
+        estudiantes = conn.execute("SELECT Nombre, Apellido, CI FROM Usuarios WHERE Tipo=1").fetchall()
+        
+        # 4. Buscar coincidencias (Nombre + Apellido)
+        for est in estudiantes:
+            # Creamos el nombre completo "juan perez"
+            nombre_completo = f"{est['Nombre']} {est['Apellido']}".lower()
+            
+            # Verificamos si "juan perez" está escrito en la imagen
+            if nombre_completo in texto_completo:
+                print(f"✅ Texto coincidente encontrado: {nombre_completo}")
+                cedulas_encontradas.add(est['CI'])
+                
+    except Exception as e:
+        print(f"⚠️ Error leyendo texto: {e}")
+        
+    return list(cedulas_encontradas)
+    
 # Función auxiliar por si no la tienes
 def calcular_hash(file_path):
     sha256_hash = hashlib.sha256()
@@ -844,6 +885,8 @@ async def eliminar_usuario(cedula: str):
 
 # --- REEMPLAZA TU FUNCIÓN subir_evidencia_ia POR ESTA VERSIÓN DETALLADA ---
 
+# --- REEMPLAZA TU FUNCIÓN subir_evidencia_ia POR ESTA VERSIÓN FINAL (ROSTROS + VIDEO + TEXTO) ---
+
 @app.post("/subir_evidencia_ia")
 async def subir_evidencia_ia(archivo: UploadFile = File(...)):
     try:
@@ -856,47 +899,48 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
         es_imagen = ext in ['.jpg', '.jpeg', '.png', '.bmp', '.webp']
         es_video = ext in ['.mp4', '.avi', '.mov', '.mkv']
         
-        cedulas_detectadas = set() # Usamos set para evitar duplicados
+        cedulas_detectadas = set() 
+        conn = get_db_connection() # Abrimos conexión aquí para usarla en lectura de texto
         
         # 2. ANÁLISIS INTELIGENTE
         if rekog:
             if es_imagen:
-                # Imagen: Análisis único
-                res = identificar_varios_rostros_aws(path)
-                cedulas_detectadas.update(res)
+                # A) Buscar Rostros
+                rostros = identificar_varios_rostros_aws(path)
+                cedulas_detectadas.update(rostros)
+                
+                # B) NUEVO: Si no hay rostros (o además de ellos), buscar TEXTO
+                # Esto sirve para carátulas, listas o fotos de trabajos con nombre
+                textos = buscar_estudiantes_por_texto(path, conn)
+                cedulas_detectadas.update(textos)
                 
             elif es_video:
-                # VIDEO: ANÁLISIS POR INTERVALOS (Cada 2 segundos)
+                # VIDEO: ANÁLISIS POR INTERVALOS
                 cap = cv2.VideoCapture(path)
                 fps = cap.get(cv2.CAP_PROP_FPS)
-                if fps == 0: fps = 24 # Fallback
+                if fps == 0: fps = 24
                 
-                # Intervalo de muestreo (cada 2 segundos)
-                intervalo_frames = int(fps * 2) 
+                intervalo_frames = int(fps * 2) # Cada 2 seg
                 frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-                
                 current_frame = 0
+                
                 while current_frame < frame_count:
                     cap.set(cv2.CAP_PROP_POS_FRAMES, current_frame)
                     ret, frame = cap.read()
                     if not ret: break
                     
-                    # Guardar frame temporal y analizar
                     frame_path = os.path.join(temp_dir, f"frame_{current_frame}.jpg")
                     cv2.imwrite(frame_path, frame)
                     
-                    # Analizar este momento del video
-                    rostros_en_frame = identificar_varios_rostros_aws(frame_path)
-                    if rostros_en_frame:
-                        print(f"🎬 Minuto {current_frame/fps/60:.2f}: Encontrados {rostros_en_frame}")
-                        cedulas_detectadas.update(rostros_en_frame)
+                    # Analizar rostros en el video
+                    rostros_frame = identificar_varios_rostros_aws(frame_path)
+                    cedulas_detectadas.update(rostros_frame)
                     
-                    # Saltar al siguiente intervalo
+                    # (Opcional) Podrías leer texto en el video también, pero consume muchos recursos.
+                    # Por ahora lo dejamos solo en rostros para video para mantener velocidad.
+                    
                     current_frame += intervalo_frames
-                    
-                    # Límite de seguridad: Analizar máximo 10 cuadros para no tardar una eternidad
                     if len(cedulas_detectadas) > 10: break 
-                
                 cap.release()
 
         # 3. Subir archivo original
@@ -910,14 +954,11 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
             except: pass
 
         # 4. Guardar en Base de Datos
-        conn = get_db_connection()
         status = "alerta"
         msg = ""
         tipo_archivo = "video" if es_video else ("imagen" if es_imagen else "documento")
         
-        cedulas_validas = []
         if cedulas_detectadas:
-            # Filtrar solo usuarios reales
             nombres = []
             for ced in cedulas_detectadas:
                 u = conn.execute("SELECT Nombre, Apellido FROM Usuarios WHERE CI=?", (ced,)).fetchone()
@@ -927,13 +968,14 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
             
             if nombres:
                 status = "exito"
+                # Mensaje personalizado según qué encontró
                 msg = f"✅ Asignado a: {', '.join(nombres)}"
             else:
                 conn.execute("INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Estado, Tipo_Archivo, Asignado_Automaticamente) VALUES ('PENDIENTE',?,1,?,0)", (url_final, tipo_archivo))
-                msg = "⚠️ Rostros detectados pero no registrados en usuarios."
+                msg = "⚠️ Se detectaron datos pero no coinciden con usuarios registrados."
         else:
             conn.execute("INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Estado, Tipo_Archivo, Asignado_Automaticamente) VALUES ('PENDIENTE',?,1,?,0)", (url_final, tipo_archivo))
-            msg = "⚠️ No se detectaron rostros. Guardado en Pendientes."
+            msg = "⚠️ No se detectaron rostros ni nombres escritos. Guardado en Pendientes."
 
         conn.commit()
         conn.close()
