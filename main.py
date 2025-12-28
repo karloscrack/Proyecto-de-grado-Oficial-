@@ -437,11 +437,9 @@ def identificar_varios_rostros_aws(imagen_path: str, confidence_threshold: float
 
 def buscar_estudiantes_por_texto(imagen_path: str, conn) -> List[str]:
     """
-    Versión TODO TERRENO:
-    1. Obtiene TODAS las partes del nombre del estudiante (1er nombre, 2do nombre, apellidos).
-    2. Busca si AL MENOS 2 de esas partes aparecen en la imagen.
-    3. Tolerancia extrema (0.50) para letra Gótica.
-    4. Sin filtro de confianza (lee todo).
+    Versión 'COINCIDENCIA PARCIAL' (Subset Matching):
+    Ideal cuando en la DB tienes 4 nombres (Karlos Andres Ayala Lopez) 
+    pero en el certificado solo aparecen 2 (Karlos Ayala).
     """
     if not rekog: return []
     cedulas_encontradas = set()
@@ -450,56 +448,54 @@ def buscar_estudiantes_por_texto(imagen_path: str, conn) -> List[str]:
         with open(imagen_path, 'rb') as image_file:
             image_bytes = image_file.read()
             
-        # 1. Detectar TODO el texto sin filtro de confianza
+        # 1. Detectar TODO el texto
         response = rekog.detect_text(Image={'Bytes': image_bytes})
         
-        # Guardamos TODAS las palabras detectadas
+        # Guardamos TODAS las palabras que la IA ve (en minúsculas)
         palabras_imagen = []
         for t in response.get('TextDetections', []):
-            # Guardamos solo palabras (WORD), no líneas, para comparar palabra por palabra
             if t['Type'] == 'WORD':
                 palabras_imagen.append(t['DetectedText'].lower())
         
-        if not palabras_imagen: 
-            print("⚠️ OCR: La imagen parece vacía de texto.")
-            return []
+        if not palabras_imagen: return []
         
-        print(f"👀 IA LEYÓ ESTAS PALABRAS: {palabras_imagen}") 
-        # ^^^ IMPORTANTE: Mira este log en Railway para ver si la IA está leyendo "Karlos" o "Rarlos"
+        print(f"👀 IA LEYÓ: {palabras_imagen}") # Revisa esto en los logs si falla
 
         # 2. Traer estudiantes
         estudiantes = conn.execute("SELECT Nombre, Apellido, CI FROM Usuarios WHERE Tipo=1").fetchall()
         
         for est in estudiantes:
-            # Desarmamos el nombre completo en piezas únicas
-            # Ej: "Juan Karlos" + "Ayala Perez" -> ["juan", "karlos", "ayala", "perez"]
-            partes_nombre = set(est['Nombre'].lower().split() + est['Apellido'].lower().split())
+            # 3. DESGLOSE TOTAL DEL NOMBRE
+            # BD: "Karlos Andres" + "Ayala Lopez" -> piezas: ["karlos", "andres", "ayala", "lopez"]
+            nombres_db = est['Nombre'].lower().split()
+            apellidos_db = est['Apellido'].lower().split()
+            piezas_nombre_usuario = set(nombres_db + apellidos_db)
             
-            coincidencias = 0
-            matches_encontrados = []
+            # Filtramos palabras muy cortas (ej: "de", "la") para evitar falsos positivos
+            piezas_validas = {p for p in piezas_nombre_usuario if len(p) > 2}
+            
+            coincidencias_encontradas = 0
+            detalles_match = []
 
-            # 3. Comparación "Todo contra Todo"
-            for parte in partes_nombre:
-                if len(parte) < 3: continue # Ignoramos nombres muy cortos como "De" o "La"
-                
-                # Buscamos esta parte del nombre en TODAS las palabras de la imagen
-                # cutoff=0.50 significa que acepta 50% de error (Ideal para Gótica)
-                match = difflib.get_close_matches(parte, palabras_imagen, n=1, cutoff=0.50)
+            # 4. Buscamos cada pieza del nombre en la "bolsa" de palabras de la imagen
+            for pieza in piezas_validas:
+                # Usamos un umbral BAJO (0.50) porque la letra Gótica confunde a la IA
+                # Ej: Busca "karlos" en la imagen. Si la IA leyó "kcrlds", lo aceptará.
+                match = difflib.get_close_matches(pieza, palabras_imagen, n=1, cutoff=0.50)
                 
                 if match:
-                    coincidencias += 1
-                    matches_encontrados.append(f"{parte}≈{match[0]}")
+                    coincidencias_encontradas += 1
+                    detalles_match.append(f"{pieza}≈{match[0]}")
             
-            # 4. Regla de Aceptación:
-            # Si encontramos al menos 2 piezas del nombre (Ej: "Karlos" y "Ayala"), es válido.
-            # O si el estudiante solo tiene 1 nombre y 1 apellido y encontramos ambos.
-            if coincidencias >= 2:
-                print(f"✅ ¡MATCH ENCONTRADO! {est['Nombre']} {est['Apellido']} (Matches: {matches_encontrados})")
+            # 5. REGLA DE ORO:
+            # Si encontramos al menos 2 piezas del nombre (Ej: 'Karlos' y 'Ayala'), es un match.
+            # (Incluso si el usuario tiene 4 nombres en total)
+            if coincidencias_encontradas >= 2:
+                print(f"✅ ¡MATCH PARCIAL! Usuario: {est['Nombre']} {est['Apellido']} | Encontrado: {detalles_match}")
                 cedulas_encontradas.add(est['CI'])
-            
-            # Caso especial: Si el estudiante tiene un nombre muy único y largo (ej: "Rigoberto")
-            # y la coincidencia es muy fuerte, podríamos aceptarlo con 1 sola coincidencia, 
-            # pero por seguridad lo dejamos en 2.
+                
+            # Caso especial: Si el usuario SOLO tiene 1 nombre y 1 apellido registrados (ej: "Karlos Ayala")
+            # y encontramos los 2, también pasa.
 
     except Exception as e:
         print(f"⚠️ Error OCR: {e}")
