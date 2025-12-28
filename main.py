@@ -779,6 +779,42 @@ async def registrar_usuario(
         print(f"❌ Error en registrar_usuario: {e}")
         return JSONResponse(content={"error": str(e)})
 
+@app.post("/buscar_estudiante")
+async def buscar_estudiante(cedula: str = Form(...)):
+    """Busca datos de un estudiante específico para el perfil"""
+    try:
+        conn = get_db_connection()
+        
+        # Buscar usuario
+        c = conn.cursor()
+        c.execute("SELECT * FROM Usuarios WHERE CI = ?", (cedula,))
+        user = c.fetchone()
+        
+        if not user:
+            conn.close()
+            return JSONResponse({"exito": False, "mensaje": "Estudiante no encontrado"})
+            
+        # Contar sus evidencias aprobadas
+        c.execute("SELECT COUNT(*) FROM Evidencias WHERE CI_Estudiante = ? AND Estado = 1", (cedula,))
+        total_evs = c.fetchone()[0]
+        
+        conn.close()
+        
+        # Convertir a diccionario y asegurar que no enviamos la contraseña
+        user_dict = dict(user)
+        if "Password" in user_dict:
+            del user_dict["Password"]
+            
+        return JSONResponse({
+            "exito": True,
+            "estudiante": user_dict,
+            "total_evidencias": total_evs
+        })
+        
+    except Exception as e:
+        print(f"Error en buscar_estudiante: {e}")
+        return JSONResponse({"exito": False, "mensaje": str(e)})
+
 @app.post("/cambiar_estado_usuario")
 async def cambiar_estado_usuario(datos: EstadoUsuarioRequest):
     """Activa/desactiva un usuario"""
