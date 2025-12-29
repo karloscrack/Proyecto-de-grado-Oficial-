@@ -308,11 +308,11 @@ def enviar_correo_real(destinatario: str, asunto: str, mensaje: str, html: bool 
         msg['From'] = SMTP_EMAIL
         msg['To'] = destinatario
         msg['Subject'] = asunto
-        
         msg.attach(MIMEText(mensaje, 'html' if html else 'plain'))
         
-        # EL CAMBIO ESTÁ AQUÍ: Usar SMTP_SSL en lugar de SMTP
-        server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) 
+        # --- CONEXIÓN SSL DIRECTA ---
+        # No usamos starttls(), entramos encriptados desde el inicio
+        server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=10) 
         server.login(SMTP_EMAIL, SMTP_PASSWORD)
         server.sendmail(SMTP_EMAIL, destinatario, msg.as_string())
         server.quit()
