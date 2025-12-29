@@ -2564,66 +2564,80 @@
         
         if (!grid) return;
         
-        if (evidenciasEstudianteActual.length === 0) {
-            grid.innerHTML = '';
+        // Limpiar grid
+        grid.innerHTML = '';
+
+        // Verificar si hay datos
+        if (!evidenciasEstudianteActual || evidenciasEstudianteActual.length === 0) {
             if (vacio) vacio.style.display = 'flex';
             return;
         }
         
         if (vacio) vacio.style.display = 'none';
-        grid.innerHTML = '';
         
         evidenciasEstudianteActual.forEach((evidencia, index) => {
             const tarjeta = document.createElement('div');
             tarjeta.className = `evidence-card ${modoSeleccion ? 'selection-mode-active' : ''}`;
             
-            // ✅ CORRECCIÓN CLAVE: Leemos url_archivo (Postgres) O Url_Archivo (SQLite)
+            // Lógica robusta para obtener URL (soporta mayúsculas/minúsculas de DB)
             const urlArchivo = evidencia.Url_Archivo || evidencia.url_archivo || '';
             const idEvidencia = evidencia.id || evidencia.ID;
 
-            if (evidenciasSeleccionadas.includes(idEvidencia)) {
-                tarjeta.classList.add('selected');
-            }
-            
-            tarjeta.onclick = () => {
-                if (modoSeleccion) {
-                    toggleSeleccionEvidencia(idEvidencia, tarjeta);
-                } else {
-                    abrirVisor(index);
-                }
-            };
-            
-            // Usamos la variable corregida 'urlArchivo'
-            const esVideo = urlArchivo.match(/\.(mp4|avi|mov|webm)$/i);
-            const esImagen = urlArchivo.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+            // Detectar tipo de archivo
+            const esVideo = urlArchivo.match(/\.(mp4|avi|mov|webm|mkv)$/i);
+            const esImagen = urlArchivo.match(/\.(jpg|jpeg|png|gif|webp|avif)$/i);
             
             let contenido = '';
             
             if (esImagen) {
+                // Si la imagen falla (404), pone el logo del colegio
                 contenido = `<img src="${urlArchivo}" class="card-media" loading="lazy" onerror="this.src='Img/Logo_pestaña.png'">`;
             } else if (esVideo) {
+                // Video con overlay de play
                 contenido = `
-                    <video src="${urlArchivo}#t=0.1" class="card-media"></video>
-                    <div class="video-overlay"><i class="fas fa-play-circle"></i></div>
+                    <div style="position:relative; width:100%; height:100%; background:#000;">
+                        <video src="${urlArchivo}#t=0.1" class="card-media" preload="metadata" style="object-fit:cover;"></video>
+                        <div class="video-overlay"><i class="fas fa-play-circle"></i></div>
+                    </div>
                 `;
             } else {
+                // Documento (PDF, Word, etc) - Icono genérico en vez de foto rota
                 contenido = `
-                    <div style="width:100%;height:100%;background:var(--bg-input);display:flex;align-items:center;justify-content:center;color:var(--text-main);">
-                        <i class="fas fa-file-alt" style="font-size:2.5rem;"></i>
+                    <div style="width:100%;height:100%;background:var(--bg-input);display:flex;align-items:center;justify-content:center;color:var(--text-main);flex-direction:column;">
+                        <i class="fas fa-file-alt" style="font-size:3rem; margin-bottom:10px; color:var(--primary);"></i>
+                        <span style="font-size:0.75rem; font-weight:600;">Documento</span>
                     </div>
                 `;
             }
-            
+
+            // HTML Interno
             tarjeta.innerHTML = `
                 <div class="selection-check"><i class="fas fa-check"></i></div>
                 ${contenido}
             `;
-            
+
+            // Marcar si estaba seleccionado anteriormente
+            if (evidenciasSeleccionadas.includes(idEvidencia)) {
+                tarjeta.classList.add('selected');
+            }
+
+            // --- EVENTO CLICK (LA CLAVE DEL FUNCIONAMIENTO) ---
+            tarjeta.onclick = function(e) {
+                // Si estamos en "Modo Selección", marcamos la tarjeta
+                if (modoSeleccion) {
+                    toggleSeleccionEvidencia(idEvidencia, tarjeta);
+                } else {
+                    // Si NO es selección, abrimos el Visor (Igual que Estudiantes)
+                    abrirVisor(index);
+                }
+            };
+
             grid.appendChild(tarjeta);
         });
         
-        // Actualizar contador de selección
-        document.getElementById('countSelection').textContent = evidenciasSeleccionadas.length;
+        // Actualizar contador flotante si existe
+        const counter = document.getElementById('countSelection');
+        if(counter) counter.textContent = evidenciasSeleccionadas.length;
     }
 
     function volverAEvidencias() {
@@ -2642,9 +2656,10 @@
         window.scrollTo(0, 0);
     }
 
+// ==========================================
+    // 7. FUNCIONES DE LIGHTBOX Y VISOR (CORREGIDO FINAL)
     // ==========================================
-    // 7. FUNCIONES DE LIGHTBOX Y VISOR
-    // ==========================================
+
     function configurarEventosTeclado() {
         document.addEventListener('keydown', (e) => {
             const lightbox = document.getElementById('lightbox');
@@ -2666,113 +2681,128 @@
         });
     }
 
+    // Función vital para ver las fotos de los reportes
     function abrirPrevisualizacion(url) {
         const lightbox = document.getElementById('lightbox');
         const contenido = document.getElementById('lightboxContent');
+        const enlaceDescarga = document.getElementById('lbDownloadLink');
         
         contenido.innerHTML = `
-            <img src="${url}" class="lb-media-item" style="max-height:70vh; object-fit:contain;">
+            <img src="${url}" class="lb-media-item" style="max-height:80vh; max-width:90vw; object-fit:contain;" 
+                 onerror="this.src='Img/Logo_pestaña.png'">
         `;
         
-        const enlaceDescarga = document.getElementById('lbDownloadLink');
         enlaceDescarga.href = url;
         enlaceDescarga.download = url.split('/').pop();
         
+        // Ocultar botón eliminar en modo previsualización
+        const btnEliminar = document.querySelector('.btn-lb-delete');
+        if(btnEliminar) btnEliminar.style.display = 'none';
+
         lightbox.classList.add('active');
         document.body.style.overflow = 'hidden';
+    }
+
+    function abrirVisor(indice) {
+        // Usamos las variables globales (ya definidas arriba)
+        evidenciasVisor = evidenciasEstudianteActual;
+        indiceVisorActual = indice;
+        
+        // Mostrar botón eliminar en modo galería
+        const btnEliminar = document.querySelector('.btn-lb-delete');
+        if(btnEliminar) btnEliminar.style.display = 'inline-flex';
+
+        actualizarVisor();
+        document.getElementById('lightbox').classList.add('active');
+        document.body.style.overflow = 'hidden'; 
     }
 
     function cerrarLightbox() {
         const lightbox = document.getElementById('lightbox');
         lightbox.classList.remove('active');
         document.body.style.overflow = '';
-        
-        // SOLUCIÓN: Limpiar el contenido HTML mata el reproductor de video/audio
         document.getElementById('lightboxContent').innerHTML = '';
     }
 
-    function cerrarLightboxSiFondo(evento) {
-        if (evento.target.id === 'lightbox') {
-            cerrarLightbox();
-        }
-    }
-
-    function abrirVisor(indice) {
-        evidenciasVisor = evidenciasEstudianteActual;
-        indiceVisorActual = indice;
-        actualizarVisor();
-        document.getElementById('lightbox').classList.add('active');
-        document.body.style.overflow = 'hidden';
+    function cerrarLightboxSiFondo(event) {
+        if (event.target.id === 'lightbox') cerrarLightbox();
     }
 
     function actualizarVisor() {
+        if (!evidenciasVisor || evidenciasVisor.length === 0) return;
+        
+        const evidencia = evidenciasVisor[indiceVisorActual];
         const contenido = document.getElementById('lightboxContent');
         const enlaceDescarga = document.getElementById('lbDownloadLink');
         
-        if (evidenciasVisor.length === 0) return;
+        const url = evidencia.Url_Archivo || evidencia.url_archivo;
         
-        const evidenciaActual = evidenciasVisor[indiceVisorActual];
+        enlaceDescarga.href = url;
+        enlaceDescarga.download = url.split('/').pop(); 
         
-        enlaceDescarga.href = evidenciaActual.Url_Archivo;
-        enlaceDescarga.download = evidenciaActual.Url_Archivo.split('/').pop();
-        
-        const esVideo = evidenciaActual.Url_Archivo && evidenciaActual.Url_Archivo.match(/\.(mp4|avi|mov|webm)$/i);
+        const esVideo = url.match(/\.(mp4|avi|mov|webm|mkv)$/i);
+        const esImagen = url.match(/\.(jpg|jpeg|png|gif|webp|avif)$/i);
         
         if (esVideo) {
-            contenido.innerHTML = `
-                <video src="${evidenciaActual.Url_Archivo}" class="lb-media-item" controls autoplay></video>
-            `;
+            contenido.innerHTML = `<video src="${url}" class="lb-media-item" controls autoplay style="max-height:80vh; max-width:90vw;"></video>`;
+        } else if (esImagen) {
+            contenido.innerHTML = `<img src="${url}" class="lb-media-item" style="max-height:80vh; max-width:90vw; object-fit:contain;" onerror="this.src='Img/Logo_pestaña.png'">`;
         } else {
-            contenido.innerHTML = `
-               <img src="${evidenciaActual.Url_Archivo}" class="lb-media-item" onerror="this.src='Img/Logo_pestaña.png'">
-            `;
+            contenido.innerHTML = `<div style="color:white; text-align:center;"><i class="fas fa-file-alt" style="font-size:5rem;"></i><h3>Documento</h3><p>Descarga para ver.</p></div>`;
         }
     }
 
-    function imagenSiguiente(evento) {
-        if (evento) evento.stopPropagation();
+    function imagenSiguiente(e) {
+        if(e) e.stopPropagation();
+        if (evidenciasVisor.length === 0) return;
         indiceVisorActual = (indiceVisorActual + 1) % evidenciasVisor.length;
         actualizarVisor();
     }
 
-    function imagenAnterior(evento) {
-        if (evento) evento.stopPropagation();
+    function imagenAnterior(e) {
+        if(e) e.stopPropagation();
+        if (evidenciasVisor.length === 0) return;
         indiceVisorActual = (indiceVisorActual - 1 + evidenciasVisor.length) % evidenciasVisor.length;
         actualizarVisor();
     }
 
     async function eliminarEvidenciaActual() {
-        // 1. CERRAR PRIMERO LA GALERÍA (Esto arregla el error aria-hidden)
         cerrarLightbox();
-        
-        // Esperamos un poquito a que se cierre
         setTimeout(async () => {
             const evidencia = evidenciasVisor[indiceVisorActual];
+            if(!evidencia) return;
+
+            const idEvidencia = evidencia.id || evidencia.ID;
             
             const result = await Swal.fire({
                 title: '¿Eliminar evidencia?',
-                text: 'Se borrará permanentemente.',
+                text: 'Esta acción borrará el archivo permanentemente.',
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#d32f2f',
-                confirmButtonText: 'Sí, eliminar'
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
             });
 
             if (result.isConfirmed) {
                 try {
-                    await fetch(`${API_URL}/eliminar_evidencia/${evidencia.id}`, { method: 'DELETE' });
-                    
-                    // Actualizar pantalla
-                    evidenciasVisor.splice(indiceVisorActual, 1);
-                    verEvidenciasEstudiante(estudianteActual); 
-                    
-                    Swal.fire('Eliminado', '', 'success');
+                    const res = await fetch(`${API_URL}/eliminar_evidencia/${idEvidencia}`, { method: 'DELETE' });
+                    if(res.ok) {
+                        const indexGlobal = evidenciasEstudianteActual.findIndex(e => (e.id || e.ID) == idEvidencia);
+                        if(indexGlobal !== -1) evidenciasEstudianteActual.splice(indexGlobal, 1);
+                        renderizarEvidenciasEstudiante(); 
+                        Swal.fire('Eliminado', 'Evidencia eliminada.', 'success');
+                    } else { throw new Error('Error al eliminar'); }
                 } catch (error) {
-                    Swal.fire('Error', 'No se pudo eliminar', 'error');
+                    Swal.fire('Error', 'No se pudo eliminar.', 'error');
+                    abrirVisor(indiceVisorActual);
                 }
+            } else {
+                abrirVisor(indiceVisorActual);
             }
         }, 200);
     }
+
     // ==========================================
     // 8. FUNCIONES DE SEGURIDAD Y LOGS
     // ==========================================
@@ -3290,20 +3320,23 @@
     }
 
     // ==========================================
-    // 13. FUNCIONES DE SELECCIÓN MÚLTIPLE
+    // 13. FUNCIONES DE SELECCIÓN MÚLTIPLE (ACTIVO)
     // ==========================================
     function toggleModoSeleccion() {
         modoSeleccion = !modoSeleccion;
+        const barra = document.getElementById('floatingBar');
+        const btn = document.getElementById('btnSelectMode');
         
         if (modoSeleccion) {
-            document.getElementById('floatingBar').classList.add('active');
-            document.getElementById('btnSelectMode').innerHTML = '<i class="fas fa-times"></i> Cancelar';
+            barra.classList.add('active');
+            btn.innerHTML = '<i class="fas fa-times"></i> Cancelar';
+            btn.style.background = 'var(--text-sec)';
         } else {
-            document.getElementById('floatingBar').classList.remove('active');
-            document.getElementById('btnSelectMode').innerHTML = '<i class="fas fa-check-square"></i> Seleccionar';
+            barra.classList.remove('active');
+            btn.innerHTML = '<i class="fas fa-check-square"></i> Seleccionar';
+            btn.style.background = ''; 
             evidenciasSeleccionadas = [];
         }
-        
         renderizarEvidenciasEstudiante();
     }
 
@@ -3316,7 +3349,6 @@
             evidenciasSeleccionadas.splice(index, 1);
             elemento.classList.remove('selected');
         }
-        
         document.getElementById('countSelection').textContent = evidenciasSeleccionadas.length;
     }
 
@@ -3325,17 +3357,19 @@
         evidenciasSeleccionadas = [];
         document.getElementById('floatingBar').classList.remove('active');
         document.getElementById('btnSelectMode').innerHTML = '<i class="fas fa-check-square"></i> Seleccionar';
+        document.getElementById('btnSelectMode').style.background = '';
         renderizarEvidenciasEstudiante();
     }
 
     async function descargarSeleccionadas() {
         if (evidenciasSeleccionadas.length === 0) {
-            mostrarMensaje('Selecciona al menos una evidencia', 'warning');
+            Swal.fire('Atención', 'Selecciona al menos una evidencia.', 'warning');
             return;
         }
         
         try {
-            mostrarMensaje('Preparando descarga...', 'info');
+            const btnDescarga = document.querySelector('#floatingBar .btn-float');
+            btnDescarga.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Zippeando...';
             
             const formData = new FormData();
             formData.append('ids', evidenciasSeleccionadas.join(','));
@@ -3350,98 +3384,58 @@
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `evidencias_${estudianteActual.cedula}_${Date.now()}.zip`;
+                a.download = `evidencias_${new Date().getTime()}.zip`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 window.URL.revokeObjectURL(url);
-                
-                mostrarMensaje('Descarga iniciada', 'success');
                 cancelarSeleccion();
-            } else {
-                mostrarMensaje('Error al preparar la descarga', 'error');
-            }
+                Swal.fire('¡Listo!', 'Descarga iniciada.', 'success');
+            } else { throw new Error('Error al crear ZIP'); }
         } catch (error) {
-            console.error('Error descargando evidencias:', error);
-            mostrarMensaje('Error de conexión al descargar: ' + error.message, 'error');
+            Swal.fire('Error', 'No se pudo descargar.', 'error');
+        } finally {
+             const btnDescarga = document.querySelector('#floatingBar .btn-float');
+             if(btnDescarga) btnDescarga.innerHTML = '<i class="fas fa-download"></i> Descargar';
         }
     }
 
     async function eliminarSeleccionadas() {
-        if (evidenciasSeleccionadas.length === 0) {
-            mostrarMensaje('Selecciona al menos una evidencia', 'warning');
-            return;
-        }
+        if (evidenciasSeleccionadas.length === 0) return Swal.fire('Atención', 'Selecciona algo para borrar.', 'warning');
         
         const confirmacion = await Swal.fire({
-            title: '¿Eliminar evidencias seleccionadas?',
-            text: `Se eliminarán ${evidenciasSeleccionadas.length} evidencias permanentemente.`,
+            title: `¿Eliminar ${evidenciasSeleccionadas.length} archivos?`,
+            text: "Se borrarán de la nube y la base de datos para siempre.",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d32f2f',
-            cancelButtonColor: '#5f6368',
-            confirmButtonText: 'Sí, eliminar',
+            confirmButtonText: 'Sí, borrar todo',
             cancelButtonText: 'Cancelar'
         });
         
         if (!confirmacion.isConfirmed) return;
         
         try {
-            mostrarMensaje('Eliminando evidencias...', 'info');
+            Swal.fire({ title: 'Eliminando...', didOpen: () => { Swal.showLoading(); } });
+
+            // Borrado en paralelo para velocidad
+            const promesas = evidenciasSeleccionadas.map(id => 
+                fetch(`${API_URL}/eliminar_evidencia/${id}`, { method: 'DELETE' })
+            );
+            await Promise.all(promesas);
             
-            for (const id of evidenciasSeleccionadas) {
-                await fetch(`${API_URL}/eliminar_evidencia/${id}`, {
-                    method: 'DELETE'
-                });
-            }
-            
-            mostrarMensaje(`${evidenciasSeleccionadas.length} evidencias eliminadas`, 'success');
-            
-            await verEvidenciasEstudiante(estudianteActual);
+            // Actualizar interfaz
+            evidenciasEstudianteActual = evidenciasEstudianteActual.filter(e => 
+                !evidenciasSeleccionadas.includes(e.id || e.ID)
+            );
             cancelarSeleccion();
+            Swal.fire('Eliminado', 'Archivos borrados correctamente.', 'success');
             
         } catch (error) {
-            console.error('Error eliminando evidencias:', error);
-            mostrarMensaje('Error al eliminar evidencias: ' + error.message, 'error');
+            Swal.fire('Error', 'Hubo un problema al eliminar.', 'error');
         }
     }
-    function configurarDragAndDrop() {
-        const dropZone = document.getElementById('dropZoneIA');
-        const fileInput = document.getElementById('fileInputIA');
-        
-        if(!dropZone) return;
-
-        // Prevenir comportamientos por defecto del navegador (para que no abra la foto al soltarla)
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, preventDefaults, false);
-            document.body.addEventListener(eventName, preventDefaults, false);
-        });
-
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-
-        // Efectos visuales: Iluminar al entrar
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false);
-        });
-
-        // Efectos visuales: Apagar al salir o soltar
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false);
-        });
-
-        // AL SOLTAR LOS ARCHIVOS
-        dropZone.addEventListener('drop', (e) => {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            
-            // Enviamos los archivos a tu función de subida existente
-            // Simulamos que viene de un input para no romper tu código actual
-            handleUploadIA({ files: files, value: '' });
-        }, false);
-    }
+    
     // ==========================================
     // 14. LÓGICA DE REASIGNACIÓN (NUEVO)
     // ==========================================

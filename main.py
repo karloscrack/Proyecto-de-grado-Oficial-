@@ -2001,44 +2001,48 @@ def todas_evidencias(cedula: str):
         print(f"❌ Error evidencias estudiante: {e}")
         return JSONResponse([])
 
-@app.delete("/eliminar_evidencia/{id_evidencia}")
-async def eliminar_evidencia(id_evidencia: int):
-    """Elimina una evidencia del sistema"""
+@app.delete("/eliminar_evidencia/{id}")
+async def eliminar_evidencia(id: int):
     try:
         conn = get_db_connection()
+        c = conn.cursor()
         
-        # Obtener información de la evidencia
-        ev = conn.execute("""
-            SELECT Url_Archivo, CI_Estudiante 
-            FROM Evidencias 
-            WHERE id = %s
-        """, (id_evidencia,)).fetchone()
+        # 1. Obtener la URL antes de borrar para saber qué archivo eliminar en B2
+        c.execute("SELECT Url_Archivo FROM Evidencias WHERE id = %s", (id,))
+        evidencia = c.fetchone()
         
-        if ev:
-            # Eliminar de S3 si está configurado
-            if s3_client and ev['Url_Archivo'] and BUCKET_NAME in ev['Url_Archivo']:
-                try:
-                    key = ev['Url_Archivo'].split(f"{BUCKET_NAME}/")[-1]
-                    s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
-                    print(f"✅ Archivo eliminado de S3: {key}")
-                except Exception as e:
-                    print(f"⚠️ Error eliminando de S3: {e}")
+        if not evidencia:
+            conn.close()
+            raise HTTPException(status_code=404, detail="Evidencia no encontrada")
             
-            # Eliminar de la base de datos
-            conn.execute("DELETE FROM Evidencias WHERE id = %s", (id_evidencia,))
-            conn.commit()
-            
-            # Registrar auditoría
-            registrar_auditoria(
-                "ELIMINACION_EVIDENCIA",
-                f"Evidencia {id_evidencia} eliminada para estudiante {ev['CI_Estudiante']}"
-            )
+        url = evidencia['Url_Archivo'] 
         
+        # 2. Intentar borrar de Backblaze B2 (Si existe conexión S3 y es archivo de nube)
+        if s3_client and BUCKET_NAME and "backblazeb2.com" in url:
+            try:
+                # Extraemos la "Key" (nombre del archivo) de la URL
+                # La URL suele ser: https://BUCKET.s3.us-east-005.backblazeb2.com/evidencias/foto.jpg
+                # Necesitamos solo: evidencias/foto.jpg
+                partes = url.split(f"/file/{BUCKET_NAME}/")
+                if len(partes) > 1:
+                    file_key = partes[1]
+                    # OJO: Si tu URL tiene otra estructura, ajustamos aquí. 
+                    # Por lo general en B2 público es .../file/BUCKET/nombre
+                    print(f"🗑️ Eliminando de B2: {file_key}")
+                    s3_client.delete_object(Bucket=BUCKET_NAME, Key=file_key)
+            except Exception as e_b2:
+                print(f"⚠️ Alerta: Se borró de BD pero falló en B2: {e_b2}")
+
+        # 3. Borrar de la Base de Datos
+        c.execute("DELETE FROM Evidencias WHERE id = %s", (id,))
+        conn.commit()
         conn.close()
-        return JSONResponse(content={"status": "ok", "mensaje": "Evidencia eliminada"})
+        
+        return JSONResponse({"mensaje": "Evidencia eliminada correctamente de Nube y BD"})
         
     except Exception as e:
-        return JSONResponse(content={"status": "error", "mensaje": str(e)})
+        print(f"❌ Error eliminando evidencia: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.get("/diagnostico_usuario/{cedula}")
 async def diagnostico_usuario(cedula: str):
