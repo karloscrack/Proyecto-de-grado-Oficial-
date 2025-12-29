@@ -2005,9 +2005,9 @@ def todas_evidencias(cedula: str):
 async def eliminar_evidencia(id: int):
     try:
         conn = get_db_connection()
-        c = conn.cursor()
+        # Usamos RealDictCursor para acceder a columnas por nombre
+        c = conn.cursor(cursor_factory=RealDictCursor)
         
-        # 1. Obtener la URL antes de borrar para saber qué archivo eliminar en B2
         c.execute("SELECT Url_Archivo FROM Evidencias WHERE id = %s", (id,))
         evidencia = c.fetchone()
         
@@ -2017,33 +2017,28 @@ async def eliminar_evidencia(id: int):
             
         url = evidencia['Url_Archivo'] 
         
-        # 2. Intentar borrar de Backblaze B2 (Si existe conexión S3 y es archivo de nube)
+        # Borrar de Backblaze B2 (versión mejorada)
         if s3_client and BUCKET_NAME and "backblazeb2.com" in url:
             try:
-                # Extraemos la "Key" (nombre del archivo) de la URL
-                # La URL suele ser: https://BUCKET.s3.us-east-005.backblazeb2.com/evidencias/foto.jpg
-                # Necesitamos solo: evidencias/foto.jpg
-                partes = url.split(f"/file/{BUCKET_NAME}/")
-                if len(partes) > 1:
-                    file_key = partes[1]
-                    # OJO: Si tu URL tiene otra estructura, ajustamos aquí. 
-                    # Por lo general en B2 público es .../file/BUCKET/nombre
-                    print(f"🗑️ Eliminando de B2: {file_key}")
-                    s3_client.delete_object(Bucket=BUCKET_NAME, Key=file_key)
+                # La URL es: https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{key}
+                # Extraemos la key después del dominio
+                parsed = urlparse(url)
+                # La key es la parte del path sin el primer '/'
+                key = parsed.path.lstrip('/')
+                print(f"🗑️ Eliminando de B2: {key}")
+                s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
             except Exception as e_b2:
-                print(f"⚠️ Alerta: Se borró de BD pero falló en B2: {e_b2}")
+                print(f"⚠️ Alerta B2: {e_b2}")
 
-        # 3. Borrar de la Base de Datos
         c.execute("DELETE FROM Evidencias WHERE id = %s", (id,))
         conn.commit()
         conn.close()
-        
-        return JSONResponse({"mensaje": "Evidencia eliminada correctamente de Nube y BD"})
+        return JSONResponse({"mensaje": "Eliminado correctamente"})
         
     except Exception as e:
-        print(f"❌ Error eliminando evidencia: {e}")
+        print(f"❌ Error eliminando: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
-
+    
 @app.get("/diagnostico_usuario/{cedula}")
 async def diagnostico_usuario(cedula: str):
     """Diagnóstico completo de un usuario (Versión PostgreSQL)"""

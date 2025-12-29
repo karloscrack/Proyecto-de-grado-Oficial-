@@ -1050,10 +1050,6 @@
                      overflow-y:auto; font-size:0.9rem; padding:10px; background:var(--bg-input); 
                      border-radius:8px;"></div>
             </div>
-            <div style="border-top:2px solid var(--border-color); padding-top:30px;">
-                <h4><i class="fas fa-hand-pointer"></i> Subida Manual</h4>
-                ...
-
             <!-- SUBIDA MANUAL -->
             <div style="border-top:2px solid var(--border-color); padding-top:30px;">
                 <h4><i class="fas fa-hand-pointer"></i> Subida Manual</h4>
@@ -1449,13 +1445,19 @@
             return;
         }
 
+        // --- CARGA DE DATOS Y CONFIGURACIÓN ---
         inicializarTema();
         cargarDatosIniciales();
-        configurarDragAndDrop(); 
+        
+        // Configurar todas las funciones interactivas
+        configurarFormularios();
+        configurarDragAndDrop();      // Arrastrar archivos
+        configurarEventosTeclado();   // Flechas y borrar con teclado (¡IMPORTANTE!)
+        
         // Iniciar actualizaciones automáticas
         iniciarActualizacionesAutomaticas();
         
-        // Eventos Globales
+        // --- EVENTOS DEL MENÚ Y UI ---
         document.getElementById('menuToggle').addEventListener('click', () => {
             document.getElementById('sidebar').classList.toggle('active');
         });
@@ -1469,12 +1471,6 @@
                 document.getElementById('notisDropdown').classList.remove('active');
             }
         });
-        
-        // Configurar formularios
-        configurarFormularios();
-        
-        // Configurar eventos del teclado para el lightbox
-        configurarEventosTeclado();
     });
 
     const tipoUsuario = localStorage.getItem('usuario_tipo');
@@ -2657,151 +2653,136 @@
     }
 
 // ==========================================
-    // 7. FUNCIONES DE LIGHTBOX Y VISOR (CORREGIDO FINAL)
-    // ==========================================
+// 7. FUNCIONES DE LIGHTBOX Y VISOR (CORREGIDO FINAL)
+// ==========================================
 
-    function configurarEventosTeclado() {
-        document.addEventListener('keydown', (e) => {
-            const lightbox = document.getElementById('lightbox');
-            if (!lightbox.classList.contains('active')) return;
-            
-            switch(e.key) {
-                case 'Escape':
-                    cerrarLightbox();
-                    break;
-                case 'ArrowLeft':
-                    imagenAnterior();
-                    e.preventDefault();
-                    break;
-                case 'ArrowRight':
-                    imagenSiguiente();
-                    e.preventDefault();
-                    break;
-            }
-        });
-    }
-
-    // Función vital para ver las fotos de los reportes
-    function abrirPrevisualizacion(url) {
+function configurarEventosTeclado() {
+    document.addEventListener('keydown', (e) => {
         const lightbox = document.getElementById('lightbox');
-        const contenido = document.getElementById('lightboxContent');
-        const enlaceDescarga = document.getElementById('lbDownloadLink');
+        if (!lightbox.classList.contains('active')) return;
         
-        contenido.innerHTML = `
-            <img src="${url}" class="lb-media-item" style="max-height:80vh; max-width:90vw; object-fit:contain;" 
-                 onerror="this.src='Img/Logo_pestaña.png'">
-        `;
-        
-        enlaceDescarga.href = url;
-        enlaceDescarga.download = url.split('/').pop();
-        
-        // Ocultar botón eliminar en modo previsualización
-        const btnEliminar = document.querySelector('.btn-lb-delete');
-        if(btnEliminar) btnEliminar.style.display = 'none';
-
-        lightbox.classList.add('active');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function abrirVisor(indice) {
-        // Usamos las variables globales (ya definidas arriba)
-        evidenciasVisor = evidenciasEstudianteActual;
-        indiceVisorActual = indice;
-        
-        // Mostrar botón eliminar en modo galería
-        const btnEliminar = document.querySelector('.btn-lb-delete');
-        if(btnEliminar) btnEliminar.style.display = 'inline-flex';
-
-        actualizarVisor();
-        document.getElementById('lightbox').classList.add('active');
-        document.body.style.overflow = 'hidden'; 
-    }
-
-    function cerrarLightbox() {
-        const lightbox = document.getElementById('lightbox');
-        lightbox.classList.remove('active');
-        document.body.style.overflow = '';
-        document.getElementById('lightboxContent').innerHTML = '';
-    }
-
-    function cerrarLightboxSiFondo(event) {
-        if (event.target.id === 'lightbox') cerrarLightbox();
-    }
-
-    function actualizarVisor() {
-        if (!evidenciasVisor || evidenciasVisor.length === 0) return;
-        
-        const evidencia = evidenciasVisor[indiceVisorActual];
-        const contenido = document.getElementById('lightboxContent');
-        const enlaceDescarga = document.getElementById('lbDownloadLink');
-        
-        const url = evidencia.Url_Archivo || evidencia.url_archivo;
-        
-        enlaceDescarga.href = url;
-        enlaceDescarga.download = url.split('/').pop(); 
-        
-        const esVideo = url.match(/\.(mp4|avi|mov|webm|mkv)$/i);
-        const esImagen = url.match(/\.(jpg|jpeg|png|gif|webp|avif)$/i);
-        
-        if (esVideo) {
-            contenido.innerHTML = `<video src="${url}" class="lb-media-item" controls autoplay style="max-height:80vh; max-width:90vw;"></video>`;
-        } else if (esImagen) {
-            contenido.innerHTML = `<img src="${url}" class="lb-media-item" style="max-height:80vh; max-width:90vw; object-fit:contain;" onerror="this.src='Img/Logo_pestaña.png'">`;
-        } else {
-            contenido.innerHTML = `<div style="color:white; text-align:center;"><i class="fas fa-file-alt" style="font-size:5rem;"></i><h3>Documento</h3><p>Descarga para ver.</p></div>`;
+        switch(e.key) {
+            case 'Escape': cerrarLightbox(); break;
+            case 'ArrowLeft': imagenAnterior(e); break;
+            case 'ArrowRight': imagenSiguiente(e); break;
+            case 'Delete': eliminarEvidenciaActual(); break;
         }
+    });
+}
+
+function abrirVisor(indice) {
+    evidenciasVisor = evidenciasEstudianteActual;
+    indiceVisorActual = indice;
+    actualizarVisor();
+    document.getElementById('lightbox').classList.add('active');
+    document.body.style.overflow = 'hidden'; 
+    
+    // Mostrar botón eliminar en modo galería
+    const btnEliminar = document.querySelector('.btn-lb-delete');
+    if(btnEliminar) btnEliminar.style.display = 'inline-flex';
+}
+
+function abrirPrevisualizacion(url) {
+    const lightbox = document.getElementById('lightbox');
+    const contenido = document.getElementById('lightboxContent');
+    const enlaceDescarga = document.getElementById('lbDownloadLink');
+    
+    contenido.innerHTML = `<img src="${url}" class="lb-media-item" style="max-height:80vh; max-width:90vw;" onerror="this.src='Img/Logo_pestaña.png'">`;
+    enlaceDescarga.href = url;
+    
+    // Ocultar eliminar en previsualización
+    const btnEliminar = document.querySelector('.btn-lb-delete');
+    if(btnEliminar) btnEliminar.style.display = 'none';
+
+    lightbox.classList.add('active');
+}
+
+function cerrarLightbox() {
+    document.getElementById('lightbox').classList.remove('active');
+    document.body.style.overflow = '';
+    document.getElementById('lightboxContent').innerHTML = ''; // Detener videos
+}
+
+function cerrarLightboxSiFondo(event) {
+    if (event.target.id === 'lightbox') cerrarLightbox();
+}
+
+function actualizarVisor() {
+    if (!evidenciasVisor || evidenciasVisor.length === 0) return;
+    
+    const evidencia = evidenciasVisor[indiceVisorActual];
+    const contenido = document.getElementById('lightboxContent');
+    const enlaceDescarga = document.getElementById('lbDownloadLink');
+    
+    const url = evidencia.Url_Archivo || evidencia.url_archivo;
+    enlaceDescarga.href = url;
+    enlaceDescarga.download = url.split('/').pop();
+    
+    const esVideo = url.match(/\.(mp4|avi|mov|webm|mkv)$/i);
+    const esImagen = url.match(/\.(jpg|jpeg|png|gif|webp|avif)$/i);
+    
+    if (esVideo) {
+        contenido.innerHTML = `<video src="${url}" class="lb-media-item" controls autoplay style="max-height:80vh; max-width:90vw;"></video>`;
+    } else if (esImagen) {
+        contenido.innerHTML = `<img src="${url}" class="lb-media-item" style="max-height:80vh; max-width:90vw; object-fit:contain;" onerror="this.src='Img/Logo_pestaña.png'">`;
+    } else {
+        contenido.innerHTML = `<div style="color:white; text-align:center;"><i class="fas fa-file-alt" style="font-size:5rem;"></i><h3>Documento</h3><p>Descarga para ver.</p></div>`;
     }
+}
 
-    function imagenSiguiente(e) {
-        if(e) e.stopPropagation();
-        if (evidenciasVisor.length === 0) return;
-        indiceVisorActual = (indiceVisorActual + 1) % evidenciasVisor.length;
-        actualizarVisor();
-    }
+function imagenSiguiente(e) {
+    if(e) e.stopPropagation();
+    if (evidenciasVisor.length === 0) return;
+    indiceVisorActual = (indiceVisorActual + 1) % evidenciasVisor.length;
+    actualizarVisor();
+}
 
-    function imagenAnterior(e) {
-        if(e) e.stopPropagation();
-        if (evidenciasVisor.length === 0) return;
-        indiceVisorActual = (indiceVisorActual - 1 + evidenciasVisor.length) % evidenciasVisor.length;
-        actualizarVisor();
-    }
+function imagenAnterior(e) {
+    if(e) e.stopPropagation();
+    if (evidenciasVisor.length === 0) return;
+    indiceVisorActual = (indiceVisorActual - 1 + evidenciasVisor.length) % evidenciasVisor.length;
+    actualizarVisor();
+}
 
-    async function eliminarEvidenciaActual() {
-        cerrarLightbox();
-        setTimeout(async () => {
-            const evidencia = evidenciasVisor[indiceVisorActual];
-            if(!evidencia) return;
+async function eliminarEvidenciaActual() {
+    const evidencia = evidenciasVisor[indiceVisorActual];
+    if(!evidencia) return;
 
-            const idEvidencia = evidencia.id || evidencia.ID;
+    // Cerramos el lightbox temporalmente para que SweetAlert se vea bien
+    document.getElementById('lightbox').classList.remove('active');
+
+    const result = await Swal.fire({
+        title: '¿Eliminar evidencia?',
+        text: "Se borrará de la nube y la base de datos.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d32f2f',
+        confirmButtonText: 'Sí, eliminar'
+    });
+
+    if (result.isConfirmed) {
+        try {
+            const id = evidencia.id || evidencia.ID;
+            const res = await fetch(`${API_URL}/eliminar_evidencia/${id}`, { method: 'DELETE' });
             
-            const result = await Swal.fire({
-                title: '¿Eliminar evidencia?',
-                text: 'Esta acción borrará el archivo permanentemente.',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d32f2f',
-                confirmButtonText: 'Sí, eliminar',
-                cancelButtonText: 'Cancelar'
-            });
-
-            if (result.isConfirmed) {
-                try {
-                    const res = await fetch(`${API_URL}/eliminar_evidencia/${idEvidencia}`, { method: 'DELETE' });
-                    if(res.ok) {
-                        const indexGlobal = evidenciasEstudianteActual.findIndex(e => (e.id || e.ID) == idEvidencia);
-                        if(indexGlobal !== -1) evidenciasEstudianteActual.splice(indexGlobal, 1);
-                        renderizarEvidenciasEstudiante(); 
-                        Swal.fire('Eliminado', 'Evidencia eliminada.', 'success');
-                    } else { throw new Error('Error al eliminar'); }
-                } catch (error) {
-                    Swal.fire('Error', 'No se pudo eliminar.', 'error');
-                    abrirVisor(indiceVisorActual);
-                }
+            if(res.ok) {
+                evidenciasEstudianteActual.splice(indiceVisorActual, 1);
+                renderizarEvidenciasEstudiante();
+                Swal.fire('Eliminado', 'Evidencia borrada.', 'success');
+                // No reabrimos el visor porque la foto ya no existe
             } else {
-                abrirVisor(indiceVisorActual);
+                throw new Error('Error servidor');
             }
-        }, 200);
+        } catch (error) {
+            Swal.fire('Error', 'No se pudo eliminar.', 'error');
+            // Si falló, reabrimos el visor
+            document.getElementById('lightbox').classList.add('active');
+        }
+    } else {
+        // Si canceló, reabrimos el visor
+        document.getElementById('lightbox').classList.add('active');
     }
+}
 
     // ==========================================
     // 8. FUNCIONES DE SEGURIDAD Y LOGS
@@ -3320,215 +3301,171 @@
     }
 
     // ==========================================
-    // 13. FUNCIONES DE SELECCIÓN MÚLTIPLE (ACTIVO)
-    // ==========================================
-    function toggleModoSeleccion() {
-        modoSeleccion = !modoSeleccion;
-        const barra = document.getElementById('floatingBar');
-        const btn = document.getElementById('btnSelectMode');
-        
-        if (modoSeleccion) {
-            barra.classList.add('active');
-            btn.innerHTML = '<i class="fas fa-times"></i> Cancelar';
-            btn.style.background = 'var(--text-sec)';
-        } else {
-            barra.classList.remove('active');
-            btn.innerHTML = '<i class="fas fa-check-square"></i> Seleccionar';
-            btn.style.background = ''; 
-            evidenciasSeleccionadas = [];
-        }
-        renderizarEvidenciasEstudiante();
-    }
-
-    function toggleSeleccionEvidencia(id, elemento) {
-        const index = evidenciasSeleccionadas.indexOf(id);
-        if (index === -1) {
-            evidenciasSeleccionadas.push(id);
-            elemento.classList.add('selected');
-        } else {
-            evidenciasSeleccionadas.splice(index, 1);
-            elemento.classList.remove('selected');
-        }
-        document.getElementById('countSelection').textContent = evidenciasSeleccionadas.length;
-    }
-
-    function cancelarSeleccion() {
-        modoSeleccion = false;
+// 13. FUNCIONES DE SELECCIÓN MÚLTIPLE (ACTIVO)
+// ==========================================
+function toggleModoSeleccion() {
+    modoSeleccion = !modoSeleccion;
+    const barra = document.getElementById('floatingBar');
+    const btn = document.getElementById('btnSelectMode');
+    
+    if (modoSeleccion) {
+        barra.classList.add('active');
+        btn.innerHTML = '<i class="fas fa-times"></i> Cancelar';
+        btn.style.background = 'var(--text-sec)';
+    } else {
+        barra.classList.remove('active');
+        btn.innerHTML = '<i class="fas fa-check-square"></i> Seleccionar';
+        btn.style.background = ''; 
         evidenciasSeleccionadas = [];
-        document.getElementById('floatingBar').classList.remove('active');
-        document.getElementById('btnSelectMode').innerHTML = '<i class="fas fa-check-square"></i> Seleccionar';
-        document.getElementById('btnSelectMode').style.background = '';
-        renderizarEvidenciasEstudiante();
     }
+    renderizarEvidenciasEstudiante();
+}
 
-    async function descargarSeleccionadas() {
-        if (evidenciasSeleccionadas.length === 0) {
-            Swal.fire('Atención', 'Selecciona al menos una evidencia.', 'warning');
-            return;
-        }
-        
-        try {
-            const btnDescarga = document.querySelector('#floatingBar .btn-float');
-            btnDescarga.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Zippeando...';
-            
-            const formData = new FormData();
-            formData.append('ids', evidenciasSeleccionadas.join(','));
-            
-            const respuesta = await fetch(`${API_URL}/descargar_evidencias_zip`, {
-                method: 'POST',
-                body: formData
-            });
-            
-            if (respuesta.ok) {
-                const blob = await respuesta.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `evidencias_${new Date().getTime()}.zip`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-                cancelarSeleccion();
-                Swal.fire('¡Listo!', 'Descarga iniciada.', 'success');
-            } else { throw new Error('Error al crear ZIP'); }
-        } catch (error) {
-            Swal.fire('Error', 'No se pudo descargar.', 'error');
-        } finally {
-             const btnDescarga = document.querySelector('#floatingBar .btn-float');
-             if(btnDescarga) btnDescarga.innerHTML = '<i class="fas fa-download"></i> Descargar';
-        }
+function toggleSeleccionEvidencia(id, elemento) {
+    const index = evidenciasSeleccionadas.indexOf(id);
+    if (index === -1) {
+        evidenciasSeleccionadas.push(id);
+        elemento.classList.add('selected');
+    } else {
+        evidenciasSeleccionadas.splice(index, 1);
+        elemento.classList.remove('selected');
     }
+    document.getElementById('countSelection').textContent = evidenciasSeleccionadas.length;
+}
 
-    async function eliminarSeleccionadas() {
-        if (evidenciasSeleccionadas.length === 0) return Swal.fire('Atención', 'Selecciona algo para borrar.', 'warning');
-        
-        const confirmacion = await Swal.fire({
-            title: `¿Eliminar ${evidenciasSeleccionadas.length} archivos?`,
-            text: "Se borrarán de la nube y la base de datos para siempre.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d32f2f',
-            confirmButtonText: 'Sí, borrar todo',
-            cancelButtonText: 'Cancelar'
-        });
-        
-        if (!confirmacion.isConfirmed) return;
-        
-        try {
-            Swal.fire({ title: 'Eliminando...', didOpen: () => { Swal.showLoading(); } });
+function cancelarSeleccion() {
+    modoSeleccion = false;
+    evidenciasSeleccionadas = [];
+    document.getElementById('floatingBar').classList.remove('active');
+    document.getElementById('btnSelectMode').innerHTML = '<i class="fas fa-check-square"></i> Seleccionar';
+    document.getElementById('btnSelectMode').style.background = '';
+    renderizarEvidenciasEstudiante();
+}
 
-            // Borrado en paralelo para velocidad
-            const promesas = evidenciasSeleccionadas.map(id => 
-                fetch(`${API_URL}/eliminar_evidencia/${id}`, { method: 'DELETE' })
-            );
-            await Promise.all(promesas);
-            
-            // Actualizar interfaz
-            evidenciasEstudianteActual = evidenciasEstudianteActual.filter(e => 
-                !evidenciasSeleccionadas.includes(e.id || e.ID)
-            );
+async function descargarSeleccionadas() {
+    if (evidenciasSeleccionadas.length === 0) return Swal.fire('Atención', 'Selecciona algo.', 'warning');
+    
+    const btn = document.querySelector('#floatingBar .btn-float');
+    const original = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Zippeando...';
+    
+    try {
+        const formData = new FormData();
+        formData.append('ids', evidenciasSeleccionadas.join(','));
+        const res = await fetch(`${API_URL}/descargar_evidencias_zip`, { method: 'POST', body: formData });
+        
+        if(res.ok) {
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `seleccion_${Date.now()}.zip`;
+            document.body.appendChild(a); a.click(); a.remove();
             cancelarSeleccion();
-            Swal.fire('Eliminado', 'Archivos borrados correctamente.', 'success');
-            
-        } catch (error) {
-            Swal.fire('Error', 'Hubo un problema al eliminar.', 'error');
-        }
+            Swal.fire('Descarga iniciada', '', 'success');
+        } else throw new Error();
+    } catch(e) {
+        Swal.fire('Error', 'No se pudo descargar.', 'error');
+    } finally {
+        btn.innerHTML = original;
     }
+}
+
+async function eliminarSeleccionadas() {
+    if (evidenciasSeleccionadas.length === 0) return;
     
-    // ==========================================
-    // 14. LÓGICA DE REASIGNACIÓN (NUEVO)
-    // ==========================================
-    
-    let destinosSeleccionados = new Set(); // Almacén de cédulas seleccionadas
+    const conf = await Swal.fire({
+        title: `¿Eliminar ${evidenciasSeleccionadas.length} archivos?`,
+        text: "Se borrarán de la nube permanentemente.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d32f2f',
+        confirmButtonText: 'Sí, borrar'
+    });
 
-    function abrirModalReasignar() {
-        if (evidenciasSeleccionadas.length === 0) return;
-        destinosSeleccionados.clear(); // Limpiar selección anterior
-        renderizarListaReasignar(usuarios); // Mostrar todos los usuarios
-        document.getElementById('modalReasignar').classList.add('active');
-    }
-
-    function renderizarListaReasignar(listaUsuarios) {
-        const contenedor = document.getElementById('listaUsuariosReasignar');
-        // Filtramos para no mostrar la bandeja ni administradores
-        const usuariosValidos = listaUsuarios.filter(u => u.tipo == 1 && u.cedula !== '9999999990');
-
-        contenedor.innerHTML = usuariosValidos.map(u => {
-            // Verificamos si ya estaba seleccionado para pintarlo azul
-            const isSelected = destinosSeleccionados.has(u.cedula) ? 'seleccionado' : '';
-            const iconCheck = destinosSeleccionados.has(u.cedula) 
-                ? '<i class="fas fa-check-square" style="color:var(--info);"></i>' 
-                : '<i class="far fa-square" style="color:#ccc;"></i>';
-            
-            return `
-            <div class="usuario-item ${isSelected}" onclick="toggleDestino('${u.cedula}')" id="user-row-${u.cedula}">
-                <div>
-                    <strong>${u.nombre} ${u.apellido}</strong><br>
-                    <small>${u.cedula}</small>
-                </div>
-                ${iconCheck}
-            </div>
-        `}).join('');
-    }
-
-    function toggleDestino(cedula) {
-        // Si ya está, lo quita. Si no está, lo agrega.
-        if (destinosSeleccionados.has(cedula)) {
-            destinosSeleccionados.delete(cedula);
-        } else {
-            destinosSeleccionados.add(cedula);
-        }
-        // Refrescamos la lista visualmente manteniendo el filtro de búsqueda
-        const textoBusqueda = document.getElementById('busquedaReasignar').value;
-        filtrarUsuariosReasignar(textoBusqueda);
-    }
-
-    function filtrarUsuariosReasignar(texto) {
-        const busqueda = texto.toLowerCase();
-        // Filtramos la lista global de usuarios
-        const filtrados = usuarios.filter(u => 
-            (u.tipo == 1 && u.cedula !== '9999999990') &&
-            (u.nombre + ' ' + u.apellido + u.cedula).toLowerCase().includes(busqueda)
+    if(conf.isConfirmed) {
+        Swal.showLoading();
+        const promesas = evidenciasSeleccionadas.map(id => 
+            fetch(`${API_URL}/eliminar_evidencia/${id}`, { method: 'DELETE' })
         );
-        renderizarListaReasignar(filtrados);
-    }
-
-    async function enviarReasignacionMasiva() {
-        if (destinosSeleccionados.size === 0) {
-            Swal.fire('Atención', 'Selecciona al menos un estudiante.', 'warning');
-            return;
-        }
-
-        const cedulasArray = Array.from(destinosSeleccionados);
+        await Promise.all(promesas);
         
-        try {
-            mostrarMensaje('Procesando asignación...', 'info');
-            
-            const respuesta = await fetch(`${API_URL}/reasignar_evidencias`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    ids: evidenciasSeleccionadas.join(','),
-                    cedula_destino: cedulasArray.join(',') // Enviamos lista separada por comas
-                })
-            });
-
-            const res = await respuesta.json();
-            
-            if (res.mensaje) {
-                mostrarMensaje(res.mensaje, 'success');
-                cerrarModal('modalReasignar');
-                cancelarSeleccion();
-                // Recargar para ver los cambios si estamos viendo un perfil
-                if (estudianteActual) verEvidenciasEstudiante(estudianteActual);
-            } else {
-                mostrarMensaje('Error: ' + res.error, 'error');
-            }
-        } catch (e) {
-            mostrarMensaje('Error de conexión', 'error');
-        }
+        evidenciasEstudianteActual = evidenciasEstudianteActual.filter(e => 
+            !evidenciasSeleccionadas.includes(e.id || e.ID)
+        );
+        cancelarSeleccion();
+        Swal.fire('Listo', 'Archivos eliminados.', 'success');
     }
+}
+
+// ==========================================
+// 14. LÓGICA DE REASIGNACIÓN
+// ==========================================
+let destinosSeleccionados = new Set(); 
+
+function abrirModalReasignar() {
+    if (evidenciasSeleccionadas.length === 0) return;
+    destinosSeleccionados.clear(); 
+    renderizarListaReasignar(usuarios); 
+    document.getElementById('modalReasignar').classList.add('active');
+}
+
+function renderizarListaReasignar(listaUsuarios) {
+    const contenedor = document.getElementById('listaUsuariosReasignar');
+    const usuariosValidos = listaUsuarios.filter(u => u.tipo == 1 && u.cedula !== '9999999990');
+    contenedor.innerHTML = usuariosValidos.map(u => {
+        const isSelected = destinosSeleccionados.has(u.cedula) ? 'seleccionado' : '';
+        const iconCheck = destinosSeleccionados.has(u.cedula) 
+            ? '<i class="fas fa-check-square" style="color:var(--info);"></i>' 
+            : '<i class="far fa-square" style="color:#ccc;"></i>';
+        return `<div class="usuario-item ${isSelected}" onclick="toggleDestino('${u.cedula}')"><div><strong>${u.nombre} ${u.apellido}</strong><br><small>${u.cedula}</small></div>${iconCheck}</div>`
+    }).join('');
+}
+
+function toggleDestino(cedula) {
+    destinosSeleccionados.has(cedula) ? destinosSeleccionados.delete(cedula) : destinosSeleccionados.add(cedula);
+    filtrarUsuariosReasignar(document.getElementById('busquedaReasignar').value);
+}
+
+function filtrarUsuariosReasignar(texto) {
+    const busqueda = texto.toLowerCase();
+    const filtrados = usuarios.filter(u => (u.tipo == 1) && (u.nombre + ' ' + u.apellido + u.cedula).toLowerCase().includes(busqueda));
+    renderizarListaReasignar(filtrados);
+}
+
+async function enviarReasignacionMasiva() {
+    if (destinosSeleccionados.size === 0) return Swal.fire('Atención', 'Selecciona destinatarios.', 'warning');
+    try {
+        mostrarMensaje('Procesando...', 'info');
+        const res = await fetch(`${API_URL}/reasignar_evidencias`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ ids: evidenciasSeleccionadas.join(','), cedula_destino: Array.from(destinosSeleccionados).join(',') })
+        });
+        const data = await res.json();
+        if(data.mensaje) {
+            mostrarMensaje(data.mensaje, 'success'); cerrarModal('modalReasignar'); cancelarSeleccion();
+        } else { mostrarMensaje('Error: ' + data.error, 'error'); }
+    } catch(e) { mostrarMensaje('Error de conexión', 'error'); }
+}
+
+// ==========================================
+// 15. UTILS (DRAG AND DROP)
+// ==========================================
+function configurarDragAndDrop() {
+    const dropZone = document.getElementById('dropZoneIA');
+    if(!dropZone) return;
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
+        document.body.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
+    });
+    ['dragenter', 'dragover'].forEach(eventName => dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false));
+    ['dragleave', 'drop'].forEach(eventName => dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false));
+    dropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        if (typeof handleUploadIA === 'function') handleUploadIA({ files: dt.files, value: '' });
+    }, false);
+}
+
     </script>
 </body>
 </html>
