@@ -32,7 +32,7 @@ def ahora_ecuador():
 
 # --- CONFIGURACIÓN DE CORREO ---
 SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 465  # Usamos 465 para SSL directo
+SMTP_PORT = 465  # <--- Asegúrate de que sea 465
 SMTP_EMAIL = "karlos.ayala.lopez.1234@gmail.com"
 SMTP_PASSWORD = "mzjg jvxj mruk qgeb"
 
@@ -299,15 +299,16 @@ def registrar_auditoria(accion: str, detalle: str, usuario: str = "Sistema", ip:
         logging.error(f"Error en auditoria: {e}")
 
 def enviar_correo_real(destinatario: str, asunto: str, mensaje: str, html: bool = False) -> bool:
-    import requests # Usaremos la librería requests que es más sencilla para APIs
+    import requests # Asegúrate de poner 'requests' en tu requirements.txt
     
-    # Tu clave gratuita de Resend
-    API_KEY = "re_UgHvnVwc_GoohB6so8khU8mCBmLJB1bzJ"
+    # 1. Tu API KEY de Resend
+    API_KEY = "re_UgHvnVwc_GoohB6so8khU8mCBmLJB1bzJ" 
     
     try:
         url = "https://api.resend.com/emails"
         payload = {
-            "from": "onboarding@resend.dev",
+            # 2. AQUÍ PONES TU DOMINIO
+            "from": "Soporte Despertar <soporte@uepdespertar-evidencias.work>",
             "to": [destinatario],
             "subject": asunto,
             "html": mensaje if html else f"<p>{mensaje}</p>"
@@ -317,18 +318,17 @@ def enviar_correo_real(destinatario: str, asunto: str, mensaje: str, html: bool 
             "Content-Type": "application/json"
         }
         
-        # Enviamos el correo como una petición web normal (Puerto 443)
-        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        response = requests.post(url, json=payload, headers=headers)
         
         if response.status_code in [200, 201]:
-            print(f"✅ Correo enviado vía API Resend a {destinatario}")
+            print(f"✅ Correo enviado desde el dominio a {destinatario}")
             return True
         else:
-            print(f"❌ Error API Resend: {response.text}")
+            print(f"❌ Error Resend: {response.text}")
             return False
             
     except Exception as e:
-        print(f"❌ Error de conexión con API Resend: {e}")
+        print(f"❌ Error de conexión: {e}")
         return False
     
 def calcular_hash(ruta: str) -> str:

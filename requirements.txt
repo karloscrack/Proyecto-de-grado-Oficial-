@@ -9,3 +9,4 @@ opencv-python-headless
 pytz
 pillow
 pillow-avif-plugin
+requests
