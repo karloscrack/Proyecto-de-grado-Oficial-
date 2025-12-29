@@ -1,17 +1,4 @@
-import socket
-try:
-    # Guardamos la función original
-    original_getaddrinfo = socket.getaddrinfo
-    
-    # Creamos una versión que solo busca direcciones IPv4 (AF_INET)
-    def getaddrinfo_ipv4_only(host, port, family=0, type=0, proto=0, flags=0):
-        return original_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
-        
-    # Reemplazamos la función del sistema
-    socket.getaddrinfo = getaddrinfo_ipv4_only
-    print("✅ Parche IPv4 aplicado correctamente: Conectividad forzada a protocolo antiguo.")
-except Exception as e:
-    print(f"⚠️ No se pudo aplicar parche IPv4: {e}")
+import socket  # <--- ¡AGREGA ESTO! Es vital para que funcione el truco de la IP.
 import shutil
 import os
 import logging
@@ -114,18 +101,20 @@ print(f"📁 Ruta base de datos: {DB_NAME}")
 
 def get_db_connection():
     try:
-        # 1. Definimos el host explícitamente
+        # 1. Definimos el host
         DB_HOST = "db.wwrbrabdwhoiougbaskz.supabase.co"
         
-        # 2. TRUCO MAESTRO: Resolvemos la IP manualmente usando Python (que sí obedece al parche IPv4)
-        # Esto convierte "db.supabase.co" en algo como "54.12.34.56" (IPv4 segura)
-        ip_address = socket.gethostbyname(DB_HOST)
-        print(f"🔍 DNS Resuelto manualmente: {DB_HOST} -> {ip_address}")
+        # 2. BÚSQUEDA SEGURA DE IP (Solo IPv4)
+        # Esto evita el error [Errno -5] porque no parcheamos todo el sistema,
+        # solo pedimos la dirección específica para esta conexión.
+        data = socket.getaddrinfo(DB_HOST, 6543, family=socket.AF_INET, proto=socket.IPPROTO_TCP)
+        ip_address = data[0][4][0]
+        print(f"🔍 IP Supabase detectada: {ip_address}")
 
-        # 3. Cadena de conexión original (Mantenemos el host aquí para que el SSL funcione)
+        # 3. Cadena de conexión (Mantenemos el host para SSL)
         conn_str = "postgresql://postgres:1ZulgnaY0cnsz2p4@db.wwrbrabdwhoiougbaskz.supabase.co:6543/postgres?sslmode=require"
         
-        # 4. Conectamos pasando 'hostaddr'. Esto obliga a psycopg2 a ir a la IP v4 que encontramos
+        # 4. Conectamos forzando la IP que encontramos
         conn = psycopg2.connect(conn_str, hostaddr=ip_address)
         conn.cursor_factory = RealDictCursor 
         return conn
