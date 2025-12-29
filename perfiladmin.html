@@ -763,6 +763,21 @@
         background-color: #e0f7fa; /* Azul claro cuando está seleccionado */
         border-left: 4px solid var(--info);
     }
+
+    /* ==========================================
+           FIX: ALERTAS SIEMPRE AL FRENTE (SOLUCIÓN Z-INDEX)
+           ========================================== */
+        /* Esto obliga a que los mensajes de confirmación tengan 
+           la prioridad más alta posible, superando al visor de fotos */
+        .swal2-container {
+            z-index: 20000 !important; 
+        }
+        
+        /* Aseguramos que el visor se quede un paso atrás de la alerta */
+        .lightbox-modal {
+            z-index: 10000 !important; 
+        }
+        
     </style>
 </head>
 
@@ -2745,49 +2760,56 @@ function imagenAnterior(e) {
 }
 
 async function eliminarEvidenciaActual() {
+        // Verificamos que haya una evidencia seleccionada
         const evidencia = evidenciasVisor[indiceVisorActual];
         if(!evidencia) return;
 
-        // 1. Confirmación primero
+        // 1. Preguntamos primero
         const result = await Swal.fire({
             title: '¿Eliminar evidencia?',
-            text: "Se borrará de la nube y la base de datos.",
+            text: "Esta acción borrará el archivo permanentemente de la nube y del sistema.",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d32f2f',
-            confirmButtonText: 'Sí, eliminar'
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
         });
 
         if (result.isConfirmed) {
-            // 2. ¡CORRECCIÓN CRÍTICA! 
-            // Llamamos a cerrarLightbox() AQUÍ para desbloquear el scroll inmediatamente.
-            // Antes solo ocultábamos el div, por eso se quedaba congelada la pantalla.
+            // --- CORRECCIÓN CRÍTICA ANTI-CONGELAMIENTO ---
+            // Cerramos el visor INMEDIATAMENTE para liberar el scroll de la página
+            // antes de que empiece cualquier proceso de carga.
             cerrarLightbox(); 
 
             try {
-                // 3. Mostrar cargando mientras borra
+                // 2. Mostrar "Cargando..." mientras el servidor trabaja
                 Swal.fire({
                     title: 'Eliminando...',
-                    text: 'Procesando borrado en la nube...',
+                    text: 'Procesando la orden en Backblaze...',
                     allowOutsideClick: false,
-                    didOpen: () => Swal.showLoading()
+                    didOpen: () => { Swal.showLoading(); }
                 });
 
+                // 3. Enviamos la orden de borrado al servidor
                 const id = evidencia.id || evidencia.ID;
                 const res = await fetch(`${API_URL}/eliminar_evidencia/${id}`, { method: 'DELETE' });
                 
                 if(res.ok) {
-                    // Actualizar lista visual
+                    // 4. Si salió bien, la quitamos de la lista visual
                     evidenciasEstudianteActual.splice(indiceVisorActual, 1);
+                    
+                    // Actualizamos la cuadrícula de fotos
                     renderizarEvidenciasEstudiante();
                     
-                    Swal.fire('Eliminado', 'Evidencia borrada correctamente.', 'success');
+                    Swal.fire('Eliminado', 'La evidencia ha sido borrada correctamente.', 'success');
                 } else {
-                    throw new Error('Error servidor');
+                    // Si el servidor dio error (ej: 500), lanzamos el error
+                    throw new Error('El servidor no pudo borrar el archivo.');
                 }
             } catch (error) {
                 console.error(error);
-                Swal.fire('Error', 'No se pudo eliminar.', 'error');
+                Swal.fire('Error', 'No se pudo eliminar la evidencia. Intenta de nuevo.', 'error');
+                // Nota: No reabrimos el visor para evitar trabas, el usuario puede abrir otra foto si quiere.
             }
         }
     }

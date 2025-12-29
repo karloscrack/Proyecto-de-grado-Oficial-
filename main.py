@@ -1394,194 +1394,91 @@ import re
 import os
 
 @app.post("/optimizar_sistema")
-async def optimizar_sistema(background_tasks: BackgroundTasks):
-    """
-    V4.3 - MANTENIMIENTO COMPLETO + REPORTE SHERLOCK:
-    1. 🧲 IMÁN: Recupera archivos perdidos.
-    2. 🧟 ZOMBIES: Borra evidencias de usuarios eliminados.
-    3. 👻 CAZAFANTASMAS: Borra archivos inexistentes (Local/Nube).
-    4. 🤖 TERMINATOR: Borra duplicados físicos reales en S3.
-    5. 🕵️ SHERLOCK: Imprime lista de dueños de archivos.
-    """
+async def optimizar_sistema():
     try:
-        def tarea_mantenimiento_profundo():
-            print("🔧 INICIANDO MANTENIMIENTO SHERLOCK V4.3 (MODO COMPLETO)...")
-            try:
-                conn = get_db_connection()
-                c = conn.cursor()
-
-                # =========================================================
-                # PASO 1: EL IMÁN (Recuperar perdidos)
-                # =========================================================
-                print("🧲 Paso 1: Atrayendo archivos huérfanos a la Bandeja...")
-                c.execute("""
-                    UPDATE Evidencias 
-                    SET CI_Estudiante = '9999999990' 
-                    WHERE CI_Estudiante IS NULL OR CI_Estudiante = 'PENDIENTE' OR CI_Estudiante = ''
-                """)
-
-                # =========================================================
-                # PASO 2: ELIMINAR ZOMBIES (Usuarios borrados)
-                # =========================================================
-                print("🧟 Paso 2: Eliminando Zombies...")
-                c.execute("DELETE FROM Evidencias WHERE CI_Estudiante NOT IN (SELECT CI FROM Usuarios)")
-                if c.rowcount > 0:
-                    print(f"   💀 {c.rowcount} zombies eliminados.")
-
-                # =========================================================
-                # PASO 3: CAZAFANTASMAS (Verificación REAL en Nube/Disco)
-                # =========================================================
-                print("👻 Paso 3: Cazando fantasmas (Validación física)...")
-                evidencias = c.execute("SELECT id, Url_Archivo FROM Evidencias").fetchall()
-                fantasmas = 0
-                
-                for ev in evidencias:
-                    url = ev['Url_Archivo']
-                    existe = False
-                    peso_kb = 0
-                    
-                    # A. Verificación NUBE
-                    if s3_client and BUCKET_NAME in url:
-                        try:
-                            parsed = urlparse(url)
-                            key = parsed.path.lstrip('/')
-                            meta = s3_client.head_object(Bucket=BUCKET_NAME, Key=key)
-                            peso_kb = meta['ContentLength'] / 1024
-                            existe = True
-                        except Exception as e:
-                            if "404" in str(e) or "Not Found" in str(e): existe = False
-                            else: existe = True 
-                    
-                    # B. Verificación LOCAL 
-                    elif "/local/" in url:
-                        ruta_fisica = url.replace("/local/", "./").lstrip("/")
-                        if not os.path.exists(ruta_fisica):
-                            # Intento ruta absoluta para Docker
-                            ruta_fisica = os.path.join(os.getcwd(), url.replace("/local/", "").lstrip("/"))
-                        
-                        if os.path.exists(ruta_fisica):
-                            existe = True
-                            peso_kb = os.path.getsize(ruta_fisica) / 1024
-                        else:
-                            existe = False
-
-                    # ACCIÓN
-                    if existe:
-                        if peso_kb > 0:
-                            c.execute("UPDATE Evidencias SET Tamanio_KB = %s WHERE id = %s", (peso_kb, ev['id']))
-                    else:
-                        c.execute("DELETE FROM Evidencias WHERE id = %s", (ev['id'],))
-                        fantasmas += 1
-                
-                print(f"   ✨ {fantasmas} fantasmas eliminados.")
-
-                # =========================================================
-                # PASO 4: TERMINATOR (Borrado Físico de Duplicados S3)
-                # =========================================================
-                print("🤖 Paso 4: Eliminando duplicados físicos en S3...")
-                
-                def borrar_de_nube_real(url_archivo):
-                    if s3_client and BUCKET_NAME in url_archivo:
-                        try:
-                            parsed = urlparse(url_archivo)
-                            key = parsed.path.lstrip('/')
-                            s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
-                            print(f"   🗑️ Borrado S3: {key}")
-                        except: pass
-
-                todas = c.execute("SELECT id, CI_Estudiante, Url_Archivo, Hash FROM Evidencias").fetchall()
-                vistos = {}
-                ids_a_borrar = []
-                
-                for ev in todas:
-                    cedula = ev['CI_Estudiante']
-                    url = ev['Url_Archivo']
-                    nombre_archivo = url.split('/')[-1]
-                    nombre_limpio = re.sub(r'^(manual_)%s\d+_', '', nombre_archivo).lower()
-                    
-                    clave = f"{cedula}|{ev.get('Hash')}" if ev.get('Hash') and ev.get('Hash') != 'PENDIENTE' else f"{cedula}|{nombre_limpio}"
-                    
-                    if clave in vistos:
-                        original = vistos[clave]
-                        if url != original['Url_Archivo']: 
-                            borrar_de_nube_real(url) 
-                        ids_a_borrar.append(ev['id'])
-                    else:
-                        vistos[clave] = ev
-                
-                if ids_a_borrar:
-                    placeholders = ','.join(['%s'] * len(ids_a_borrar))
-                    c.execute(f"DELETE FROM Evidencias WHERE id IN ({placeholders})", ids_a_borrar)
-                    print(f"   ✨ {len(ids_a_borrar)} duplicados eliminados.")
-                
-                conn.commit() 
-
-                # =========================================================
-                # 🕵️ PASO 5: REPORTE SHERLOCK HOLMES
-                # =========================================================
-                print("\n📋 === REPORTE DE EVIDENCIAS ===")
-                
-                usuarios_con_fotos = c.execute("""
-                    SELECT u.Nombre, u.Apellido, u.CI, u.Tipo, u.Activo, COUNT(e.id) as Cantidad
-                    FROM Usuarios u
-                    JOIN Evidencias e ON u.CI = e.CI_Estudiante
-                    GROUP BY u.CI
-                    ORDER BY Cantidad DESC
-                """).fetchall()
-
-                total_revisado = 0
-                for u in usuarios_con_fotos:
-                    estado = "🟢 ACTIVO" if u['Activo'] == 1 else "🔴 INACTIVO"
-                    rol = "👮 ADMIN" if u['Tipo'] == 0 else "🎓 ESTUDIANTE"
-                    print(f"   👤 {u['Nombre']} {u['Apellido']} ({u['CI']})")
-                    print(f"      Estado: {estado} | Rol: {rol} | 📂 Archivos: {u['Cantidad']}")
-                    total_revisado += u['Cantidad']
-                
-                print(f"   🔢 TOTAL SUMADO: {total_revisado}")
-                print("============================================\n")
-
-                # =========================================================
-                # FINALIZACIÓN LIMPIA
-                # =========================================================
-                conn.isolation_level = None 
-                c.execute("VACUUM") # Limpieza de espacio en Postgres
-                conn.close() # Cerramos la conexión principal
-                
-                # --- ACTUALIZACIÓN DE MÉTRICAS (CONEXIÓN NUEVA Y SEGURA) ---
-                stats = calcular_estadisticas_reales()
-                conn2 = get_db_connection() 
-                
-                try:
-                    fecha_hoy = ahora_ecuador().date().isoformat()
-                    
-                    conn2.execute("""
-                        INSERT INTO Metricas_Sistema 
-                        (Fecha, Total_Usuarios, Total_Evidencias, Solicitudes_Pendientes, Almacenamiento_MB)
-                        VALUES (%s, %s, %s, %s, %s)
-                        ON CONFLICT (Fecha) DO UPDATE SET
-                        Total_Usuarios = EXCLUDED.Total_Usuarios,
-                        Total_Evidencias = EXCLUDED.Total_Evidencias,
-                        Solicitudes_Pendientes = EXCLUDED.Solicitudes_Pendientes,
-                        Almacenamiento_MB = EXCLUDED.Almacenamiento_MB
-                    """, (fecha_hoy, stats.get("usuarios_activos",0), stats.get("total_evidencias",0), 
-                          stats.get("solicitudes_pendientes",0), stats.get("almacenamiento_mb",0)))
-                
-                    conn2.commit()
-                except Exception as e:
-                    print(f"Error guardando métricas finales: {e}")
-                finally:
-                    conn2.close() # Cerramos la conexión de métricas
-                
-                print("✅ MANTENIMIENTO COMPLETO FINALIZADO.")
-                
-            except Exception as e:
-                print(f"❌ Error en mantenimiento: {e}")
-
-        background_tasks.add_task(tarea_mantenimiento_profundo)
-        return JSONResponse({"status": "ok", "mensaje": "🕵️ Investigando y limpiando a fondo..."})
+        conn = get_db_connection()
+        c = conn.cursor(cursor_factory=RealDictCursor)
         
+        print("🧹 [MANTENIMIENTO] Iniciando análisis y reparación del sistema...")
+        
+        # --- FASE 1: BORRAR EVIDENCIAS "FANTASMA" (LOGO DEL COLEGIO) ---
+        # Buscamos archivos que están en la base de datos pero NO existen en la nube.
+        c.execute("SELECT id, Url_Archivo FROM Evidencias")
+        todas_evidencias = c.fetchall()
+        
+        eliminadas = 0
+        validas = [] # Lista temporal para la fase 2
+
+        if s3_client and BUCKET_NAME:
+            for ev in todas_evidencias:
+                url = ev['Url_Archivo']
+                existe_en_nube = False
+                
+                # Verificamos solo archivos de Backblaze
+                if url and "backblazeb2.com" in url:
+                    try:
+                        # Extraemos la clave (path) del archivo
+                        partes = url.split(f"/file/{BUCKET_NAME}/")
+                        if len(partes) > 1:
+                            key = partes[1]
+                            # Preguntamos a B2 si el archivo existe (head_object es rápido)
+                            s3_client.head_object(Bucket=BUCKET_NAME, Key=key)
+                            existe_en_nube = True
+                    except Exception:
+                        # Si entra aquí (Error 404), el archivo NO existe físicamente
+                        existe_en_nube = False
+                
+                # Si es un enlace local roto, también cuenta como no existente
+                elif url and not "http" in url and not os.path.exists(url):
+                    existe_en_nube = False
+                
+                # Acciones
+                if not existe_en_nube:
+                    # Borramos el registro corrupto de la BD
+                    c.execute("DELETE FROM Evidencias WHERE id = %s", (ev['id'],))
+                    eliminadas += 1
+                else:
+                    validas.append(ev) # Guardamos para analizar reasignación
+
+        # --- FASE 2: AUTO-REASIGNACIÓN POR NOMBRE DE ARCHIVO ---
+        # Si un archivo se llama "1750296418_foto.jpg", pertenece al usuario "1750296418".
+        
+        # Obtenemos lista de cédulas reales
+        c.execute("SELECT CI FROM Usuarios")
+        cedulas_reales = [u['CI'] for u in c.fetchall()]
+        
+        reasignadas = 0
+        
+        for ev in validas:
+            url = ev['Url_Archivo']
+            for ci in cedulas_reales:
+                # Verificamos si la cédula está incrustada en el nombre del archivo
+                # Y que la cédula tenga longitud válida para evitar falsos positivos
+                if ci in url and len(ci) >= 10:
+                    
+                    # Verificamos a quién pertenece actualmente
+                    c.execute("SELECT CI_Estudiante FROM Evidencias WHERE id = %s", (ev['id'],))
+                    actual = c.fetchone()
+                    
+                    # Si está huérfana o asignada a otro, la corregimos
+                    if actual and actual['CI_Estudiante'] != ci:
+                        c.execute("UPDATE Evidencias SET CI_Estudiante = %s WHERE id = %s", (ci, ev['id']))
+                        reasignadas += 1
+                        print(f"🔄 [REPARACIÓN] Evidencia {ev['id']} reasignada a {ci}")
+                    
+                    break # Ya encontramos su dueño, pasamos a la siguiente foto
+
+        conn.commit()
+        conn.close()
+        
+        mensaje_resultado = f"Limpieza finalizada: {eliminadas} archivos corruptos eliminados. {reasignadas} evidencias recuperadas y asignadas a sus dueños."
+        print(f"✅ {mensaje_resultado}")
+        
+        return JSONResponse({"status": "ok", "mensaje": mensaje_resultado})
+
     except Exception as e:
-        return JSONResponse(content={"error": str(e)})
+        print(f"❌ Error crítico en mantenimiento: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
     
 # =========================================================================
 # 10. ENDPOINTS DE ESTADÍSTICAS Y REPORTES
