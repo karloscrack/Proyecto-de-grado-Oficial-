@@ -1018,6 +1018,8 @@
         } catch (error) { console.error("Error init:", error); }
     });
 
+    
+
     // --- TEMA Y MENÚ ---
     function toggleTheme() {
         document.body.classList.toggle('dark-mode');
@@ -1105,22 +1107,24 @@
     // --- LÓGICA DE LOGIN (USANDO /iniciar_sesion) ---
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
         e.preventDefault(); 
+        
+        // Elementos de la interfaz
         const errorBox = document.getElementById('errorMessage');
         const errorText = document.getElementById('errorText');
         const btn = document.getElementById('loginBtn');
         const originalText = btn.innerHTML;
         
+        // Estado de carga
         errorBox.style.display = 'none';
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
         btn.disabled = true;
 
         const datos = new FormData(this);
         
-        // Sanitizar datos en el frontend también
+        // Limpieza de datos
         const cedula = datos.get('cedula').trim();
         const contrasena = datos.get('contrasena').trim();
         
-        // Validar que no estén vacíos
         if (!cedula || !contrasena) {
             errorText.innerHTML = 'La cédula y contraseña son requeridas';
             errorBox.style.display = 'block';
@@ -1141,25 +1145,26 @@
             console.log('📥 Respuesta del backend:', data);
 
             if (data.autenticado) {
-                // ✅ GUARDAR DATOS EN LOCALSTORAGE
+                // ✅ GUARDADO SEGURO EN LOCALSTORAGE
+                // Guardamos todo como String para evitar confusión de tipos
                 localStorage.setItem('usuario_id', data.datos.id);
                 localStorage.setItem('usuario_cedula', data.datos.cedula);
                 localStorage.setItem('usuario_nombre', data.datos.nombre);
                 localStorage.setItem('usuario_apellido', data.datos.apellido);
-                localStorage.setItem('usuario_tipo', data.datos.tipo);
-                localStorage.setItem('usuario_foto', data.datos.url_foto);
-                localStorage.setItem('usuario_email', data.datos.email);
+                localStorage.setItem('usuario_foto', data.datos.url_foto || '');
+                localStorage.setItem('usuario_email', data.datos.email || '');
                 localStorage.setItem('tutorial_visto', data.datos.tutorial_visto);
+                
+                // CLAVE DEL ÉXITO: Guardamos el tipo explícitamente
+                const tipoUsuario = Number(data.datos.tipo);
+                localStorage.setItem('usuario_tipo', tipoUsuario); 
 
-                // --- CORRECCIÓN CLAVE: DIAGNÓSTICO DE TIPO ---
-                const tipoUsuario = Number(data.datos.tipo); // Convertimos a número seguro
-                console.log("👮 Tipo Detectado:", tipoUsuario, "(0=Admin, 1=Estudiante)");
-
+                // Redirección Inteligente
                 if (tipoUsuario === 0) {
-                    console.log("✅ Redirigiendo a Panel ADMIN...");
+                    console.log("👮 Es Admin (Tipo 0) -> Redirigiendo...");
                     window.location.href = 'perfiladmin.html';
                 } else {
-                    console.log("🎓 Redirigiendo a Perfil ESTUDIANTE...");
+                    console.log("🎓 Es Estudiante (Tipo 1) -> Redirigiendo...");
                     window.location.href = 'perfil.html';
                 }
             } else {

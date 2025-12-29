@@ -1477,6 +1477,17 @@
         configurarEventosTeclado();
     });
 
+    const tipoUsuario = localStorage.getItem('usuario_tipo');
+    
+    // Si NO hay usuario, O si el usuario NO es 0 (Admin) -> ¡FUERA!
+    // Usamos '!=' para que funcione con 0 (número) y "0" (texto)
+    if (tipoUsuario === null || tipoUsuario == undefined || tipoUsuario != 0) {
+        alert("⛔ ACCESO DENEGADO: Área exclusiva para administradores.");
+        window.location.href = 'biblioteca.html'; // Lo mandamos al login
+    } else {
+        console.log("✅ Bienvenido Admin. Acceso autorizado.");
+    }
+
     function iniciarActualizacionesAutomaticas() {
         // Actualizar dashboard y notificaciones cada 10 segundos
         intervaloActualizaciones = setInterval(() => {

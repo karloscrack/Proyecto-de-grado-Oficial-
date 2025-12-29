@@ -902,6 +902,12 @@
             solicitudesEstudiante: []
         };
 
+        const usuarioLogueado = localStorage.getItem('usuario_cedula');
+    
+    if (!usuarioLogueado) {
+        window.location.href = 'biblioteca.html';
+    }
+
         // Variables para Swipe y Long Press
         let pressTimer, isPressing = false;
         let touchStartX = 0;
