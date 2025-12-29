@@ -300,27 +300,31 @@ def registrar_auditoria(accion: str, detalle: str, usuario: str = "Sistema", ip:
 
 def enviar_correo_real(destinatario: str, asunto: str, mensaje: str, html: bool = False) -> bool:
     import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    
+    # Forzamos los valores exactos aquí para evitar cualquier error de lectura
+    servidor_smtp = "smtp.gmail.com"
+    puerto_smtp = 465 
+    correo_remitente = "karlos.ayala.lopez.1234@gmail.com"
+    password_remitente = "mzjg jvxj mruk qgeb"
+
     try:
-        if "tu_correo" in SMTP_EMAIL or not SMTP_PASSWORD:
-            logging.info(f"📧 [SIMULACION] A: {destinatario}")
-            return True
-            
         msg = MIMEMultipart()
-        msg['From'] = SMTP_EMAIL
+        msg['From'] = correo_remitente
         msg['To'] = destinatario
         msg['Subject'] = asunto
         msg.attach(MIMEText(mensaje, 'html' if html else 'plain'))
         
-        # Conexión directa SSL para puerto 465
-        # Esto resuelve el error [Errno 101] al no usar STARTTLS en un puerto bloqueado
-        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=20) as server:
-            server.login(SMTP_EMAIL, SMTP_PASSWORD)
-            server.sendmail(SMTP_EMAIL, destinatario, msg.as_string())
+        # Agregamos un timeout explícito para que Railway no se quede esperando infinitamente
+        with smtplib.SMTP_SSL(servidor_smtp, puerto_smtp, timeout=15) as server:
+            server.login(correo_remitente, password_remitente)
+            server.sendmail(correo_remitente, destinatario, msg.as_string())
         
         logging.info(f"✅ Correo enviado exitosamente a {destinatario}")
         return True
     except Exception as e:
-        logging.error(f"❌ Error de red en Railway: {e}")
+        logging.error(f"❌ Error crítico de red en Railway: {e}")
         return False
 
 def calcular_hash(ruta: str) -> str:
