@@ -32,7 +32,7 @@ def ahora_ecuador():
 
 # --- CONFIGURACIÓN DE CORREO ---
 SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587  # Regresemos al 587 pero con una conexión mejorada
+SMTP_PORT = 465  # Cambiado de 587 a 465 (SSL Directo para Railway)
 SMTP_EMAIL = "karlos.ayala.lopez.1234@gmail.com"
 SMTP_PASSWORD = "mzjg jvxj mruk qgeb"
 
@@ -299,8 +299,9 @@ def registrar_auditoria(accion: str, detalle: str, usuario: str = "Sistema", ip:
         logging.error(f"Error en auditoria: {e}")
 
 def enviar_correo_real(destinatario: str, asunto: str, mensaje: str, html: bool = False) -> bool:
-    import smtplib # Aseguramos que esté importado
+    import smtplib
     try:
+        # Si no hay credenciales, simulamos el envío para no dar error
         if "tu_correo" in SMTP_EMAIL or not SMTP_PASSWORD:
             print(f"📧 [SIMULACION] A: {destinatario}")
             return True
@@ -311,20 +312,15 @@ def enviar_correo_real(destinatario: str, asunto: str, mensaje: str, html: bool 
         msg['Subject'] = asunto
         msg.attach(MIMEText(mensaje, 'html' if html else 'plain'))
         
-        # Conexión explícita paso a paso para evitar bloqueos de red
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=20)
-        server.set_debuglevel(1) # Esto nos dará más info si falla
-        server.ehlo()
-        server.starttls() # Inicia la encriptación manual
-        server.ehlo()
-        server.login(SMTP_EMAIL, SMTP_PASSWORD)
-        server.sendmail(SMTP_EMAIL, destinatario, msg.as_string())
-        server.quit()
+        # SMTP_SSL es la conexión directa segura que pide Gmail en el puerto 465
+        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=20) as server:
+            server.login(SMTP_EMAIL, SMTP_PASSWORD)
+            server.sendmail(SMTP_EMAIL, destinatario, msg.as_string())
         
         logging.info(f"✅ Correo enviado exitosamente a {destinatario}")
         return True
     except Exception as e:
-        logging.error(f"❌ Error crítico de red en envío: {e}")
+        logging.error(f"❌ Error de red en Railway: {e}")
         return False
 
 def calcular_hash(ruta: str) -> str:
