@@ -3300,102 +3300,157 @@ async function eliminarEvidenciaActual() {
         }
     }
 
-    // ==========================================
-// 13. FUNCIONES DE SELECCIÓN MÚLTIPLE (ACTIVO)
 // ==========================================
-function toggleModoSeleccion() {
-    modoSeleccion = !modoSeleccion;
-    const barra = document.getElementById('floatingBar');
-    const btn = document.getElementById('btnSelectMode');
+    // 13. FUNCIONES DE SELECCIÓN MÚLTIPLE (CONECTADO AL BACKEND)
+    // ==========================================
     
-    if (modoSeleccion) {
-        barra.classList.add('active');
-        btn.innerHTML = '<i class="fas fa-times"></i> Cancelar';
-        btn.style.background = 'var(--text-sec)';
-    } else {
-        barra.classList.remove('active');
-        btn.innerHTML = '<i class="fas fa-check-square"></i> Seleccionar';
-        btn.style.background = ''; 
+    function toggleModoSeleccion() {
+        modoSeleccion = !modoSeleccion;
+        const barra = document.getElementById('floatingBar');
+        const btn = document.getElementById('btnSelectMode');
+        
+        if (modoSeleccion) {
+            barra.classList.add('active');
+            btn.innerHTML = '<i class="fas fa-times"></i> Cancelar';
+            btn.style.background = 'var(--text-sec)';
+        } else {
+            cancelarSeleccion(); // Resetea todo si cancelamos
+        }
+        renderizarEvidenciasEstudiante();
+    }
+
+    function toggleSeleccionEvidencia(id, elemento) {
+        const index = evidenciasSeleccionadas.indexOf(id);
+        
+        if (index === -1) {
+            // Seleccionar
+            evidenciasSeleccionadas.push(id);
+            elemento.classList.add('selected');
+        } else {
+            // Deseleccionar
+            evidenciasSeleccionadas.splice(index, 1);
+            elemento.classList.remove('selected');
+        }
+        
+        // Actualizar contador visual
+        const contador = document.getElementById('countSelection');
+        if(contador) contador.textContent = evidenciasSeleccionadas.length;
+    }
+
+    function cancelarSeleccion() {
+        modoSeleccion = false;
         evidenciasSeleccionadas = [];
-    }
-    renderizarEvidenciasEstudiante();
-}
-
-function toggleSeleccionEvidencia(id, elemento) {
-    const index = evidenciasSeleccionadas.indexOf(id);
-    if (index === -1) {
-        evidenciasSeleccionadas.push(id);
-        elemento.classList.add('selected');
-    } else {
-        evidenciasSeleccionadas.splice(index, 1);
-        elemento.classList.remove('selected');
-    }
-    document.getElementById('countSelection').textContent = evidenciasSeleccionadas.length;
-}
-
-function cancelarSeleccion() {
-    modoSeleccion = false;
-    evidenciasSeleccionadas = [];
-    document.getElementById('floatingBar').classList.remove('active');
-    document.getElementById('btnSelectMode').innerHTML = '<i class="fas fa-check-square"></i> Seleccionar';
-    document.getElementById('btnSelectMode').style.background = '';
-    renderizarEvidenciasEstudiante();
-}
-
-async function descargarSeleccionadas() {
-    if (evidenciasSeleccionadas.length === 0) return Swal.fire('Atención', 'Selecciona algo.', 'warning');
-    
-    const btn = document.querySelector('#floatingBar .btn-float');
-    const original = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Zippeando...';
-    
-    try {
-        const formData = new FormData();
-        formData.append('ids', evidenciasSeleccionadas.join(','));
-        const res = await fetch(`${API_URL}/descargar_evidencias_zip`, { method: 'POST', body: formData });
         
-        if(res.ok) {
-            const blob = await res.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = `seleccion_${Date.now()}.zip`;
-            document.body.appendChild(a); a.click(); a.remove();
+        const barra = document.getElementById('floatingBar');
+        const btn = document.getElementById('btnSelectMode');
+        
+        if(barra) barra.classList.remove('active');
+        if(btn) {
+            btn.innerHTML = '<i class="fas fa-check-square"></i> Seleccionar';
+            btn.style.background = ''; 
+        }
+        
+        renderizarEvidenciasEstudiante();
+    }
+
+    async function descargarSeleccionadas() {
+        if (evidenciasSeleccionadas.length === 0) {
+            return Swal.fire('Atención', 'Selecciona al menos una evidencia para descargar.', 'warning');
+        }
+        
+        const btnDescarga = document.querySelector('#floatingBar .btn-float');
+        const textoOriginal = btnDescarga ? btnDescarga.innerHTML : 'Descargar';
+        
+        try {
+            if(btnDescarga) btnDescarga.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando ZIP...';
+            
+            // Usamos FormData para enviar la lista de IDs
+            const formData = new FormData();
+            formData.append('ids', evidenciasSeleccionadas.join(','));
+            
+            // Llamada al nuevo endpoint del Backend
+            const respuesta = await fetch(`${API_URL}/descargar_evidencias_zip`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (respuesta.ok) {
+                // Convertir la respuesta en un archivo descargable (Blob)
+                const blob = await respuesta.blob();
+                const url = window.URL.createObjectURL(blob);
+                
+                // Crear enlace temporal y hacer clic automático
+                const a = document.createElement('a');
+                a.href = url;
+                // Nombre del archivo con fecha y hora
+                const fecha = new Date().toISOString().slice(0,19).replace(/:/g,"-");
+                a.download = `evidencias_seleccion_${fecha}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                
+                // Limpieza
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                cancelarSeleccion();
+                Swal.fire('¡Listo!', 'El archivo ZIP se ha descargado.', 'success');
+            } else {
+                throw new Error('Error al generar el ZIP en el servidor.');
+            }
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Error', 'No se pudo descargar el archivo ZIP. Intenta con menos archivos.', 'error');
+        } finally {
+             if(btnDescarga) btnDescarga.innerHTML = textoOriginal;
+        }
+    }
+
+    async function eliminarSeleccionadas() {
+        if (evidenciasSeleccionadas.length === 0) {
+            return Swal.fire('Atención', 'Selecciona evidencias para eliminar.', 'warning');
+        }
+        
+        const confirmacion = await Swal.fire({
+            title: `¿Eliminar ${evidenciasSeleccionadas.length} archivos?`,
+            text: "Esta acción borrará los archivos de la Nube y la Base de Datos permanentemente.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d32f2f',
+            confirmButtonText: 'Sí, borrar todo',
+            cancelButtonText: 'Cancelar'
+        });
+        
+        if (!confirmacion.isConfirmed) return;
+        
+        try {
+            Swal.fire({
+                title: 'Eliminando...',
+                html: 'Procesando eliminación en la nube...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            // Enviamos peticiones de borrado en paralelo (más rápido)
+            const promesas = evidenciasSeleccionadas.map(id => 
+                fetch(`${API_URL}/eliminar_evidencia/${id}`, { method: 'DELETE' })
+            );
+            
+            await Promise.all(promesas);
+            
+            // Actualizar la lista local (filtro visual)
+            evidenciasEstudianteActual = evidenciasEstudianteActual.filter(e => 
+                !evidenciasSeleccionadas.includes(e.id || e.ID)
+            );
+            
             cancelarSeleccion();
-            Swal.fire('Descarga iniciada', '', 'success');
-        } else throw new Error();
-    } catch(e) {
-        Swal.fire('Error', 'No se pudo descargar.', 'error');
-    } finally {
-        btn.innerHTML = original;
+            
+            Swal.fire('Eliminado', 'Las evidencias seleccionadas han sido borradas.', 'success');
+            
+        } catch (error) {
+            console.error('Error eliminando:', error);
+            Swal.fire('Error', 'Hubo un problema al eliminar algunos archivos.', 'error');
+        }
     }
-}
-
-async function eliminarSeleccionadas() {
-    if (evidenciasSeleccionadas.length === 0) return;
-    
-    const conf = await Swal.fire({
-        title: `¿Eliminar ${evidenciasSeleccionadas.length} archivos?`,
-        text: "Se borrarán de la nube permanentemente.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d32f2f',
-        confirmButtonText: 'Sí, borrar'
-    });
-
-    if(conf.isConfirmed) {
-        Swal.showLoading();
-        const promesas = evidenciasSeleccionadas.map(id => 
-            fetch(`${API_URL}/eliminar_evidencia/${id}`, { method: 'DELETE' })
-        );
-        await Promise.all(promesas);
-        
-        evidenciasEstudianteActual = evidenciasEstudianteActual.filter(e => 
-            !evidenciasSeleccionadas.includes(e.id || e.ID)
-        );
-        cancelarSeleccion();
-        Swal.fire('Listo', 'Archivos eliminados.', 'success');
-    }
-}
 
 // ==========================================
 // 14. LÓGICA DE REASIGNACIÓN

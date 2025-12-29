@@ -939,56 +939,56 @@ async def cambiar_estado_usuario(datos: EstadoUsuarioRequest):
 
 @app.delete("/eliminar_usuario/{cedula}")
 async def eliminar_usuario(cedula: str):
-    """Elimina usuario y SUS ARCHIVOS FÍSICOS (si nadie más los usa)"""
     try:
         conn = get_db_connection()
-        c = conn.cursor()
+        # Usamos RealDictCursor para poder leer los campos por nombre
+        c = conn.cursor(cursor_factory=RealDictCursor)
         
-        # 1. Obtener archivos del usuario antes de borrarlos
-        evidencias = c.execute("SELECT id, Url_Archivo FROM Evidencias WHERE CI_Estudiante = %s", (cedula,)).fetchall()
+        # 1. PRIMERO: Obtener y borrar evidencias asociadas (Nube + BD)
+        # Si no hacemos esto, la base de datos dará error por claves foráneas
+        c.execute("SELECT Url_Archivo FROM Evidencias WHERE CI_Estudiante = %s", (cedula,))
+        evidencias = c.fetchall()
         
-        archivos_borrados = 0
-        espacio_liberado = 0
-        
-        for ev in evidencias:
-            url = ev['Url_Archivo']
-            
-            # 2. VERIFICACIÓN DE SEGURIDAD: ¿Alguien más usa este mismo archivo%s
-            # Contamos cuántas veces aparece esta URL en total en la base de datos
-            uso_compartido = c.execute("SELECT COUNT(*) as n FROM Evidencias WHERE Url_Archivo = %s", (url,)).fetchone()['n']
-            
-            # Si 'n' es 1, significa que SOLO este usuario lo tiene. ¡Podemos borrarlo de la nube!
-            # Si 'n' > 1, significa que otro estudiante comparte la foto. NO la borramos de S3, solo de la BD.
-            if uso_compartido == 1:
-                if s3_client and BUCKET_NAME in url:
+        if s3_client and BUCKET_NAME:
+            for ev in evidencias:
+                url = ev['Url_Archivo']
+                if url and "backblazeb2.com" in url:
                     try:
-                        parsed = urlparse(url)
-                        key = parsed.path.lstrip('/')
-                        s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
-                        print(f"   🗑️ Archivo de usuario eliminado físicamente: {key}")
-                        archivos_borrados += 1
-                        # Estimamos 1MB por archivo si no tenemos el dato a mano
-                        espacio_liberado += 1
+                        # Extraer la clave del archivo (todo lo que está después del nombre del bucket)
+                        partes = url.split(f"/file/{BUCKET_NAME}/")
+                        if len(partes) > 1:
+                            s3_client.delete_object(Bucket=BUCKET_NAME, Key=partes[1])
                     except Exception as e:
-                        print(f"⚠️ No se pudo borrar archivo {key}: {e}")
-            else:
-                print(f"   🛡️ Archivo protegido (compartido por otros): {url}")
+                        print(f"⚠️ No se pudo borrar archivo de evidencia B2: {e}")
 
-        # 3. Borrar registros de la base de datos
+        # Ahora sí borramos los registros de evidencias de la BD
         c.execute("DELETE FROM Evidencias WHERE CI_Estudiante = %s", (cedula,))
+        
+        # 2. SEGUNDO: Obtener y borrar foto de perfil (Nube)
+        c.execute("SELECT Foto FROM Usuarios WHERE CI = %s", (cedula,))
+        usuario = c.fetchone()
+        
+        if usuario and usuario['Foto']:
+            url_foto = usuario['Foto']
+            if s3_client and BUCKET_NAME and "backblazeb2.com" in url_foto:
+                try:
+                    partes = url_foto.split(f"/file/{BUCKET_NAME}/")
+                    if len(partes) > 1:
+                        s3_client.delete_object(Bucket=BUCKET_NAME, Key=partes[1])
+                except Exception as e:
+                     print(f"⚠️ No se pudo borrar foto perfil B2: {e}")
+
+        # 3. TERCERO: Finalmente borrar el usuario
         c.execute("DELETE FROM Usuarios WHERE CI = %s", (cedula,))
         
         conn.commit()
         conn.close()
         
-        # Auditoría
-        detalles = f"Usuario {cedula} eliminado. {archivos_borrados} archivos borrados de la nube."
-        registrar_auditoria("ELIMINACION_USUARIO", detalles)
-        
-        return JSONResponse({"status": "ok", "mensaje": f"Usuario y {archivos_borrados} archivos eliminados correctamente."})
+        return JSONResponse({"mensaje": "Usuario y todos sus datos eliminados correctamente"})
         
     except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+        print(f"❌ Error eliminando usuario completo: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
     
 # =========================================================================
 # 8. ENDPOINTS DE EVIDENCIAS
@@ -1331,61 +1331,63 @@ async def crear_backup():
 
 @app.get("/descargar_multimedia_zip")
 async def descargar_multimedia_zip():
-    """Crea y descarga un ZIP con archivos multimedia"""
     try:
-        # Crear archivo ZIP en memoria
+        conn = get_db_connection()
+        c = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # 1. Obtener TODAS las evidencias
+        c.execute("SELECT Url_Archivo FROM Evidencias")
+        resultados = c.fetchall()
+        conn.close()
+        
+        if not resultados:
+            return JSONResponse({"error": "No hay evidencias en el sistema"}, status_code=404)
+
+        # 2. Crear ZIP en memoria
         zip_buffer = io.BytesIO()
-        fecha = ahora_ecuador().strftime("%Y%m%d_%H%M%S")
-        zip_filename = f"multimedia_despertar_{fecha}.zip"
         
-        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            # Agregar información del sistema
-            info = {
-                "fecha_backup": ahora_ecuador().isoformat(),
-                "total_usuarios": 0,
-                "total_evidencias": 0,
-                "sistema": "Despertar Educativo"
-            }
-            
-            zip_file.writestr("INFO_SISTEMA.json", json.dumps(info, indent=2))
-            
-            # Si hay acceso a S3, simular estructura
-            if s3_client:
-                # Nota: En producción, aquí se listarían y descargarían archivos reales
-                zip_file.writestr("S3_INFO.txt", "Archivos almacenados en Backblaze B2")
-            else:
-                # Buscar archivos locales
-                local_paths = []
-                if os.path.exists("/app/datos_persistentes"):
-                    for root, dirs, files in os.walk("/app/datos_persistentes"):
-                        for file in files:
-                            file_path = os.path.join(root, file)
-                            arcname = os.path.relpath(file_path, "/app/datos_persistentes")
-                            try:
-                                zip_file.write(file_path, arcname)
-                                local_paths.append(arcname)
-                            except:
-                                pass
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            for i, item in enumerate(resultados):
+                url = item['Url_Archivo']
+                # Limpiamos el nombre para el zip
+                nombre_archivo = f"backup_{i+1}_{os.path.basename(url)}"
                 
-                if not local_paths:
-                    zip_file.writestr("SIN_ARCHIVOS.txt", "No se encontraron archivos multimedia locales")
-        
+                # Descargar de la Nube (B2/S3)
+                if s3_client and BUCKET_NAME and ("backblazeb2.com" in url or "s3" in url):
+                    try:
+                        # Extraer la clave (path) del archivo en el bucket
+                        partes = url.split(f"/file/{BUCKET_NAME}/")
+                        if len(partes) > 1:
+                            file_key = partes[1]
+                            file_obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=file_key)
+                            file_content = file_obj['Body'].read()
+                            zip_file.writestr(nombre_archivo, file_content)
+                    except Exception as e:
+                        print(f"⚠️ Error backup archivo {url}: {e}")
+                        zip_file.writestr(f"ERROR_{i}.txt", f"Fallo al descargar: {url}")
+                
+                # Soporte para archivos antiguos (locales) si hubiera
+                elif os.path.exists(url):
+                    try:
+                        zip_file.write(url, nombre_archivo)
+                    except:
+                        pass
+
         zip_buffer.seek(0)
         
-        # Registrar auditoría
-        registrar_auditoria("DESCARGA_ZIP", f"ZIP multimedia descargado: {zip_filename}")
+        # Nombre del ZIP con fecha
+        fecha_str = datetime.datetime.now().strftime("%Y%m%d")
+        nombre_zip = f"Backup_Multimedia_Completo_{fecha_str}.zip"
         
         return StreamingResponse(
-            zip_buffer,
+            zip_buffer, 
             media_type="application/zip",
-            headers={
-                "Content-Disposition": f"attachment; filename={zip_filename}",
-                "Content-Type": "application/zip"
-            }
+            headers={"Content-Disposition": f"attachment; filename={nombre_zip}"}
         )
-        
+
     except Exception as e:
-        return JSONResponse(content={"error": str(e)})
+        print(f"❌ Error backup multimedia: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 from urllib.parse import urlparse
 import re
@@ -2005,38 +2007,42 @@ def todas_evidencias(cedula: str):
 async def eliminar_evidencia(id: int):
     try:
         conn = get_db_connection()
-        # Usamos RealDictCursor para acceder a columnas por nombre
+        # Usamos RealDictCursor para obtener un diccionario
         c = conn.cursor(cursor_factory=RealDictCursor)
         
-        c.execute("SELECT Url_Archivo FROM Evidencias WHERE id = %s", (id,))
+        # 1. Buscar la evidencia
+        c.execute("SELECT * FROM Evidencias WHERE id = %s", (id,))
         evidencia = c.fetchone()
         
         if not evidencia:
             conn.close()
             raise HTTPException(status_code=404, detail="Evidencia no encontrada")
             
-        url = evidencia['Url_Archivo'] 
+        # 🛡️ CORRECCIÓN: Buscamos la URL con seguridad (mayúsculas o minúsculas)
+        url = evidencia.get('Url_Archivo') or evidencia.get('url_archivo')
         
-        # Borrar de Backblaze B2 (versión mejorada)
-        if s3_client and BUCKET_NAME and "backblazeb2.com" in url:
+        # 2. Borrar de la Nube (Si tiene URL válida)
+        if url and s3_client and BUCKET_NAME and "backblazeb2.com" in url:
             try:
-                # La URL es: https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{key}
-                # Extraemos la key después del dominio
-                parsed = urlparse(url)
-                # La key es la parte del path sin el primer '/'
-                key = parsed.path.lstrip('/')
-                print(f"🗑️ Eliminando de B2: {key}")
-                s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
+                # Extraer la clave del archivo
+                partes = url.split(f"/file/{BUCKET_NAME}/")
+                if len(partes) > 1:
+                    file_key = partes[1]
+                    print(f"🗑️ Eliminando de B2: {file_key}")
+                    s3_client.delete_object(Bucket=BUCKET_NAME, Key=file_key)
             except Exception as e_b2:
-                print(f"⚠️ Alerta B2: {e_b2}")
+                print(f"⚠️ Alerta: Se borró de BD pero falló en B2: {e_b2}")
 
+        # 3. Borrar de la Base de Datos
         c.execute("DELETE FROM Evidencias WHERE id = %s", (id,))
         conn.commit()
         conn.close()
-        return JSONResponse({"mensaje": "Eliminado correctamente"})
+        
+        return JSONResponse({"mensaje": "Evidencia eliminada correctamente"})
         
     except Exception as e:
-        print(f"❌ Error eliminando: {e}")
+        # Imprimimos el error exacto en los logs de Railway
+        print(f"❌ Error CRÍTICO eliminando evidencia {id}: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
     
 @app.get("/diagnostico_usuario/{cedula}")
@@ -2157,29 +2163,71 @@ async def cambiar_contrasena(datos: PasswordRequest):
 @app.post("/descargar_evidencias_zip")
 async def descargar_evidencias_zip(ids: str = Form(...)):
     try:
-        id_list = ids.split(',')
+        lista_ids = ids.split(',')
+        if not lista_ids:
+            return JSONResponse({"error": "No hay IDs"}, status_code=400)
+            
+        conn = get_db_connection()
+        c = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # Consultar archivos
+        placeholders = ','.join(['%s'] * len(lista_ids))
+        c.execute(f"SELECT Url_Archivo FROM Evidencias WHERE id IN ({placeholders})", tuple(lista_ids))
+        resultados = c.fetchall()
+        conn.close()
+        
+        if not resultados:
+            return JSONResponse({"error": "No se encontraron archivos"}, status_code=404)
+
+        # Crear ZIP en memoria
         zip_buffer = io.BytesIO()
         
-        conn = get_db_connection()
-        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            for id_ev in id_list:
-                row = conn.execute("SELECT Url_Archivo FROM Evidencias WHERE id=%s", (id_ev,)).fetchone()
-                if row:
-                    url = row['Url_Archivo']
-                    filename = url.split('/')[-1]
-                    # Aquí simulamos el archivo creando un txt con la URL
-                    # (Para descarga real necesitarías descargar de S3 primero)
-                    zip_file.writestr(filename + ".txt", f"Archivo ubicado en: {url}")
-        
-        conn.close()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            for i, item in enumerate(resultados):
+                url = item['Url_Archivo']
+                nombre_archivo = f"evidencia_{i+1}_{os.path.basename(url)}"
+                
+                # CASO 1: Archivo en Nube (Backblaze/S3)
+                if "backblazeb2.com" in url or "s3" in url:
+                    if s3_client and BUCKET_NAME:
+                        try:
+                            # Extraer key de la URL
+                            partes = url.split(f"/file/{BUCKET_NAME}/")
+                            if len(partes) > 1:
+                                file_key = partes[1]
+                                # Descargar de S3 a memoria
+                                file_obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=file_key)
+                                file_content = file_obj['Body'].read()
+                                zip_file.writestr(nombre_archivo, file_content)
+                                print(f"📦 Agregado al ZIP (Nube): {nombre_archivo}")
+                        except Exception as e:
+                            print(f"⚠️ Error bajando de nube {url}: {e}")
+                            # Crear archivo de texto de error en el zip
+                            zip_file.writestr(f"ERROR_{nombre_archivo}.txt", f"No se pudo descargar: {str(e)}")
+                
+                # CASO 2: Archivo Local (Legado)
+                elif os.path.exists(url):
+                    try:
+                        zip_file.write(url, nombre_archivo)
+                        print(f"📦 Agregado al ZIP (Local): {nombre_archivo}")
+                    except Exception as e:
+                        print(f"⚠️ Error archivo local: {e}")
+
         zip_buffer.seek(0)
+        
+        # Nombre del ZIP con fecha
+        fecha_str = datetime.datetime.now().strftime("%Y%m%d_%H%M")
+        nombre_zip = f"evidencias_seleccion_{fecha_str}.zip"
+        
         return StreamingResponse(
             zip_buffer, 
             media_type="application/zip",
-            headers={"Content-Disposition": "attachment; filename=seleccion_evidencias.zip"}
+            headers={"Content-Disposition": f"attachment; filename={nombre_zip}"}
         )
+
     except Exception as e:
-        return JSONResponse({"error": str(e)})
+        print(f"❌ Error generando ZIP: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 from urllib.parse import urlparse 
