@@ -1828,19 +1828,20 @@ async def obtener_solicitudes_por_cedula(cedula: str):
 
 @app.post("/gestionar_solicitud")
 async def gestionar_solicitud(
+    background_tasks: BackgroundTasks,  # <--- MAGIA AQUÍ: Permite tareas de fondo
     id_solicitud: int = Form(...),
-    accion: str = Form(...), # 'aprobar' o 'rechazar'
-    mensaje: str = Form(...), # Respuesta del admin
+    accion: str = Form(...), 
+    mensaje: str = Form(...), 
     id_admin: str = Form("Admin")
 ):
     try:
-        # 1. Normalizar la acción (Aceptamos 'aprobar', 'aceptar', etc.)
+        # 1. Normalizar acción
         accion_norm = "APROBADA" if accion.lower() in ['aprobar', 'aceptar', 'aprobada'] else "RECHAZADA"
         fecha_resolucion = ahora_ecuador()
         
         conn = get_db_connection()
         
-        # 2. Obtener datos de la solicitud y del usuario
+        # 2. Obtener datos
         sol = conn.execute("""
             SELECT s.*, u.Nombre, u.Apellido, u.Email as UserEmail
             FROM Solicitudes s
@@ -1853,44 +1854,38 @@ async def gestionar_solicitud(
         
         tipo = sol['Tipo']
         ci_solicitante = sol['CI_Solicitante']
-        # Usar el email del formulario si existe, sino el del perfil
         email_destino = sol['Email'] if sol['Email'] else sol['UserEmail']
         nombre_usuario = f"{sol['Nombre']} {sol['Apellido']}"
         
-        # --- LÓGICA DE ACCIONES FÍSICAS ---
+        # --- LÓGICA DE ACCIONES ---
+        cuerpo_correo = "" # Inicializar variable
         
-        # CASO A: REPORTE "NO SOY YO"
         if tipo == 'REPORTE_EVIDENCIA':
             id_evidencia = sol['Id_Evidencia']
             if accion_norm == 'APROBADA':
-                # ACCIÓN REAL: Borrar de la base de datos inmediatamente
                 conn.execute("DELETE FROM Evidencias WHERE id=?", (id_evidencia,))
-                cuerpo_correo = f"Hola {nombre_usuario},\n\nTu reporte ha sido ACEPTADO. La foto ha sido eliminada permanentemente de tu perfil.\n\nAdmin: {mensaje}"
+                cuerpo_correo = f"Hola {nombre_usuario},\n\nTu reporte ha sido ACEPTADO. La evidencia ha sido eliminada.\n\nAdmin: {mensaje}"
             else:
                 cuerpo_correo = f"Hola {nombre_usuario},\n\nTu reporte fue revisado pero decidimos mantener la evidencia.\n\nMotivo: {mensaje}"
 
-        # CASO B: SUBIR EVIDENCIA
         elif tipo == 'SUBIR_EVIDENCIA':
             url_archivo = sol['Evidencia_Reportada_Url']
             if accion_norm == 'APROBADA':
-                # ACCIÓN REAL: Insertar en la galería del estudiante
                 conn.execute("""
                     INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
                     VALUES (?, ?, 'MANUAL_APROBADO', 1, 'documento', 0, 0)
                 """, (ci_solicitante, url_archivo))
-                cuerpo_correo = f"Hola {nombre_usuario},\n\nTu solicitud de subida fue APROBADA. El archivo ya está en tu galería.\n\nAdmin: {mensaje}"
+                cuerpo_correo = f"Hola {nombre_usuario},\n\nTu solicitud de subida fue APROBADA. Ya está en tu perfil.\n\nAdmin: {mensaje}"
             else:
                 cuerpo_correo = f"Hola {nombre_usuario},\n\nTu solicitud de subida fue RECHAZADA.\n\nMotivo: {mensaje}"
 
-        # CASO C: RECUPERAR CONTRASEÑA / PROBLEMAS
         elif tipo in ['RECUPERACION_CONTRASENA', 'PROBLEMA_ERROR']:
-            # ACCIÓN: Enviar la solución por correo
             cuerpo_correo = f"Hola {nombre_usuario},\n\nRespuesta a tu solicitud ({tipo.replace('_',' ')}):\n\n{mensaje}\n\nAtentamente,\nSoporte U.E. Despertar"
 
         else:
             cuerpo_correo = f"Hola {nombre_usuario},\n\nTu solicitud ha sido procesada: {mensaje}"
 
-        # 3. GUARDAR CAMBIOS EN BASE DE DATOS
+        # 3. ACTUALIZAR BD
         conn.execute("""
             UPDATE Solicitudes 
             SET Estado=?, Resuelto_Por=?, Respuesta=?, Fecha_Resolucion=?
@@ -1900,24 +1895,19 @@ async def gestionar_solicitud(
         conn.commit()
         conn.close()
         
-        # 4. ENVIAR CORREO REAL
-        email_enviado = False
+        # 4. ENVIAR CORREO EN SEGUNDO PLANO (AQUÍ ESTÁ LA VELOCIDAD)
         if email_destino:
             asunto = f"Respuesta a Solicitud: {tipo.replace('_', ' ')}"
-            try:
-                email_enviado = enviar_correo_real(email_destino, asunto, cuerpo_correo)
-            except: 
-                email_enviado = False
+            # El servidor responderá al usuario YA, y enviará el correo después
+            background_tasks.add_task(enviar_correo_real, email_destino, asunto, cuerpo_correo)
         
         return JSONResponse({
             "status": "ok", 
-            "mensaje": "Acción realizada y notificada.", 
-            "email_enviado": email_enviado
+            "mensaje": "Acción procesada correctamente (Correo enviándose en segundo plano)."
         })
 
     except Exception as e:
         return JSONResponse({"status": "error", "mensaje": str(e)})
-
 # =========================================================================
 # 12. ENDPOINTS DE LOGS Y AUDITORÍA
 # =========================================================================
