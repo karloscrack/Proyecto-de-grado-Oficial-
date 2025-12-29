@@ -1,4 +1,3 @@
-import socket  # <--- ¡AGREGA ESTO! Es vital para que funcione el truco de la IP.
 import shutil
 import os
 import logging
@@ -101,21 +100,14 @@ print(f"📁 Ruta base de datos: {DB_NAME}")
 
 def get_db_connection():
     try:
-        # 1. Definimos el host
-        DB_HOST = "db.wwrbrabdwhoiougbaskz.supabase.co"
+        # ✅ URL DEL POOLER (La definitiva)
+        # Usamos la dirección 'aws-1-sa-east-1...' que es compatible con Railway.
+        # Puerto 6543 (Transaction Mode)
         
-        # 2. BÚSQUEDA SEGURA DE IP (Solo IPv4)
-        # Esto evita el error [Errno -5] porque no parcheamos todo el sistema,
-        # solo pedimos la dirección específica para esta conexión.
-        data = socket.getaddrinfo(DB_HOST, 6543, family=socket.AF_INET, proto=socket.IPPROTO_TCP)
-        ip_address = data[0][4][0]
-        print(f"🔍 IP Supabase detectada: {ip_address}")
-
-        # 3. Cadena de conexión (Mantenemos el host para SSL)
-        conn_str = "postgresql://postgres:1ZulgnaY0cnsz2p4@db.wwrbrabdwhoiougbaskz.supabase.co:6543/postgres?sslmode=require"
+        conn_str = "postgresql://postgres.wwrbrabdwhoiougbaskz:1ZulgnaY0cnsz2p4@aws-1-sa-east-1.pooler.supabase.com:6543/postgres?sslmode=require"
         
-        # 4. Conectamos forzando la IP que encontramos
-        conn = psycopg2.connect(conn_str, hostaddr=ip_address)
+        # Conectamos directamente (sin trucos de IP manual, ya no hacen falta)
+        conn = psycopg2.connect(conn_str)
         conn.cursor_factory = RealDictCursor 
         return conn
     except Exception as e:
