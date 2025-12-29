@@ -32,7 +32,7 @@ def ahora_ecuador():
 
 # --- CONFIGURACIÓN DE CORREO ---
 SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
+SMTP_PORT = 465
 SMTP_EMAIL = "karlos.ayala.lopez.1234@gmail.com"
 SMTP_PASSWORD = "mzjg jvxj mruk qgeb"
 
@@ -300,15 +300,14 @@ def registrar_auditoria(accion: str, detalle: str, usuario: str = "Sistema", ip:
 
 def enviar_correo_real(destinatario: str, asunto: str, mensaje: str, html: bool = False) -> bool:
     """
-    Envía un correo electrónico real usando SMTP
+    Envía un correo electrónico real usando SMTP_SSL (Puerto 465)
     Retorna True si fue exitoso, False si falló
     """
     try:
-        # Si las credenciales no están configuradas, simular envío
+        # Validación de credenciales
         if "tu_correo" in SMTP_EMAIL or not SMTP_PASSWORD:
             print(f"📧 [SIMULACION EMAIL] A: {destinatario} | Asunto: {asunto}")
-            print(f"   Mensaje: {mensaje[:100]}...")
-            return True  # Simulamos éxito para desarrollo
+            return True
             
         msg = MIMEMultipart()
         msg['From'] = SMTP_EMAIL
@@ -320,11 +319,11 @@ def enviar_correo_real(destinatario: str, asunto: str, mensaje: str, html: bool 
         else:
             msg.attach(MIMEText(mensaje, 'plain'))
         
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-        server.starttls()
+        # --- CAMBIO CRÍTICO: Usar SMTP_SSL para puerto 465 ---
+        # Esto evita el error "Network is unreachable"
+        server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT)
         server.login(SMTP_EMAIL, SMTP_PASSWORD)
-        text = msg.as_string()
-        server.sendmail(SMTP_EMAIL, destinatario, text)
+        server.sendmail(SMTP_EMAIL, destinatario, msg.as_string())
         server.quit()
         
         logging.info(f"Correo enviado exitosamente a {destinatario}")
