@@ -1685,23 +1685,18 @@ async def datos_graficos_dashboard():
 # 11. ENDPOINTS DE SOLICITUDES Y GESTIÓN
 # =========================================================================
 @app.get("/obtener_solicitudes")
-async def obtener_solicitudes(limit: int = 100):
-    """Obtiene las solicitudes del sistema (pendientes e historial)"""
+def obtener_solicitudes(limit: int = 100):
     try:
         conn = get_db_connection()
-        # Unir con nombre de usuario para mostrar quién solicita
-        rows = conn.execute("""
-            SELECT s.*, u.Nombre, u.Apellido 
-            FROM Solicitudes s 
-            LEFT JOIN Usuarios u ON s.CI_Solicitante = u.CI 
-            ORDER BY s.Fecha DESC
-            LIMIT %s
-        """, (limit,)).fetchall()
-        
+        c = conn.cursor() # <--- CRÍTICO: Usar cursor
+        # En Postgres LIMIT funciona igual, pero usamos el cursor
+        c.execute("SELECT * FROM Solicitudes ORDER BY Fecha DESC LIMIT %s", (limit,))
+        solicitudes = c.fetchall()
         conn.close()
-        return JSONResponse([dict(r) for r in rows])
+        return JSONResponse(solicitudes)
     except Exception as e:
-        return JSONResponse(content={"error": str(e)})
+        print(f"❌ Error obteniendo solicitudes: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
     
 # =========================================================================
 # 1. ENDPOINTS DE SOLICITUDES (LADO ESTUDIANTE) - ¡ESTO ES LO QUE TE FALTA!
@@ -1916,85 +1911,59 @@ async def gestionar_solicitud(
 # =========================================================================
 
 @app.get("/obtener_logs")
-async def obtener_logs(limit: int = 100):
-    """Devuelve una LISTA SIMPLE de logs para evitar errores en el admin"""
+def obtener_logs():
     try:
         conn = get_db_connection()
-        # Traemos todo de auditoria ordenado por fecha
-        logs = conn.execute("SELECT * FROM Auditoria ORDER BY Fecha DESC LIMIT %s", (limit,)).fetchall()
+        c = conn.cursor() # <--- CRÍTICO: Usar cursor
+        c.execute("SELECT * FROM Auditoria ORDER BY Fecha DESC LIMIT 100")
+        logs = c.fetchall()
         conn.close()
-        
-        # Convertimos a lista de diccionarios simple
-        lista_logs = [dict(row) for row in logs]
-        return JSONResponse(content=lista_logs) # <--- Enviamos LISTA directa, no objeto
+        return JSONResponse(logs)
     except Exception as e:
         print(f"Error logs: {e}")
-        return JSONResponse(content=[]) # En caso de error, lista vacía para no romper la página
+        return JSONResponse([])
 # =========================================================================
 # 13. ENDPOINTS EXISTENTES MANTENIDOS
 # =========================================================================
 
 @app.get("/listar_usuarios")
-async def listar_usuarios():
-    """Lista todos los usuarios de forma segura (a prueba de fallos)"""
+def listar_usuarios():
     try:
         conn = get_db_connection()
-        # ✅ TRUCO: Usamos SELECT * para traer lo que haya, sin exigir columnas específicas
-        rows = conn.execute("SELECT * FROM Usuarios ORDER BY Apellido, Nombre").fetchall()
-        
-        usuarios_seguros = []
-        for row in rows:
-            # Convertimos la fila a diccionario
-            r = dict(row)
-            
-            # Construimos el usuario validando campo por campo
-            # Si una columna (como Fecha_Registro) no existe, usa None y NO FALLA
-            usuario = {
-                "ID": r.get("ID"),
-                "Nombre": r.get("Nombre"),
-                "Apellido": r.get("Apellido"),
-                "CI": r.get("CI"),
-                "Tipo": r.get("Tipo"),
-                "Activo": r.get("Activo"),
-                "Foto": r.get("Foto"),
-                "Contrasena": r.get("Password", ""), 
-                "Email": r.get("Email", ""),
-                "Telefono": r.get("Telefono", ""),
-                
-                # 👇 AQUÍ ESTÁ EL ARREGLO: Si no existe, pone None y el sistema NO SE ROMPE 👇
-                "Fecha_Registro": r.get("Fecha_Registro", None),
-                "Ultimo_Acceso": r.get("Ultimo_Acceso", None)
-            }
-            usuarios_seguros.append(usuario)
-            
+        c = conn.cursor()  # <--- CRÍTICO: Usar cursor
+        c.execute("SELECT * FROM Usuarios ORDER BY Apellido ASC")
+        usuarios = c.fetchall()
         conn.close()
-        return JSONResponse(content=usuarios_seguros)
+        return JSONResponse(usuarios)
     except Exception as e:
         print(f"❌ Error listando usuarios: {e}")
-        # En el peor caso devolvemos lista vacía para que el admin cargue igual
-        return JSONResponse(content=[])
+        return JSONResponse({"error": str(e)}, status_code=500)
     
 @app.get("/resumen_estudiantes_con_evidencias")
-async def resumen_estudiantes_con_evidencias():
-    """Resumen de estudiantes con sus evidencias"""
+def resumen_estudiantes():
     try:
         conn = get_db_connection()
-        c = conn.cursor()
-        c.execute("""
-            SELECT u.Nombre, u.Apellido, u.CI, u.Foto, 
-                   COUNT(e.id) as total_evidencias,
-                   SUM(e.Tamanio_KB) as total_kb
+        c = conn.cursor() # <--- CRÍTICO: Usar cursor
+        
+        # Consulta compatible con Postgres
+        query = """
+            SELECT 
+                u.Nombre, u.Apellido, u.CI, u.Foto,
+                COUNT(e.id) as total_evidencias,
+                COALESCE(SUM(e.Tamanio_KB), 0) as total_kb
             FROM Usuarios u
-            LEFT JOIN Evidencias e ON u.CI = e.CI_Estudiante AND e.Estado = 1
-            WHERE u.Tipo = 1 AND u.Activo = 1
-            GROUP BY u.CI
-            ORDER BY total_evidencias DESC
-        """)
-        data = [dict(row) for row in c.fetchall()]
+            LEFT JOIN Evidencias e ON u.CI = e.CI_Estudiante
+            WHERE u.Tipo = 1
+            GROUP BY u.CI, u.Nombre, u.Apellido, u.Foto
+            ORDER BY u.Apellido ASC
+        """
+        c.execute(query)
+        data = c.fetchall()
         conn.close()
-        return JSONResponse(content=data)
+        return JSONResponse(data)
     except Exception as e:
-        return JSONResponse(content={"error": str(e)})
+        print(f"❌ Error resumen: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.get("/todas_evidencias")
 async def todas_evidencias(cedula: str):
