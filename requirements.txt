@@ -10,3 +10,4 @@ pytz
 pillow
 pillow-avif-plugin
 requests
+psycopg2-binary
