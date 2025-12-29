@@ -299,14 +299,9 @@ def registrar_auditoria(accion: str, detalle: str, usuario: str = "Sistema", ip:
         logging.error(f"Error en auditoria: {e}")
 
 def enviar_correo_real(destinatario: str, asunto: str, mensaje: str, html: bool = False) -> bool:
-    """
-    Envía un correo electrónico real usando SMTP_SSL (Puerto 465)
-    Retorna True si fue exitoso, False si falló
-    """
     try:
-        # Validación de credenciales
         if "tu_correo" in SMTP_EMAIL or not SMTP_PASSWORD:
-            print(f"📧 [SIMULACION EMAIL] A: {destinatario} | Asunto: {asunto}")
+            print(f"📧 [SIMULACION] A: {destinatario}")
             return True
             
         msg = MIMEMultipart()
@@ -314,22 +309,18 @@ def enviar_correo_real(destinatario: str, asunto: str, mensaje: str, html: bool 
         msg['To'] = destinatario
         msg['Subject'] = asunto
         
-        if html:
-            msg.attach(MIMEText(mensaje, 'html'))
-        else:
-            msg.attach(MIMEText(mensaje, 'plain'))
+        msg.attach(MIMEText(mensaje, 'html' if html else 'plain'))
         
-        # --- CAMBIO CRÍTICO: Usar SMTP_SSL para puerto 465 ---
-        # Esto evita el error "Network is unreachable"
-        server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT)
+        # EL CAMBIO ESTÁ AQUÍ: Usar SMTP_SSL en lugar de SMTP
+        server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) 
         server.login(SMTP_EMAIL, SMTP_PASSWORD)
         server.sendmail(SMTP_EMAIL, destinatario, msg.as_string())
         server.quit()
         
-        logging.info(f"Correo enviado exitosamente a {destinatario}")
+        print(f"✅ Correo enviado a {destinatario}")
         return True
     except Exception as e:
-        logging.error(f"❌ Error enviando email a {destinatario}: {e}")
+        print(f"❌ Error enviando email a {destinatario}: {e}")
         return False
 
 def calcular_hash(ruta: str) -> str:
@@ -1898,7 +1889,7 @@ async def gestionar_solicitud(
         # 4. ENVIAR CORREO EN SEGUNDO PLANO (AQUÍ ESTÁ LA VELOCIDAD)
         if email_destino:
             asunto = f"Respuesta a Solicitud: {tipo.replace('_', ' ')}"
-            # El servidor responderá al usuario YA, y enviará el correo después
+            # IMPORTANTE: Que los nombres coincidan con los de enviar_correo_real
             background_tasks.add_task(enviar_correo_real, email_destino, asunto, cuerpo_correo)
         
         return JSONResponse({
