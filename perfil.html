@@ -1029,8 +1029,8 @@
                 // Construir el mensaje final CON la respuesta del admin visible
                 let mensajeFinal = mensajeBase;
                 if (respuestaAdmin) {
-                    // Agregamos un salto de línea y un icono de comentario para resaltar la respuesta
-                    mensajeFinal += `<br><br><strong>💬 Admin dice:</strong> <em>"${respuestaAdmin}"</em>`;
+                   // Esto es lo que hace que el texto aparezca en el perfil del alumno
+                     mensajeFinal += `<br><br><strong>💬 Admin dice:</strong> <em>"${respuestaAdmin}"</em>`;
                 } else if (solicitud.Estado === 'RECHAZADA') {
                     mensajeFinal += `<br><br><em>(Sin comentarios del admin)</em>`;
                 }

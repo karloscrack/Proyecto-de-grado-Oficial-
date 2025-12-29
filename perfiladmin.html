@@ -2351,43 +2351,6 @@
         }
     }
 
-    async function enviarGestion(id, accion) {
-        const mensaje = document.getElementById('mensajeAdmin').value;
-        if(!mensaje.trim()) {
-            Swal.fire('Atención', 'Debes escribir una respuesta para el estudiante.', 'warning');
-            return;
-        }
-
-        const btn = event.target.closest('button');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...'; 
-        btn.disabled = true;
-
-        const fd = new FormData();
-        fd.append('id_solicitud', id);
-        fd.append('accion', accion);
-        fd.append('mensaje', mensaje);
-        fd.append('id_admin', 'Administrador');
-
-        try {
-            const res = await fetch(`${API_URL}/gestionar_solicitud`, { method: 'POST', body: fd });
-            const data = await res.json();
-
-            if (data.status === 'ok') {
-                Swal.fire('Éxito', data.mensaje, 'success');
-                document.getElementById('modalResponderSolicitud').classList.remove('active');
-                cargarSolicitudes(); // Recargar lista
-                actualizarDatosDashboard(); // Recargar campana
-            } else {
-                Swal.fire('Error', data.mensaje, 'error');
-            }
-        } catch (e) {
-            Swal.fire('Error', 'Error de conexión', 'error');
-        } finally {
-            if(btn) { btn.innerHTML = originalText; btn.disabled = false; }
-        }
-    }
-
     async function procesarSolicitud(accion) {
         const id = document.getElementById('solicitudIdRespuesta').value;
         const tipo = document.getElementById('tipoRespuesta').value;

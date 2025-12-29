@@ -310,9 +310,9 @@ def enviar_correo_real(destinatario: str, asunto: str, mensaje: str, html: bool 
         msg['Subject'] = asunto
         msg.attach(MIMEText(mensaje, 'html' if html else 'plain'))
         
-        # --- CONEXIÓN SSL DIRECTA ---
-        # No usamos starttls(), entramos encriptados desde el inicio
-        server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=10) 
+        # --- SOLUCIÓN AL ERROR 101 ---
+        # SMTP_SSL conecta encriptado desde el inicio, saltando el firewall de Railway.
+        server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=15) 
         server.login(SMTP_EMAIL, SMTP_PASSWORD)
         server.sendmail(SMTP_EMAIL, destinatario, msg.as_string())
         server.quit()
