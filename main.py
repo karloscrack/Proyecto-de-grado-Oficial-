@@ -1,3 +1,17 @@
+import socket
+try:
+    # Guardamos la función original
+    original_getaddrinfo = socket.getaddrinfo
+    
+    # Creamos una versión que solo busca direcciones IPv4 (AF_INET)
+    def getaddrinfo_ipv4_only(host, port, family=0, type=0, proto=0, flags=0):
+        return original_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+        
+    # Reemplazamos la función del sistema
+    socket.getaddrinfo = getaddrinfo_ipv4_only
+    print("✅ Parche IPv4 aplicado correctamente: Conectividad forzada a protocolo antiguo.")
+except Exception as e:
+    print(f"⚠️ No se pudo aplicar parche IPv4: {e}")
 import shutil
 import os
 import logging
