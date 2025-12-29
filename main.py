@@ -1955,9 +1955,9 @@ def listar_usuarios():
 def resumen_estudiantes():
     try:
         conn = get_db_connection()
-        c = conn.cursor() # <--- CRÍTICO: Usar cursor
+        c = conn.cursor()
         
-        # Consulta compatible con Postgres
+        # Consulta segura
         query = """
             SELECT 
                 u.Nombre, u.Apellido, u.CI, u.Foto,
@@ -1972,11 +1972,16 @@ def resumen_estudiantes():
         c.execute(query)
         data = c.fetchall()
         conn.close()
-        return JSONResponse(data)
+        
+        # ✅ CORRECCIÓN: Convertir fechas y datos raros a texto
+        import json
+        data_serializable = json.loads(json.dumps(data, default=str))
+        
+        return JSONResponse(data_serializable)
     except Exception as e:
         print(f"❌ Error resumen: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
-
+    
 @app.get("/todas_evidencias")
 async def todas_evidencias(cedula: str):
     """Obtiene todas las evidencias de un estudiante específico"""
