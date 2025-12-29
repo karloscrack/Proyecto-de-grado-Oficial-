@@ -1606,16 +1606,23 @@
                 };
             });
 
-            // Procesar evidencias
+            // Procesar evidencias (Galería de Estudiantes)
             const evidenciasRaw = await resEvidencias.json();
-            evidencias = evidenciasRaw.map(e => ({
-                nombre: e.Nombre || '',
-                apellido: e.Apellido || '',
-                cedula: e.CI || '',
-                foto: e.Foto || '',
-                total_evidencias: e.total_evidencias || 0,
-                total_kb: e.total_kb || 0
-            }));
+            
+            evidencias = evidenciasRaw.map(e => {
+                // Función auxiliar para leer mayúsculas o minúsculas
+                const get = (k) => e[k] || e[k.toLowerCase()] || '';
+
+                return {
+                    nombre: get('Nombre'),
+                    apellido: get('Apellido'),
+                    cedula: get('CI') || get('ci'),
+                    // AQUÍ ESTÁ LA CLAVE: Buscamos 'Foto' o 'foto'
+                    foto: get('Foto'), 
+                    total_evidencias: e.total_evidencias || 0,
+                    total_kb: e.total_kb || 0
+                };
+            });
 
             // Procesar resto de datos
             solicitudes = await resSolicitudes.json();
@@ -2569,28 +2576,34 @@
         evidenciasEstudianteActual.forEach((evidencia, index) => {
             const tarjeta = document.createElement('div');
             tarjeta.className = `evidence-card ${modoSeleccion ? 'selection-mode-active' : ''}`;
-            if (evidenciasSeleccionadas.includes(evidencia.id)) {
+            
+            // ✅ CORRECCIÓN CLAVE: Leemos url_archivo (Postgres) O Url_Archivo (SQLite)
+            const urlArchivo = evidencia.Url_Archivo || evidencia.url_archivo || '';
+            const idEvidencia = evidencia.id || evidencia.ID;
+
+            if (evidenciasSeleccionadas.includes(idEvidencia)) {
                 tarjeta.classList.add('selected');
             }
             
             tarjeta.onclick = () => {
                 if (modoSeleccion) {
-                    toggleSeleccionEvidencia(evidencia.id, tarjeta);
+                    toggleSeleccionEvidencia(idEvidencia, tarjeta);
                 } else {
                     abrirVisor(index);
                 }
             };
             
-            const esVideo = evidencia.Url_Archivo && evidencia.Url_Archivo.match(/\.(mp4|avi|mov|webm)$/i);
-            const esImagen = evidencia.Url_Archivo && evidencia.Url_Archivo.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+            // Usamos la variable corregida 'urlArchivo'
+            const esVideo = urlArchivo.match(/\.(mp4|avi|mov|webm)$/i);
+            const esImagen = urlArchivo.match(/\.(jpg|jpeg|png|gif|webp)$/i);
             
             let contenido = '';
             
             if (esImagen) {
-                contenido = `<img src="${evidencia.Url_Archivo}" class="card-media" loading="lazy" onerror="this.src='Img/Logo_pestaña.png'">`;
+                contenido = `<img src="${urlArchivo}" class="card-media" loading="lazy" onerror="this.src='Img/Logo_pestaña.png'">`;
             } else if (esVideo) {
                 contenido = `
-                    <video src="${evidencia.Url_Archivo}#t=0.1" class="card-media"></video>
+                    <video src="${urlArchivo}#t=0.1" class="card-media"></video>
                     <div class="video-overlay"><i class="fas fa-play-circle"></i></div>
                 `;
             } else {

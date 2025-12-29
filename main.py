@@ -1983,23 +1983,23 @@ def resumen_estudiantes():
         return JSONResponse({"error": str(e)}, status_code=500)
     
 @app.get("/todas_evidencias")
-async def todas_evidencias(cedula: str):
-    """Obtiene todas las evidencias de un estudiante específico"""
+def todas_evidencias(cedula: str):
     try:
         conn = get_db_connection()
         c = conn.cursor()
-        c.execute("""
-            SELECT id, Url_Archivo, Tipo_Archivo, Fecha, Estado, Tamanio_KB
-            FROM Evidencias
-            WHERE CI_Estudiante = %s
-            ORDER BY Fecha DESC
-        """, (cedula,))
-        rows = c.fetchall()
+        # Buscamos por la cédula del estudiante
+        c.execute("SELECT * FROM Evidencias WHERE CI_Estudiante = %s ORDER BY id DESC", (cedula,))
+        evs = c.fetchall()
         conn.close()
-        # Convertimos las filas a diccionarios
-        return JSONResponse([dict(r) for r in rows])
+        
+        # ✅ CORRECCIÓN: Convertir fechas a texto para que no falle
+        import json
+        evs_serializables = json.loads(json.dumps(evs, default=str))
+        
+        return JSONResponse(evs_serializables)
     except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+        print(f"❌ Error evidencias estudiante: {e}")
+        return JSONResponse([])
 
 @app.delete("/eliminar_evidencia/{id_evidencia}")
 async def eliminar_evidencia(id_evidencia: int):
@@ -2402,9 +2402,6 @@ def limpieza_duplicados_startup():
 
     except Exception as e:
         print(f"❌ Error en limpieza startup: {e}")
-
-    # --- AGREGA ESTE NUEVO ENDPOINT PARA RECUPERAR TUS DATOS ---
-
 @app.post("/recuperar_evidencias_nube")
 async def recuperar_evidencias_nube(background_tasks: BackgroundTasks):
     """
@@ -2526,6 +2523,9 @@ async def recuperar_evidencias_nube(background_tasks: BackgroundTasks):
 class ReasignarRequest(BaseModel):
     ids: str
     cedula_destino: str
+
+
+    # --- AGREGA ESTE NUEVO ENDPOINT PARA RECUPERAR TUS DATOS ---
 
 @app.post("/reasignar_evidencias")
 async def reasignar_evidencias(datos: ReasignarRequest):
