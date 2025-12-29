@@ -1688,12 +1688,15 @@ async def datos_graficos_dashboard():
 def obtener_solicitudes(limit: int = 100):
     try:
         conn = get_db_connection()
-        c = conn.cursor() # <--- CRÍTICO: Usar cursor
-        # En Postgres LIMIT funciona igual, pero usamos el cursor
+        c = conn.cursor()
         c.execute("SELECT * FROM Solicitudes ORDER BY Fecha DESC LIMIT %s", (limit,))
         solicitudes = c.fetchall()
         conn.close()
-        return JSONResponse(solicitudes)
+        
+        # ✅ CORRECCIÓN MÁGICA
+        sol_serializables = json.loads(json.dumps(solicitudes, default=str))
+        
+        return JSONResponse(sol_serializables)
     except Exception as e:
         print(f"❌ Error obteniendo solicitudes: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
@@ -1914,11 +1917,15 @@ async def gestionar_solicitud(
 def obtener_logs():
     try:
         conn = get_db_connection()
-        c = conn.cursor() # <--- CRÍTICO: Usar cursor
+        c = conn.cursor()
         c.execute("SELECT * FROM Auditoria ORDER BY Fecha DESC LIMIT 100")
         logs = c.fetchall()
         conn.close()
-        return JSONResponse(logs)
+        
+        # ✅ CORRECCIÓN MÁGICA
+        logs_serializables = json.loads(json.dumps(logs, default=str))
+        
+        return JSONResponse(logs_serializables)
     except Exception as e:
         print(f"Error logs: {e}")
         return JSONResponse([])
@@ -1930,11 +1937,16 @@ def obtener_logs():
 def listar_usuarios():
     try:
         conn = get_db_connection()
-        c = conn.cursor()  # <--- CRÍTICO: Usar cursor
+        c = conn.cursor()
         c.execute("SELECT * FROM Usuarios ORDER BY Apellido ASC")
         usuarios = c.fetchall()
         conn.close()
-        return JSONResponse(usuarios)
+        
+        # ✅ CORRECCIÓN MÁGICA: json.dumps con default=str
+        # Esto convierte cualquier fecha rara en texto simple automáticamente
+        usuarios_serializables = json.loads(json.dumps(usuarios, default=str))
+        
+        return JSONResponse(usuarios_serializables)
     except Exception as e:
         print(f"❌ Error listando usuarios: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
