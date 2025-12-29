@@ -33,8 +33,8 @@ def ahora_ecuador():
 # --- CONFIGURACIÓN DE CORREO ---
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
-SMTP_EMAIL = "tu_correo_sistema@gmail.com"
-SMTP_PASSWORD = "tu_contraseña_aplicacion"
+SMTP_EMAIL = "karlos.ayala.lopez.1234@gmail.com"
+SMTP_PASSWORD = "mzjg jvxj mruk qgeb"
 
 # --- 1. CONFIGURACIÓN Y CREDENCIALES AWS/B2 ---
 AWS_ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY")
