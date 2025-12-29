@@ -2432,6 +2432,7 @@ async def recuperar_evidencias_nube(background_tasks: BackgroundTasks):
             return
 
         conn = get_db_connection()
+        c = conn.cursor() # <--- IMPORTANTE: Creamos el cursor aquí
         restaurados = 0
         
         try:
@@ -2451,15 +2452,16 @@ async def recuperar_evidencias_nube(background_tasks: BackgroundTasks):
                     # Construimos la URL que debería tener
                     url_archivo = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{key}"
                     
-                    # 2. Verificar si ya existe en la BD
-                    existe = conn.execute("SELECT id FROM Evidencias WHERE Url_Archivo = %s", (url_archivo,)).fetchone()
+                    # 2. Verificar si ya existe en la BD (Usando el cursor 'c')
+                    c.execute("SELECT id FROM Evidencias WHERE Url_Archivo = %s", (url_archivo,))
+                    existe = c.fetchone()
                     
                     if not existe:
                         print(f"   📥 Recuperando: {key}...")
                         
                         # Descargar para análisis IA (si es imagen)
                         temp_path = None
-                        ci_detectada = 'PENDIENTE' # Por defecto
+                        ci_detectada = '9999999990' # Por defecto a bandeja recuperados
                         asignado_auto = 0
                         
                         try:
@@ -2469,24 +2471,27 @@ async def recuperar_evidencias_nube(background_tasks: BackgroundTasks):
                                 temp_path = tmp.name
                             
                             # Intentar reconocer rostros para re-asignar
-                            if key.lower().endswith(('.jpg', '.jpeg', '.png', '.webp', '.avif')):
-                                rostros = identificar_varios_rostros_aws(temp_path)
-                                if rostros:
-                                    # Si encuentra varios, asignamos al primero que encontremos registrado (simplificado para rescate)
-                                    for rostro in rostros:
-                                        u = conn.execute("SELECT CI FROM Usuarios WHERE CI=%s", (rostro,)).fetchone()
-                                        if u:
-                                            ci_detectada = u['CI']
-                                            asignado_auto = 1
-                                            break
+                            if key.lower().endswith(('.jpg', '.jpeg', '.png', '.webp', '.avif')) and rekog:
+                                try:
+                                    rostros = identificar_varios_rostros_aws(temp_path)
+                                    if rostros:
+                                        # Si encuentra rostros, buscamos si son estudiantes
+                                        for rostro in rostros:
+                                            c.execute("SELECT CI FROM Usuarios WHERE CI=%s", (rostro,))
+                                            u = c.fetchone()
+                                            if u:
+                                                ci_detectada = u['CI']
+                                                asignado_auto = 1
+                                                break
+                                except: pass
                             
                             # Calcular Hash nuevo
                             nuevo_hash = calcular_hash(temp_path)
                             size_kb = obj['Size'] / 1024
                             
-                            # Insertar en BD
+                            # Insertar en BD (Usando el cursor 'c')
                             tipo = 'video' if key.lower().endswith(('.mp4', '.avi')) else 'imagen'
-                            conn.execute("""
+                            c.execute("""
                                 INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
                                 VALUES (%s, %s, %s, 1, %s, %s, %s)
                             """, (ci_detectada, url_archivo, nuevo_hash, tipo, size_kb, asignado_auto))
@@ -2499,7 +2504,7 @@ async def recuperar_evidencias_nube(background_tasks: BackgroundTasks):
                             print(f"   ⚠️ Error parcial recuperando {key}: {e}")
                             # Intentamos insertar aunque sea sin IA
                             try:
-                                conn.execute("""
+                                c.execute("""
                                     INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
                                     VALUES ('9999999990', %s, 'RECUPERADO', 1, 'desconocido', 0, 0)
                                 """, (url_archivo,))
@@ -2509,16 +2514,20 @@ async def recuperar_evidencias_nube(background_tasks: BackgroundTasks):
             conn.commit()
             print(f"✅ OPERACIÓN RESCATE FINALIZADA: {restaurados} evidencias restauradas.")
             
-            # Actualizar estadísticas
-            stats = calcular_estadisticas_reales()
-            fecha = ahora_ecuador().date().isoformat()
-            conn.execute("""
-                INSERT INTO Metricas_Sistema (Fecha, Total_Evidencias, Almacenamiento_MB) 
-                VALUES (%s, %s, %s)
-                ON CONFLICT (Fecha) DO UPDATE SET
-                Total_Evidencias = EXCLUDED.Total_Evidencias,
-                Almacenamiento_MB = EXCLUDED.Almacenamiento_MB
-            """, (fecha, stats.get('total_evidencias',0), stats.get('almacenamiento_mb',0)))
+            # Actualizar estadísticas (Usando el cursor 'c')
+            try:
+                stats = calcular_estadisticas_reales()
+                fecha = ahora_ecuador().date().isoformat()
+                c.execute("""
+                    INSERT INTO Metricas_Sistema (Fecha, Total_Evidencias, Almacenamiento_MB) 
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (Fecha) DO UPDATE SET
+                    Total_Evidencias = EXCLUDED.Total_Evidencias,
+                    Almacenamiento_MB = EXCLUDED.Almacenamiento_MB
+                """, (fecha, stats.get('total_evidencias',0), stats.get('almacenamiento_mb',0)))
+                conn.commit()
+            except Exception as e:
+                print(f"⚠️ Error actualizando métricas tras rescate: {e}")
 
         except Exception as e:
             print(f"❌ Error crítico en rescate: {e}")
