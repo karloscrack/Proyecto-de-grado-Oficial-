@@ -114,11 +114,19 @@ print(f"📁 Ruta base de datos: {DB_NAME}")
 
 def get_db_connection():
     try:
-        # CAMBIO CLAVE: Puerto 6543 (Pooler) en lugar de 5432
-        # También agregamos ?sslmode=require para asegurar la conexión
+        # 1. Definimos el host explícitamente
+        DB_HOST = "db.wwrbrabdwhoiougbaskz.supabase.co"
+        
+        # 2. TRUCO MAESTRO: Resolvemos la IP manualmente usando Python (que sí obedece al parche IPv4)
+        # Esto convierte "db.supabase.co" en algo como "54.12.34.56" (IPv4 segura)
+        ip_address = socket.gethostbyname(DB_HOST)
+        print(f"🔍 DNS Resuelto manualmente: {DB_HOST} -> {ip_address}")
+
+        # 3. Cadena de conexión original (Mantenemos el host aquí para que el SSL funcione)
         conn_str = "postgresql://postgres:1ZulgnaY0cnsz2p4@db.wwrbrabdwhoiougbaskz.supabase.co:6543/postgres?sslmode=require"
         
-        conn = psycopg2.connect(conn_str)
+        # 4. Conectamos pasando 'hostaddr'. Esto obliga a psycopg2 a ir a la IP v4 que encontramos
+        conn = psycopg2.connect(conn_str, hostaddr=ip_address)
         conn.cursor_factory = RealDictCursor 
         return conn
     except Exception as e:
