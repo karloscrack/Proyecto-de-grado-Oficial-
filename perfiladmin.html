@@ -1587,20 +1587,22 @@
             // Procesar usuarios
             const usuariosData = await resUsers.json();
             usuarios = usuariosData.map(u => {
-                // CORRECCIÓN IMPORTANTE:
-                // Usamos validación estricta (undefined) para que el 0 (Admin) no se convierta en 1
-                let tipoReal = 1; 
-                if (u.Tipo !== undefined && u.Tipo !== null) tipoReal = u.Tipo;
-                else if (u.tipo !== undefined && u.tipo !== null) tipoReal = u.tipo;
+                // Función auxiliar para buscar claves ignorando mayúsculas/minúsculas
+                const get = (k) => u[k] || u[k.toLowerCase()] || u[k.charAt(0).toUpperCase() + k.slice(1)] || '';
 
                 return {
-                    nombre: u.Nombre || u.nombre || '',
-                    apellido: u.Apellido || u.apellido || '',
-                    cedula: u.CI || u.cedula || u.Cedula || '',
-                    tipo: tipoReal, // <--- Aquí estaba el error antes
-                    activo: (u.Activo !== undefined) ? u.Activo : (u.activo || 1),
-                    contrasena: u.Contrasena || u.contrasena || '',
-                    foto: u.Foto || u.foto || ''
+                    // Buscamos todas las variantes posibles: Nombre, nombre, NOMBRE...
+                    nombre: get('Nombre') || get('nombre'),
+                    apellido: get('Apellido') || get('apellido'),
+                    cedula: get('CI') || get('ci') || get('Cedula') || get('cedula'),
+                    // CORRECCIÓN CLAVE: Agregamos 'password' y 'Password' a la búsqueda
+                    contrasena: get('Password') || get('password') || get('Contrasena') || get('contrasena') || '***', 
+                    // Aseguramos que el tipo sea un número
+                    tipo: Number(u.Tipo !== undefined ? u.Tipo : (u.tipo !== undefined ? u.tipo : 1)),
+                    activo: (u.Activo !== undefined ? u.Activo : (u.activo !== undefined ? u.activo : 1)),
+                    foto: get('Foto') || get('foto') || '',
+                    email: get('Email') || get('email') || '',
+                    telefono: get('Telefono') || get('telefono') || ''
                 };
             });
 
