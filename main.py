@@ -32,7 +32,7 @@ def ahora_ecuador():
 
 # --- CONFIGURACIÓN DE CORREO ---
 SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 465
+SMTP_PORT = 465  # <--- DEBE SER 465
 SMTP_EMAIL = "karlos.ayala.lopez.1234@gmail.com"
 SMTP_PASSWORD = "mzjg jvxj mruk qgeb"
 
@@ -299,7 +299,11 @@ def registrar_auditoria(accion: str, detalle: str, usuario: str = "Sistema", ip:
         logging.error(f"Error en auditoria: {e}")
 
 def enviar_correo_real(destinatario: str, asunto: str, mensaje: str, html: bool = False) -> bool:
+    """
+    Versión blindada para Railway: Forzado de SSL Directo en puerto 465.
+    """
     try:
+        # Validación de credenciales
         if "tu_correo" in SMTP_EMAIL or not SMTP_PASSWORD:
             print(f"📧 [SIMULACION] A: {destinatario}")
             return True
@@ -310,17 +314,19 @@ def enviar_correo_real(destinatario: str, asunto: str, mensaje: str, html: bool 
         msg['Subject'] = asunto
         msg.attach(MIMEText(mensaje, 'html' if html else 'plain'))
         
-        # --- SOLUCIÓN AL ERROR 101 ---
-        # SMTP_SSL conecta encriptado desde el inicio, saltando el firewall de Railway.
+        # --- LA SOLUCIÓN TÉCNICA ---
+        # Usamos SMTP_SSL (con SSL mayúsculas) y el puerto 465.
+        # Esto le dice a Railway: "Soy una conexión segura de principio a fin".
         server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=15) 
         server.login(SMTP_EMAIL, SMTP_PASSWORD)
         server.sendmail(SMTP_EMAIL, destinatario, msg.as_string())
         server.quit()
         
-        print(f"✅ Correo enviado a {destinatario}")
+        logging.info(f"✅ Correo enviado exitosamente a {destinatario}")
         return True
     except Exception as e:
-        print(f"❌ Error enviando email a {destinatario}: {e}")
+        # Aquí verás el error real si algo más falla
+        logging.error(f"❌ Error crítico de red en envío: {e}")
         return False
 
 def calcular_hash(ruta: str) -> str:
