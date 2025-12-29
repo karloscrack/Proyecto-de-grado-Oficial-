@@ -32,7 +32,7 @@ def ahora_ecuador():
 
 # --- CONFIGURACIÓN DE CORREO ---
 SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 465  # Cambiado a 465 para evitar el bloqueo de red de Railway
+SMTP_PORT = 465  # Usamos 465 para SSL directo
 SMTP_EMAIL = "karlos.ayala.lopez.1234@gmail.com"
 SMTP_PASSWORD = "mzjg jvxj mruk qgeb"
 
@@ -303,7 +303,7 @@ def enviar_correo_real(destinatario: str, asunto: str, mensaje: str, html: bool 
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
     
-    # Definición local para asegurar que use los datos correctos
+    # Forzamos los datos aquí adentro para que Railway no use configuraciones viejas
     S_SERVER = "smtp.gmail.com"
     S_PORT = 465 
     S_EMAIL = "karlos.ayala.lopez.1234@gmail.com"
@@ -316,18 +316,18 @@ def enviar_correo_real(destinatario: str, asunto: str, mensaje: str, html: bool 
         msg['Subject'] = asunto
         msg.attach(MIMEText(mensaje, 'html' if html else 'plain'))
         
-        # Conexión SSL directa con timeout corto para no colgar el servidor
+        # EL CAMBIO CLAVE: Usamos SMTP_SSL con un tiempo de espera (timeout) corto
         with smtplib.SMTP_SSL(S_SERVER, S_PORT, timeout=10) as server:
             server.login(S_EMAIL, S_PASS)
             server.sendmail(S_EMAIL, destinatario, msg.as_string())
         
-        logging.info(f"✅ Correo enviado a {destinatario}")
+        print(f"✅ Correo enviado con éxito a: {destinatario}")
         return True
     except Exception as e:
-        # Registramos el error pero permitimos que el sistema siga funcionando
-        logging.error(f"⚠️ No se pudo enviar correo: {e}")
+        # Usamos print para que lo veas claro en la consola de Railway sin que marque error crítico
+        print(f"⚠️ Aviso de Red: El puerto 465 falló. Detalles: {e}")
         return False
-
+    
 def calcular_hash(ruta: str) -> str:
     """Calcula hash SHA256 de un archivo"""
     h = hashlib.sha256()
