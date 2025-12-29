@@ -2588,6 +2588,37 @@ async def reasignar_evidencias(datos: ReasignarRequest):
     except Exception as e:
         return JSONResponse({"error": str(e)})
 
+# --- ENDPOINT DE EMERGENCIA PARA CORREGIR ADMIN ---
+@app.get("/reparar_admin")
+async def reparar_admin():
+    """Fuerza al usuario 9999999999 a ser Administrador (Tipo 0)"""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        # 1. Verificar si existe
+        c.execute("SELECT * FROM Usuarios WHERE CI = '9999999999'")
+        user = c.fetchone()
+        
+        if not user:
+            # Si no existe, lo creamos de cero
+            c.execute("""
+                INSERT INTO Usuarios (Nombre, Apellido, CI, Password, Tipo, Activo) 
+                VALUES ('Admin', 'Sistema', '9999999999', 'admin123', 0, 1)
+            """)
+            mensaje = "Usuario Admin no existía. CREADO exitosamente."
+        else:
+            # Si existe, LO FORZAMOS a ser Tipo 0
+            c.execute("UPDATE Usuarios SET Tipo = 0, Activo = 1 WHERE CI = '9999999999'")
+            mensaje = "Usuario 9999999999 actualizado: AHORA ES ADMIN (Tipo 0)."
+            
+        conn.commit()
+        conn.close()
+        return JSONResponse({"status": "ok", "mensaje": mensaje})
+        
+    except Exception as e:
+        return JSONResponse({"error": str(e)})
+
 if __name__ == "__main__":
     import uvicorn
     
