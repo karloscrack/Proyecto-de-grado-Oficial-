@@ -1,6 +1,5 @@
 import shutil
 import os
-import sqlite3
 import logging
 import datetime
 import zipfile
@@ -14,6 +13,9 @@ import pytz
 import json
 import io
 import difflib
+import psycopg2
+from psycopg2.extras import RealDictCursor
+import os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Optional, List
@@ -96,6 +98,36 @@ else:
 
 print(f"📁 Ruta base de datos: {DB_NAME}")
 
+def get_db_connection():
+    try:
+        # Tu URL de Supabase con la contraseña correcta
+        conn_str = "postgresql://postgres:1ZulgnaY0cnsz2p4@db.wwrbrabdwhoiougbaskz.supabase.co:5432/postgres"
+        
+        conn = psycopg2.connect(conn_str)
+        # ESTA LÍNEA ES VITAL: Permite usar row['Nombre'] en lugar de row[0]
+        conn.cursor_factory = RealDictCursor 
+        return conn
+    except Exception as e:
+        print(f"❌ Error CRÍTICO conectando a Supabase: {e}")
+        return None
+
+# --- FUNCIONES DE MANTENIMIENTO ---
+def optimizar_sistema_db():
+    """Ejecuta mantenimiento VACUUM en Supabase"""
+    try:
+        conn = get_db_connection()
+        # En Postgres, VACUUM no puede ejecutarse dentro de una transacción
+        conn.autocommit = True 
+        with conn.cursor() as c:
+            c.execute("VACUUM")
+            c.execute("ANALYZE")
+        conn.close()
+        print("✅ Sistema optimizado (VACUUM ejecutado en Supabase)")
+        return True
+    except Exception as e:
+        print(f"⚠️ Alerta menor: No se pudo optimizar DB: {e}")
+        return False
+
 class EstadoUsuarioRequest(BaseModel):
     cedula: str
     activo: int
@@ -103,30 +135,21 @@ class EstadoUsuarioRequest(BaseModel):
 class BackupRequest(BaseModel):
     tipo: str = "completo"
 
-# --- INICIO DEL CÓDIGO A PEGAR ---
-def optimizar_sistema_db():
-    """Ejecuta mantenimiento VACUUM en la base de datos"""
-    try:
-        # CORRECCIÓN: Usamos DB_NAME (que es la variable global segura)
-        conn = sqlite3.connect(DB_NAME)
-        conn.execute("VACUUM")
-        conn.close()
-        print("✅ Sistema optimizado (VACUUM ejecutado)")
-        return True
-    except Exception as e:
-        print(f"⚠️ Alerta menor: No se pudo optimizar DB: {e}")
-        return False
-
 # --- 2. INICIALIZACIÓN DE BASE DE DATOS - MEJORADA ---
+# --- INICIALIZACIÓN DE TABLAS ---
 def init_db_completa():
-    """Inicialización robusta de la base de datos con compatibilidad hacia atrás"""
+    print("🔄 Iniciando configuración de base de datos en Supabase...")
     try:
-        conn = sqlite3.connect(DB_NAME)
+        conn = get_db_connection()
+        if not conn:
+            print("❌ No hay conexión a BD, abortando init.")
+            return
+            
         c = conn.cursor()
         
-        # Tabla Usuarios
+        # 1. Tabla Usuarios
         c.execute('''CREATE TABLE IF NOT EXISTS Usuarios (
-            ID INTEGER PRIMARY KEY AUTOINCREMENT,
+            ID SERIAL PRIMARY KEY,
             Nombre TEXT NOT NULL,
             Apellido TEXT NOT NULL,
             CI TEXT UNIQUE NOT NULL,
@@ -138,28 +161,27 @@ def init_db_completa():
             Ultimo_Acceso TIMESTAMP NULL,
             TutorialVisto INTEGER DEFAULT 0,
             Face_Encoding TEXT,
-            Fecha_Registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            Fecha_Registro TIMESTAMP DEFAULT NOW(),
             Email TEXT,
             Telefono TEXT
         )''')
         
-        # Tabla Evidencias
+        # 2. Tabla Evidencias
         c.execute('''CREATE TABLE IF NOT EXISTS Evidencias (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             CI_Estudiante TEXT NOT NULL,
             Url_Archivo TEXT NOT NULL,
             Hash TEXT NOT NULL,
             Estado INTEGER DEFAULT 1,
             Tipo_Archivo TEXT DEFAULT 'documento',
-            Fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            Fecha TIMESTAMP DEFAULT NOW(),
             Tamanio_KB REAL DEFAULT 0,
-            Asignado_Automaticamente INTEGER DEFAULT 0,
-            FOREIGN KEY(CI_Estudiante) REFERENCES Usuarios(CI) ON DELETE CASCADE
+            Asignado_Automaticamente INTEGER DEFAULT 0
         )''')
 
-        # Tabla Solicitudes
+        # 3. Tabla Solicitudes
         c.execute('''CREATE TABLE IF NOT EXISTS Solicitudes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             Tipo TEXT NOT NULL,
             CI_Solicitante TEXT NOT NULL,
             Email TEXT,
@@ -168,24 +190,24 @@ def init_db_completa():
             Id_Evidencia INTEGER,
             Resuelto_Por TEXT,
             Respuesta TEXT,
-            Fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            Fecha TIMESTAMP DEFAULT NOW(),
             Estado TEXT DEFAULT 'PENDIENTE',
             Fecha_Resolucion TIMESTAMP NULL
         )''')
         
-        # Tabla Auditoria
+        # 4. Tabla Auditoria
         c.execute('''CREATE TABLE IF NOT EXISTS Auditoria (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             Accion TEXT NOT NULL,
             Detalle TEXT,
             IP TEXT,
             Usuario TEXT,
-            Fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            Fecha TIMESTAMP DEFAULT NOW()
         )''')
         
-        # Tabla para métricas y estadísticas
+        # 5. Tabla Métricas
         c.execute('''CREATE TABLE IF NOT EXISTS Metricas_Sistema (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             Fecha DATE UNIQUE,
             Total_Usuarios INTEGER DEFAULT 0,
             Total_Evidencias INTEGER DEFAULT 0,
@@ -193,95 +215,33 @@ def init_db_completa():
             Almacenamiento_MB REAL DEFAULT 0
         )''')
         
-        # Verificar y agregar columnas faltantes (para compatibilidad)
-        columnas_compatibilidad = [
-            ("Usuarios", "Email", "TEXT"),
-            ("Usuarios", "Telefono", "TEXT"),
-            ("Usuarios", "Ultimo_Acceso", "TIMESTAMP NULL"),
-            ("Usuarios", "Fecha_Desactivacion", "TIMESTAMP NULL"),
-            
-            # 👇 CAMBIO CLAVE AQUÍ: Quitamos 'DEFAULT CURRENT_TIMESTAMP' y lo dejamos como 'TEXT' 👇
-            ("Usuarios", "Fecha_Registro", "TEXT"), 
-            # 👆 Esto permite que la columna se cree sin errores en bases de datos viejas
-            
-            ("Evidencias", "Tipo_Archivo", "TEXT DEFAULT 'documento'"),
-            ("Evidencias", "Tamanio_KB", "REAL DEFAULT 0"),
-            ("Evidencias", "Asignado_Automaticamente", "INTEGER DEFAULT 0"),
-            ("Evidencias", "Hash", "TEXT DEFAULT 'PENDIENTE'"), 
-            
-            ("Solicitudes", "Fecha_Resolucion", "TIMESTAMP NULL"),
-            ("Auditoria", "Usuario", "TEXT"),
-            ("Auditoria", "IP", "TEXT")
-        ]
-        
-        for tabla, columna, tipo in columnas_compatibilidad:
-            try:
-                c.execute(f"SELECT {columna} FROM {tabla} LIMIT 1")
-            except sqlite3.OperationalError:
-                try:
-                    c.execute(f"ALTER TABLE {tabla} ADD COLUMN {columna} {tipo}")
-                    print(f"✅ Columna {columna} agregada a tabla {tabla}")
-                except Exception as e:
-                    print(f"⚠️ No se pudo agregar columna {columna} a {tabla}: {e}")
-        
-        # Crear usuario admin si no existe
+        # Crear Admin
         c.execute("SELECT CI FROM Usuarios WHERE Tipo=0")
         if not c.fetchone():
-            c.execute('''INSERT INTO Usuarios (Nombre, Apellido, CI, Password, Tipo, Activo) 
-                         VALUES (?,?,?,?,?,?)''', 
+            c.execute("INSERT INTO Usuarios (Nombre, Apellido, CI, Password, Tipo, Activo) VALUES (%s,%s,%s,%s,%s,%s)", 
                      ('Admin', 'Sistema', '9999999999', 'admin123', 0, 1))
-            print("✅ Usuario admin creado")
-        
-        # Crear índices para mejor rendimiento
-        c.execute("CREATE INDEX IF NOT EXISTS idx_usuarios_ci ON Usuarios(CI)")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_evidencias_ci ON Evidencias(CI_Estudiante)")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_evidencias_fecha ON Evidencias(Fecha)")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_solicitudes_estado ON Solicitudes(Estado)")
+            print("✅ Usuario admin creado en Supabase")
+
+        # Crear Bandeja Recuperados
         c.execute("SELECT CI FROM Usuarios WHERE CI='9999999990'")
         if not c.fetchone():
-            # Usamos CI 9999999990, Tipo 1 (Estudiante) para que aparezca en el panel
-            c.execute("""INSERT INTO Usuarios (Nombre, Apellido, CI, Password, Tipo, Activo, Foto) 
-                         VALUES ('Bandeja', 'Recuperados', '9999999990', '123456', 1, 1, '')""")
-            print("✅ Usuario contenedor 'Bandeja Recuperados' creado")
-
-        # 2. MOVER TODOS LOS HUÉRFANOS A ESTA BANDEJA
-        # Todo lo que diga 'PENDIENTE' ahora será de este usuario
-        c.execute("UPDATE Evidencias SET CI_Estudiante='9999999990' WHERE CI_Estudiante='PENDIENTE' OR CI_Estudiante IS NULL")
-        if c.rowcount > 0:
-            print(f"📦 {c.rowcount} evidencias recuperadas movidas a la Bandeja de Recuperados.")
-
+            c.execute("INSERT INTO Usuarios (Nombre, Apellido, CI, Password, Tipo, Activo, Foto) VALUES (%s,%s,%s,%s,%s,%s,%s)", 
+                     ('Bandeja', 'Recuperados', '9999999990', '123456', 1, 1, ''))
+            print("✅ Bandeja de Recuperados creada")
         
         conn.commit()
         conn.close()
-        print("✅ Base de datos verificada y actualizada correctamente")
-        
-        # Ejecutar optimización inicial
-        optimizar_sistema_db()
+        print("✅ Base de datos Supabase inicializada correctamente.")
         
     except Exception as e:
-        print(f"❌ Error inicializando DB: {e}")
-        raise
+        print(f"❌ Error inicializando Supabase: {e}")
 
-# Ejecutar inicialización al arrancar
+# EJECUTAR INICIALIZACIÓN (¡Ahora sí, al final de las definiciones!)
 init_db_completa()
 
 # =========================================================================
 # 3. FUNCIONES AUXILIARES
 # =========================================================================
-def get_db_connection():
-    """Conexión a DB con compatibilidad de nombres de columna"""
-    conn = sqlite3.connect(DB_NAME)
-    
-    # Hacer que las filas se comporten como diccionarios
-    def dict_factory(cursor, row):
-        d = {}
-        for idx, col in enumerate(cursor.description):
-            column_name = col[0].replace('"', '')
-            d[column_name] = row[idx]
-        return d
-    
-    conn.row_factory = dict_factory
-    return conn
 
 def registrar_auditoria(accion: str, detalle: str, usuario: str = "Sistema", ip: str = ""):
     """Registra una acción en la tabla de auditoría con fecha de Ecuador"""
@@ -290,7 +250,7 @@ def registrar_auditoria(accion: str, detalle: str, usuario: str = "Sistema", ip:
         conn = get_db_connection()
         conn.execute("""
             INSERT INTO Auditoria (Accion, Detalle, Usuario, IP, Fecha) 
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s)
         """, (accion, detalle, usuario, ip, fecha_ecuador))
         conn.commit()
         conn.close()
@@ -347,26 +307,19 @@ def obtener_tamanio_archivo_kb(ruta: str) -> float:
         return 0
 
 def optimizar_sistema_db():
-    """Ejecuta comandos de optimización en la base de datos"""
+    """Ejecuta mantenimiento VACUUM en Supabase"""
     try:
         conn = get_db_connection()
-        c = conn.cursor()
-        
-        # Ejecutar VACUUM para optimizar espacio
-        c.execute("VACUUM")
-        
-        # Ejecutar ANALYZE para optimizar consultas
-        c.execute("ANALYZE")
-        
-        # Reconstruir índices
-        c.execute("REINDEX")
-        
-        conn.commit()
+        # En Postgres, VACUUM no puede ejecutarse dentro de una transacción normal
+        conn.autocommit = True 
+        with conn.cursor() as c:
+            c.execute("VACUUM")
+            c.execute("ANALYZE")
         conn.close()
-        print("✅ Sistema optimizado (VACUUM, ANALYZE, REINDEX)")
+        print("✅ Sistema optimizado (VACUUM ejecutado en Supabase)")
         return True
     except Exception as e:
-        print(f"⚠️ Error optimizando sistema: {e}")
+        print(f"⚠️ Alerta menor: No se pudo optimizar DB: {e}")
         return False
 
 # --- REEMPLAZA TU FUNCIÓN 'identificar_rostro_aws' POR ESTA ---
@@ -735,7 +688,7 @@ async def iniciar_sesion(request: Request, cedula: str = Form(...), contrasena: 
     try:
         conn = get_db_connection()
         c = conn.cursor()
-        c.execute("SELECT * FROM Usuarios WHERE TRIM(CI) = ?", (cedula.strip(),))
+        c.execute("SELECT * FROM Usuarios WHERE TRIM(CI) = %s", (cedula.strip(),))
         user = c.fetchone()
         
         if not user or user["Password"] != contrasena.strip():
@@ -790,7 +743,7 @@ async def registrar_usuario(
         c = conn.cursor()
         
         # Verificar si usuario ya existe
-        c.execute("SELECT CI FROM Usuarios WHERE CI=?", (cedula,))
+        c.execute("SELECT CI FROM Usuarios WHERE CI=%s", (cedula,))
         if c.fetchone():
             conn.close()
             return JSONResponse(content={
@@ -833,7 +786,7 @@ async def registrar_usuario(
         c.execute("""
             INSERT INTO Usuarios 
             (Nombre, Apellido, CI, Password, Tipo, Foto, Activo, Email, Telefono, Fecha_Registro)
-            VALUES (?,?,?,?,?,?,1,?,?,?)
+            VALUES (%s,%s,%s,%s,%s,%s,1,%s,%s,%s)
         """, (
             nombre.strip(),
             apellido.strip(),
@@ -891,7 +844,7 @@ async def buscar_estudiante(cedula: str = Form(...)):
         c = conn.cursor()
         
         # 1. Buscar usuario
-        c.execute("SELECT * FROM Usuarios WHERE CI = ?", (cedula,))
+        c.execute("SELECT * FROM Usuarios WHERE CI = %s", (cedula,))
         user = c.fetchone()
         
         if not user:
@@ -904,7 +857,7 @@ async def buscar_estudiante(cedula: str = Form(...)):
             c.execute("""
                 SELECT id, Url_Archivo as url, Tipo_Archivo as tipo, Fecha, Estado 
                 FROM Evidencias 
-                WHERE CI_Estudiante = ? AND Estado = 1 
+                WHERE CI_Estudiante = %s AND Estado = 1 
                 ORDER BY Fecha DESC
             """, (cedula,))
             evs = [dict(r) for r in c.fetchall()]
@@ -947,15 +900,15 @@ async def cambiar_estado_usuario(datos: EstadoUsuarioRequest):
         
         conn.execute("""
             UPDATE Usuarios 
-            SET Activo = ?, Fecha_Desactivacion = ?
-            WHERE CI = ?
+            SET Activo = %s, Fecha_Desactivacion = %s
+            WHERE CI = %s
         """, (datos.activo, fecha_desactivacion, datos.cedula))
         
         conn.commit()
         
         # Obtener datos del usuario para auditoría
         c = conn.cursor()
-        c.execute("SELECT Nombre, Apellido FROM Usuarios WHERE CI = ?", (datos.cedula,))
+        c.execute("SELECT Nombre, Apellido FROM Usuarios WHERE CI = %s", (datos.cedula,))
         user = c.fetchone()
         
         conn.close()
@@ -983,7 +936,7 @@ async def eliminar_usuario(cedula: str):
         c = conn.cursor()
         
         # 1. Obtener archivos del usuario antes de borrarlos
-        evidencias = c.execute("SELECT id, Url_Archivo FROM Evidencias WHERE CI_Estudiante = ?", (cedula,)).fetchall()
+        evidencias = c.execute("SELECT id, Url_Archivo FROM Evidencias WHERE CI_Estudiante = %s", (cedula,)).fetchall()
         
         archivos_borrados = 0
         espacio_liberado = 0
@@ -991,9 +944,9 @@ async def eliminar_usuario(cedula: str):
         for ev in evidencias:
             url = ev['Url_Archivo']
             
-            # 2. VERIFICACIÓN DE SEGURIDAD: ¿Alguien más usa este mismo archivo?
+            # 2. VERIFICACIÓN DE SEGURIDAD: ¿Alguien más usa este mismo archivo%s
             # Contamos cuántas veces aparece esta URL en total en la base de datos
-            uso_compartido = c.execute("SELECT COUNT(*) as n FROM Evidencias WHERE Url_Archivo = ?", (url,)).fetchone()['n']
+            uso_compartido = c.execute("SELECT COUNT(*) as n FROM Evidencias WHERE Url_Archivo = %s", (url,)).fetchone()['n']
             
             # Si 'n' es 1, significa que SOLO este usuario lo tiene. ¡Podemos borrarlo de la nube!
             # Si 'n' > 1, significa que otro estudiante comparte la foto. NO la borramos de S3, solo de la BD.
@@ -1013,8 +966,8 @@ async def eliminar_usuario(cedula: str):
                 print(f"   🛡️ Archivo protegido (compartido por otros): {url}")
 
         # 3. Borrar registros de la base de datos
-        c.execute("DELETE FROM Evidencias WHERE CI_Estudiante = ?", (cedula,))
-        c.execute("DELETE FROM Usuarios WHERE CI = ?", (cedula,))
+        c.execute("DELETE FROM Evidencias WHERE CI_Estudiante = %s", (cedula,))
+        c.execute("DELETE FROM Usuarios WHERE CI = %s", (cedula,))
         
         conn.commit()
         conn.close()
@@ -1171,7 +1124,7 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
 
         # 5. VERIFICAR SI EL ARCHIVO YA EXISTE FÍSICAMENTE
         conn = get_db_connection()
-        archivo_existente = conn.execute("SELECT Url_Archivo, Tamanio_KB FROM Evidencias WHERE Hash = ? LIMIT 1", (file_hash,)).fetchone()
+        archivo_existente = conn.execute("SELECT Url_Archivo, Tamanio_KB FROM Evidencias WHERE Hash = %s LIMIT 1", (file_hash,)).fetchone()
         
         url_final = ""
         tamanio_kb = 0
@@ -1200,16 +1153,16 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
         if cedulas_detectadas:
             for ced in cedulas_detectadas:
                 # Paso A: Traemos también el 'Tipo' del usuario
-                u = conn.execute("SELECT Nombre, Apellido, Tipo FROM Usuarios WHERE CI=?", (ced,)).fetchone()
+                u = conn.execute("SELECT Nombre, Apellido, Tipo FROM Usuarios WHERE CI=%s", (ced,)).fetchone()
                 
                 # --- FILTRO DE SEGURIDAD: SOLO ESTUDIANTES (Tipo 1) ---
                 if u and u['Tipo'] == 1:
                     nombre_completo = f"{u['Nombre']} {u['Apellido']}"
                     
-                    # Paso B: ¿Ya lo tiene?
+                    # Paso B: ¿Ya lo tiene%s
                     ya_existe = conn.execute("""
                         SELECT id FROM Evidencias 
-                        WHERE CI_Estudiante = ? AND Hash = ?
+                        WHERE CI_Estudiante = %s AND Hash = %s
                     """, (ced, file_hash)).fetchone()
                     
                     if ya_existe:
@@ -1217,7 +1170,7 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
                     else:
                         conn.execute("""
                             INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente) 
-                            VALUES (?, ?, ?, 1, ?, ?, 1)
+                            VALUES (%s, %s, %s, 1, %s, %s, 1)
                         """, (ced, url_final, file_hash, tipo_archivo, tamanio_kb))
                         asignados_nuevos.append(nombre_completo)
                 
@@ -1234,18 +1187,18 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
                 status = "alerta"
             else:
                 # Detectó rostros pero eran Admins o no registrados
-                check_pendiente = conn.execute("SELECT id FROM Evidencias WHERE Hash = ? AND CI_Estudiante = 'PENDIENTE'", (file_hash,)).fetchone()
+                check_pendiente = conn.execute("SELECT id FROM Evidencias WHERE Hash = %s AND CI_Estudiante = 'PENDIENTE'", (file_hash,)).fetchone()
                 if not check_pendiente:
                     conn.execute("""
                         INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente) 
-                        VALUES ('PENDIENTE', ?, ?, 1, ?, ?, 0)
+                        VALUES ('PENDIENTE', %s, %s, 1, %s, %s, 0)
                     """, (url_final, file_hash, tipo_archivo, tamanio_kb))
                 msg = "⚠️ Rostros detectados pero no son estudiantes activos."
                 status = "alerta"
 
         else:
             # 7. NADIE DETECTADO
-            check_pendiente = conn.execute("SELECT id FROM Evidencias WHERE Hash = ?", (file_hash,)).fetchone()
+            check_pendiente = conn.execute("SELECT id FROM Evidencias WHERE Hash = %s", (file_hash,)).fetchone()
             
             if check_pendiente:
                 status = "error"
@@ -1253,7 +1206,7 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
             else:
                 conn.execute("""
                     INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente) 
-                    VALUES ('PENDIENTE', ?, ?, 1, ?, ?, 0)
+                    VALUES ('PENDIENTE', %s, %s, 1, %s, %s, 0)
                 """, (url_final, file_hash, tipo_archivo, tamanio_kb))
                 
                 muestras_texto = ", ".join(texto_debug[:5]) if texto_debug else "Nada legible"
@@ -1288,7 +1241,7 @@ async def subir_manual(
         # --- NUEVO: DETECCIÓN DE DUPLICADOS ---
         file_hash = calcular_hash(path)
         conn = get_db_connection()
-        duplicado = conn.execute("SELECT id FROM Evidencias WHERE Hash = ?", (file_hash,)).fetchone()
+        duplicado = conn.execute("SELECT id FROM Evidencias WHERE Hash = %s", (file_hash,)).fetchone()
         
         if duplicado:
             conn.close()
@@ -1313,10 +1266,10 @@ async def subir_manual(
         
         # 3. Guardar en BD (Incluyendo Hash)
         for ced in lista_cedulas:
-            if c.execute("SELECT CI FROM Usuarios WHERE CI=?", (ced,)).fetchone():
+            if c.execute("SELECT CI FROM Usuarios WHERE CI=%s", (ced,)).fetchone():
                 c.execute("""
                     INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
-                    VALUES (?, ?, ?, 1, 'documento', ?, 0)
+                    VALUES (%s, %s, %s, 1, 'documento', %s, 0)
                 """, (ced, url_archivo, file_hash, tamanio_kb))
                 count += 1
         
@@ -1504,9 +1457,9 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                     # ACCIÓN
                     if existe:
                         if peso_kb > 0:
-                            c.execute("UPDATE Evidencias SET Tamanio_KB = ? WHERE id = ?", (peso_kb, ev['id']))
+                            c.execute("UPDATE Evidencias SET Tamanio_KB = %s WHERE id = %s", (peso_kb, ev['id']))
                     else:
-                        c.execute("DELETE FROM Evidencias WHERE id = ?", (ev['id'],))
+                        c.execute("DELETE FROM Evidencias WHERE id = %s", (ev['id'],))
                         fantasmas += 1
                 
                 print(f"   ✨ {fantasmas} fantasmas eliminados.")
@@ -1533,29 +1486,29 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                     cedula = ev['CI_Estudiante']
                     url = ev['Url_Archivo']
                     nombre_archivo = url.split('/')[-1]
-                    nombre_limpio = re.sub(r'^(manual_)?\d+_', '', nombre_archivo).lower()
+                    nombre_limpio = re.sub(r'^(manual_)%s\d+_', '', nombre_archivo).lower()
                     
                     clave = f"{cedula}|{ev.get('Hash')}" if ev.get('Hash') and ev.get('Hash') != 'PENDIENTE' else f"{cedula}|{nombre_limpio}"
                     
                     if clave in vistos:
                         original = vistos[clave]
                         if url != original['Url_Archivo']: 
-                            borrar_de_nube_real(url) # ¡ESTA ES LA LÍNEA CLAVE QUE BORRA EN LA NUBE!
+                            borrar_de_nube_real(url) 
                         ids_a_borrar.append(ev['id'])
                     else:
                         vistos[clave] = ev
                 
                 if ids_a_borrar:
-                    placeholders = ','.join(['?'] * len(ids_a_borrar))
+                    placeholders = ','.join(['%s'] * len(ids_a_borrar))
                     c.execute(f"DELETE FROM Evidencias WHERE id IN ({placeholders})", ids_a_borrar)
                     print(f"   ✨ {len(ids_a_borrar)} duplicados eliminados.")
                 
-                conn.commit() # Guardamos limpieza antes del reporte
+                conn.commit() 
 
                 # =========================================================
                 # 🕵️ PASO 5: REPORTE SHERLOCK HOLMES
                 # =========================================================
-                print("\n📋 === REPORTE DE EVIDENCIAS (¿Quién tiene los 87?) ===")
+                print("\n📋 === REPORTE DE EVIDENCIAS ===")
                 
                 usuarios_con_fotos = c.execute("""
                     SELECT u.Nombre, u.Apellido, u.CI, u.Tipo, u.Activo, COUNT(e.id) as Cantidad
@@ -1577,19 +1530,36 @@ async def optimizar_sistema(background_tasks: BackgroundTasks):
                 print("============================================\n")
 
                 # =========================================================
-                # FINALIZACIÓN
+                # FINALIZACIÓN LIMPIA
                 # =========================================================
                 conn.isolation_level = None 
-                c.execute("VACUUM")
-                conn.close()
+                c.execute("VACUUM") # Limpieza de espacio en Postgres
+                conn.close() # Cerramos la conexión principal
                 
-                # Actualizar métricas
+                # --- ACTUALIZACIÓN DE MÉTRICAS (CONEXIÓN NUEVA Y SEGURA) ---
                 stats = calcular_estadisticas_reales()
-                conn2 = get_db_connection()
-                conn2.execute("INSERT OR REPLACE INTO Metricas_Sistema (Fecha, Total_Evidencias, Almacenamiento_MB) VALUES (?, ?, ?)", 
-                            (ahora_ecuador().date().isoformat(), stats.get('total_evidencias',0), stats.get('almacenamiento_mb',0)))
-                conn2.commit()
-                conn2.close()
+                conn2 = get_db_connection() 
+                
+                try:
+                    fecha_hoy = ahora_ecuador().date().isoformat()
+                    
+                    conn2.execute("""
+                        INSERT INTO Metricas_Sistema 
+                        (Fecha, Total_Usuarios, Total_Evidencias, Solicitudes_Pendientes, Almacenamiento_MB)
+                        VALUES (%s, %s, %s, %s, %s)
+                        ON CONFLICT (Fecha) DO UPDATE SET
+                        Total_Usuarios = EXCLUDED.Total_Usuarios,
+                        Total_Evidencias = EXCLUDED.Total_Evidencias,
+                        Solicitudes_Pendientes = EXCLUDED.Solicitudes_Pendientes,
+                        Almacenamiento_MB = EXCLUDED.Almacenamiento_MB
+                    """, (fecha_hoy, stats.get("usuarios_activos",0), stats.get("total_evidencias",0), 
+                          stats.get("solicitudes_pendientes",0), stats.get("almacenamiento_mb",0)))
+                
+                    conn2.commit()
+                except Exception as e:
+                    print(f"Error guardando métricas finales: {e}")
+                finally:
+                    conn2.close() # Cerramos la conexión de métricas
                 
                 print("✅ MANTENIMIENTO COMPLETO FINALIZADO.")
                 
@@ -1632,14 +1602,14 @@ async def estadisticas_almacenamiento():
 
 @app.get("/datos_graficos_dashboard")
 async def datos_graficos_dashboard():
-    """Provee datos para gráficos del dashboard"""
+    """Provee datos para gráficos del dashboard (Versión PostgreSQL)"""
     try:
         conn = get_db_connection()
         c = conn.cursor()
         
-        # 1. Evolución de registros por mes
+        # 1. Evolución de registros por mes (TO_CHAR en lugar de strftime)
         c.execute("""
-            SELECT strftime('%Y-%m', Fecha_Registro) as mes,
+            SELECT TO_CHAR(Fecha_Registro, 'YYYY-MM') as mes,
                    COUNT(*) as cantidad
             FROM Usuarios 
             WHERE Fecha_Registro IS NOT NULL
@@ -1665,7 +1635,7 @@ async def datos_graficos_dashboard():
         """)
         solicitudes_estado = [dict(row) for row in c.fetchall()]
         
-        # 4. Top 5 estudiantes con más evidencias
+        # 4. Top 5 estudiantes
         c.execute("""
             SELECT u.Nombre, u.Apellido, u.CI, COUNT(e.id) as total
             FROM Usuarios u
@@ -1677,12 +1647,12 @@ async def datos_graficos_dashboard():
         """)
         top_estudiantes = [dict(row) for row in c.fetchall()]
         
-        # 5. Actividad por hora del día (últimos 7 días)
+        # 5. Actividad por hora (TO_CHAR y sintaxis de intervalo Postgres)
         c.execute("""
-            SELECT strftime('%H', Fecha) as hora,
+            SELECT TO_CHAR(Fecha, 'HH24') as hora,
                    COUNT(*) as actividades
             FROM Auditoria
-            WHERE DATE(Fecha) >= DATE('now', '-7 days')
+            WHERE Fecha >= NOW() - INTERVAL '7 days'
             GROUP BY hora
             ORDER BY hora
         """)
@@ -1716,7 +1686,7 @@ async def obtener_solicitudes(limit: int = 100):
             FROM Solicitudes s 
             LEFT JOIN Usuarios u ON s.CI_Solicitante = u.CI 
             ORDER BY s.Fecha DESC
-            LIMIT ?
+            LIMIT %s
         """, (limit,)).fetchall()
         
         conn.close()
@@ -1738,7 +1708,7 @@ async def solicitar_recuperacion(
     try:
         conn = get_db_connection()
         # Verificar si el usuario existe
-        user = conn.execute("SELECT Nombre, Apellido FROM Usuarios WHERE CI=?", (cedula,)).fetchone()
+        user = conn.execute("SELECT Nombre, Apellido FROM Usuarios WHERE CI=%s", (cedula,)).fetchone()
         if not user:
             conn.close()
             return JSONResponse({"status": "error", "mensaje": "La cédula no está registrada."})
@@ -1748,7 +1718,7 @@ async def solicitar_recuperacion(
         
         conn.execute("""
             INSERT INTO Solicitudes (Tipo, CI_Solicitante, Email, Detalle, Estado, Fecha)
-            VALUES ('RECUPERACION_CONTRASENA', ?, ?, ?, 'PENDIENTE', ?)
+            VALUES ('RECUPERACION_CONTRASENA', %s, %s, %s, 'PENDIENTE', %s)
         """, (cedula, email, detalle, ahora_ecuador()))
         
         conn.commit()
@@ -1780,7 +1750,7 @@ async def solicitar_subida(cedula: str = Form(...), archivo: UploadFile = File(.
         conn = get_db_connection()
         conn.execute("""
             INSERT INTO Solicitudes (Tipo, CI_Solicitante, Detalle, Evidencia_Reportada_Url, Estado, Fecha)
-            VALUES ('SUBIR_EVIDENCIA', ?, 'El estudiante desea agregar esta evidencia.', ?, 'PENDIENTE', ?)
+            VALUES ('SUBIR_EVIDENCIA', %s, 'El estudiante desea agregar esta evidencia.', %s, 'PENDIENTE', %s)
         """, (cedula, url_archivo, ahora_ecuador()))
         
         conn.commit()
@@ -1796,12 +1766,12 @@ async def reportar_evidencia(cedula: str = Form(...), id_evidencia: int = Form(.
         conn = get_db_connection()
         
         # Obtener URL para mostrarla al admin
-        ev = conn.execute("SELECT Url_Archivo FROM Evidencias WHERE id=?", (id_evidencia,)).fetchone()
+        ev = conn.execute("SELECT Url_Archivo FROM Evidencias WHERE id=%s", (id_evidencia,)).fetchone()
         url = ev['Url_Archivo'] if ev else ""
         
         conn.execute("""
             INSERT INTO Solicitudes (Tipo, CI_Solicitante, Detalle, Id_Evidencia, Evidencia_Reportada_Url, Estado, Fecha)
-            VALUES ('REPORTE_EVIDENCIA', ?, ?, ?, ?, 'PENDIENTE', ?)
+            VALUES ('REPORTE_EVIDENCIA', %s, %s, %s, %s, 'PENDIENTE', %s)
         """, (cedula, motivo, id_evidencia, url, ahora_ecuador()))
         
         conn.commit()
@@ -1814,7 +1784,7 @@ async def reportar_evidencia(cedula: str = Form(...), id_evidencia: int = Form(.
 async def obtener_solicitudes_por_cedula(cedula: str):
     try:
         conn = get_db_connection()
-        rows = conn.execute("SELECT * FROM Solicitudes WHERE CI_Solicitante=? ORDER BY Fecha DESC", (cedula,)).fetchall()
+        rows = conn.execute("SELECT * FROM Solicitudes WHERE CI_Solicitante=%s ORDER BY Fecha DESC", (cedula,)).fetchall()
         conn.close()
         return JSONResponse([dict(r) for r in rows])
     except: return JSONResponse([])
@@ -1843,7 +1813,7 @@ async def gestionar_solicitud(
             SELECT s.*, u.Nombre, u.Apellido, u.Email as UserEmail
             FROM Solicitudes s
             LEFT JOIN Usuarios u ON s.CI_Solicitante = u.CI
-            WHERE s.id = ?
+            WHERE s.id = %s
         """, (id_solicitud,)).fetchone()
         
         if not sol:
@@ -1860,7 +1830,7 @@ async def gestionar_solicitud(
         if tipo == 'REPORTE_EVIDENCIA':
             id_evidencia = sol['Id_Evidencia']
             if accion_norm == 'APROBADA':
-                conn.execute("DELETE FROM Evidencias WHERE id=?", (id_evidencia,))
+                conn.execute("DELETE FROM Evidencias WHERE id=%s", (id_evidencia,))
                 cuerpo_correo = f"Hola {nombre_usuario},\n\nTu reporte ha sido ACEPTADO. La evidencia ha sido eliminada.\n\nAdmin: {mensaje}"
             else:
                 cuerpo_correo = f"Hola {nombre_usuario},\n\nTu reporte fue revisado pero decidimos mantener la evidencia.\n\nMotivo: {mensaje}"
@@ -1870,7 +1840,7 @@ async def gestionar_solicitud(
             if accion_norm == 'APROBADA':
                 conn.execute("""
                     INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
-                    VALUES (?, ?, 'MANUAL_APROBADO', 1, 'documento', 0, 0)
+                    VALUES (%s, %s, 'MANUAL_APROBADO', 1, 'documento', 0, 0)
                 """, (ci_solicitante, url_archivo))
                 cuerpo_correo = f"Hola {nombre_usuario},\n\nTu solicitud de subida fue APROBADA. Ya está en tu perfil.\n\nAdmin: {mensaje}"
             else:
@@ -1900,7 +1870,7 @@ async def gestionar_solicitud(
             # Enviamos como HTML (True) para que se vea el diseño 
             background_tasks.add_task(enviar_correo_real, email_destino, asunto, cuerpo_correo, True)
             
-            conn.execute("UPDATE Solicitudes SET Estado=?, Resuelto_Por=?, Respuesta=?, Fecha_Resolucion=? WHERE id=?", 
+            conn.execute("UPDATE Solicitudes SET Estado=%s, Resuelto_Por=%s, Respuesta=%s, Fecha_Resolucion=%s WHERE id=%s", 
                          (accion_norm, id_admin, mensaje, fecha_resolucion, id_solicitud))
             conn.commit()
             conn.close()
@@ -1912,8 +1882,8 @@ async def gestionar_solicitud(
         # 3. ACTUALIZAR BD
         conn.execute("""
             UPDATE Solicitudes 
-            SET Estado=?, Resuelto_Por=?, Respuesta=?, Fecha_Resolucion=?
-            WHERE id=?
+            SET Estado=%s, Resuelto_Por=%s, Respuesta=%s, Fecha_Resolucion=%s
+            WHERE id=%s
         """, (accion_norm, id_admin, mensaje, fecha_resolucion, id_solicitud))
         
         conn.commit()
@@ -1942,7 +1912,7 @@ async def obtener_logs(limit: int = 100):
     try:
         conn = get_db_connection()
         # Traemos todo de auditoria ordenado por fecha
-        logs = conn.execute("SELECT * FROM Auditoria ORDER BY Fecha DESC LIMIT ?", (limit,)).fetchall()
+        logs = conn.execute("SELECT * FROM Auditoria ORDER BY Fecha DESC LIMIT %s", (limit,)).fetchall()
         conn.close()
         
         # Convertimos a lista de diccionarios simple
@@ -2026,7 +1996,7 @@ async def todas_evidencias(cedula: str):
         c.execute("""
             SELECT id, Url_Archivo, Tipo_Archivo, Fecha, Estado, Tamanio_KB
             FROM Evidencias
-            WHERE CI_Estudiante = ?
+            WHERE CI_Estudiante = %s
             ORDER BY Fecha DESC
         """, (cedula,))
         rows = c.fetchall()
@@ -2046,7 +2016,7 @@ async def eliminar_evidencia(id_evidencia: int):
         ev = conn.execute("""
             SELECT Url_Archivo, CI_Estudiante 
             FROM Evidencias 
-            WHERE id = ?
+            WHERE id = %s
         """, (id_evidencia,)).fetchone()
         
         if ev:
@@ -2060,7 +2030,7 @@ async def eliminar_evidencia(id_evidencia: int):
                     print(f"⚠️ Error eliminando de S3: {e}")
             
             # Eliminar de la base de datos
-            conn.execute("DELETE FROM Evidencias WHERE id = ?", (id_evidencia,))
+            conn.execute("DELETE FROM Evidencias WHERE id = %s", (id_evidencia,))
             conn.commit()
             
             # Registrar auditoría
@@ -2077,17 +2047,21 @@ async def eliminar_evidencia(id_evidencia: int):
 
 @app.get("/diagnostico_usuario/{cedula}")
 async def diagnostico_usuario(cedula: str):
-    """Diagnóstico completo de un usuario"""
+    """Diagnóstico completo de un usuario (Versión PostgreSQL)"""
     try:
         conn = get_db_connection()
         c = conn.cursor()
         
-        # Información de la tabla
-        c.execute("PRAGMA table_info(Usuarios)")
+        # CORRECCIÓN: Usamos information_schema en lugar de PRAGMA
+        c.execute("""
+            SELECT column_name, data_type 
+            FROM information_schema.columns 
+            WHERE table_name = 'usuarios'
+        """)
         columnas = c.fetchall()
         
         # Buscar usuario
-        c.execute("SELECT * FROM Usuarios WHERE CI = ?", (cedula,))
+        c.execute("SELECT * FROM Usuarios WHERE CI = %s", (cedula,))
         usuario = c.fetchone()
         
         # Evidencias del usuario
@@ -2097,27 +2071,27 @@ async def diagnostico_usuario(cedula: str):
                    Tipo_Archivo,
                    COUNT(*) as cantidad
             FROM Evidencias
-            WHERE CI_Estudiante = ?
+            WHERE CI_Estudiante = %s
             GROUP BY Tipo_Archivo
         """, (cedula,))
-        estadisticas_evidencias = c.fetchall()
+        estadisticas_evidencias = [dict(r) for r in c.fetchall()]
         
         # Solicitudes del usuario
         c.execute("""
             SELECT Estado, COUNT(*) as cantidad
             FROM Solicitudes
-            WHERE CI_Solicitante = ?
+            WHERE CI_Solicitante = %s
             GROUP BY Estado
         """, (cedula,))
-        estadisticas_solicitudes = c.fetchall()
+        estadisticas_solicitudes = [dict(r) for r in c.fetchall()]
         
         conn.close()
         
         return JSONResponse(content={
             "cedula_buscada": cedula,
             "usuario_encontrado": bool(usuario),
-            "usuario": usuario,
-            "estructura_tabla": columnas,
+            "usuario": dict(usuario) if usuario else None,
+            "estructura_tabla": [dict(r) for r in columnas],
             "estadisticas_evidencias": estadisticas_evidencias,
             "estadisticas_solicitudes": estadisticas_solicitudes,
             "fecha_diagnostico": ahora_ecuador().isoformat(),
@@ -2179,7 +2153,7 @@ class PasswordRequest(BaseModel):
 async def cambiar_contrasena(datos: PasswordRequest):
     try:
         conn = get_db_connection()
-        conn.execute("UPDATE Usuarios SET Password = ? WHERE CI = ?", (datos.nueva_contrasena, datos.cedula))
+        conn.execute("UPDATE Usuarios SET Password = %s WHERE CI = %s", (datos.nueva_contrasena, datos.cedula))
         conn.commit()
         conn.close()
         return JSONResponse({"mensaje": "Contraseña actualizada correctamente"})
@@ -2195,7 +2169,7 @@ async def descargar_evidencias_zip(ids: str = Form(...)):
         conn = get_db_connection()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
             for id_ev in id_list:
-                row = conn.execute("SELECT Url_Archivo FROM Evidencias WHERE id=?", (id_ev,)).fetchone()
+                row = conn.execute("SELECT Url_Archivo FROM Evidencias WHERE id=%s", (id_ev,)).fetchone()
                 if row:
                     url = row['Url_Archivo']
                     filename = url.split('/')[-1]
@@ -2237,9 +2211,9 @@ def limpieza_duplicados_startup():
         
         eliminados_0 = 0
         for row in urls_repetidas:
-            copias = conn.execute("SELECT id FROM Evidencias WHERE Url_Archivo = ? ORDER BY id ASC", (row['Url_Archivo'],)).fetchall()
+            copias = conn.execute("SELECT id FROM Evidencias WHERE Url_Archivo = %s ORDER BY id ASC", (row['Url_Archivo'],)).fetchall()
             for copia in copias[1:]: # Borrar todos menos el primero (el original)
-                conn.execute("DELETE FROM Evidencias WHERE id = ?", (copia['id'],))
+                conn.execute("DELETE FROM Evidencias WHERE id = %s", (copia['id'],))
                 eliminados_0 += 1
         
         if eliminados_0 > 0: print(f"   ✨ Fase 0: {eliminados_0} registros eliminados.")
@@ -2282,7 +2256,7 @@ def limpieza_duplicados_startup():
                         file_hash = calcular_hash(ruta_local)
 
                 if file_hash:
-                    conn.execute("UPDATE Evidencias SET Hash = ? WHERE id = ?", (file_hash, row['id']))
+                    conn.execute("UPDATE Evidencias SET Hash = %s WHERE id = %s", (file_hash, row['id']))
                     count_hashed += 1
                 
                 if temp_path and os.path.exists(temp_path): os.remove(temp_path)
@@ -2302,7 +2276,7 @@ def limpieza_duplicados_startup():
         
         eliminados_2 = 0
         for grupo in grupos_hash:
-            copias = conn.execute("SELECT id, Url_Archivo FROM Evidencias WHERE Hash = ? ORDER BY id ASC", (grupo['Hash'],)).fetchall()
+            copias = conn.execute("SELECT id, Url_Archivo FROM Evidencias WHERE Hash = %s ORDER BY id ASC", (grupo['Hash'],)).fetchall()
             original = copias[0]
             for copia in copias[1:]:
                 # Intentar borrar de S3 si la URL es diferente a la original
@@ -2313,7 +2287,7 @@ def limpieza_duplicados_startup():
                         s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
                     except: pass
                 
-                conn.execute("DELETE FROM Evidencias WHERE id = ?", (copia['id'],))
+                conn.execute("DELETE FROM Evidencias WHERE id = %s", (copia['id'],))
                 eliminados_2 += 1
         
         if eliminados_2 > 0: print(f"   ✨ Fase 2: {eliminados_2} duplicados exactos eliminados.")
@@ -2344,7 +2318,7 @@ def limpieza_duplicados_startup():
                 # original = lista[0] # El primero se queda
                 duplicados = lista[1:] # El resto se va
                 for dup in duplicados:
-                    conn.execute("DELETE FROM Evidencias WHERE id = ?", (dup['id'],))
+                    conn.execute("DELETE FROM Evidencias WHERE id = %s", (dup['id'],))
                     # Intento de borrado físico
                     if s3_client and BUCKET_NAME in dup['Url_Archivo']:
                         try:
@@ -2402,12 +2376,12 @@ def limpieza_duplicados_startup():
             # ACCIONES FASE 4
             if existe:
                 # Actualizamos el peso real
-                conn.execute("UPDATE Evidencias SET Tamanio_KB = ? WHERE id = ?", (peso_kb, ev['id']))
+                conn.execute("UPDATE Evidencias SET Tamanio_KB = %s WHERE id = %s", (peso_kb, ev['id']))
                 actualizados_peso += 1
             else:
                 # Solo borramos si estamos SEGUROS de que es un 404
                 print(f"   👻 Eliminando fantasma CONFIRMADO ID {ev['id']} (404 en nube)")
-                conn.execute("DELETE FROM Evidencias WHERE id = ?", (ev['id'],))
+                conn.execute("DELETE FROM Evidencias WHERE id = %s", (ev['id'],))
                 eliminados_nube += 1
         
         conn.commit()
@@ -2418,10 +2392,16 @@ def limpieza_duplicados_startup():
         try:
             stats = calcular_estadisticas_reales()
             fecha_hoy = ahora_ecuador().date().isoformat()
+            # Usar esta consulta en los 3 lugares donde guardas métricas:
             conn.execute("""
-                INSERT OR REPLACE INTO Metricas_Sistema 
+                INSERT INTO Metricas_Sistema 
                 (Fecha, Total_Usuarios, Total_Evidencias, Solicitudes_Pendientes, Almacenamiento_MB)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (Fecha) DO UPDATE SET
+                Total_Usuarios = EXCLUDED.Total_Usuarios,
+                Total_Evidencias = EXCLUDED.Total_Evidencias,
+                Solicitudes_Pendientes = EXCLUDED.Solicitudes_Pendientes,
+                Almacenamiento_MB = EXCLUDED.Almacenamiento_MB
             """, (fecha_hoy, stats.get("usuarios_activos",0), stats.get("total_evidencias",0), 
                   stats.get("solicitudes_pendientes",0), stats.get("almacenamiento_mb",0)))
             conn.commit()
@@ -2470,7 +2450,7 @@ async def recuperar_evidencias_nube(background_tasks: BackgroundTasks):
                     url_archivo = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{key}"
                     
                     # 2. Verificar si ya existe en la BD
-                    existe = conn.execute("SELECT id FROM Evidencias WHERE Url_Archivo = ?", (url_archivo,)).fetchone()
+                    existe = conn.execute("SELECT id FROM Evidencias WHERE Url_Archivo = %s", (url_archivo,)).fetchone()
                     
                     if not existe:
                         print(f"   📥 Recuperando: {key}...")
@@ -2492,7 +2472,7 @@ async def recuperar_evidencias_nube(background_tasks: BackgroundTasks):
                                 if rostros:
                                     # Si encuentra varios, asignamos al primero que encontremos registrado (simplificado para rescate)
                                     for rostro in rostros:
-                                        u = conn.execute("SELECT CI FROM Usuarios WHERE CI=?", (rostro,)).fetchone()
+                                        u = conn.execute("SELECT CI FROM Usuarios WHERE CI=%s", (rostro,)).fetchone()
                                         if u:
                                             ci_detectada = u['CI']
                                             asignado_auto = 1
@@ -2506,7 +2486,7 @@ async def recuperar_evidencias_nube(background_tasks: BackgroundTasks):
                             tipo = 'video' if key.lower().endswith(('.mp4', '.avi')) else 'imagen'
                             conn.execute("""
                                 INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
-                                VALUES (?, ?, ?, 1, ?, ?, ?)
+                                VALUES (%s, %s, %s, 1, %s, %s, %s)
                             """, (ci_detectada, url_archivo, nuevo_hash, tipo, size_kb, asignado_auto))
                             
                             restaurados += 1
@@ -2519,7 +2499,7 @@ async def recuperar_evidencias_nube(background_tasks: BackgroundTasks):
                             try:
                                 conn.execute("""
                                     INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
-                                    VALUES ('9999999990', ?, 'RECUPERADO', 1, 'desconocido', 0, 0)
+                                    VALUES ('9999999990', %s, 'RECUPERADO', 1, 'desconocido', 0, 0)
                                 """, (url_archivo,))
                                 restaurados += 1
                             except: pass
@@ -2530,9 +2510,13 @@ async def recuperar_evidencias_nube(background_tasks: BackgroundTasks):
             # Actualizar estadísticas
             stats = calcular_estadisticas_reales()
             fecha = ahora_ecuador().date().isoformat()
-            conn.execute("INSERT OR REPLACE INTO Metricas_Sistema (Fecha, Total_Evidencias, Almacenamiento_MB) VALUES (?, ?, ?)", 
-                        (fecha, stats.get('total_evidencias',0), stats.get('almacenamiento_mb',0)))
-            conn.commit()
+            conn.execute("""
+                INSERT INTO Metricas_Sistema (Fecha, Total_Evidencias, Almacenamiento_MB) 
+                VALUES (%s, %s, %s)
+                ON CONFLICT (Fecha) DO UPDATE SET
+                Total_Evidencias = EXCLUDED.Total_Evidencias,
+                Almacenamiento_MB = EXCLUDED.Almacenamiento_MB
+            """, (fecha, stats.get('total_evidencias',0), stats.get('almacenamiento_mb',0)))
 
         except Exception as e:
             print(f"❌ Error crítico en rescate: {e}")
@@ -2571,14 +2555,14 @@ async def reasignar_evidencias(datos: ReasignarRequest):
         clonados = 0
         
         # 1. Obtener datos originales de las evidencias antes de moverlas
-        placeholders = ','.join(['?'] * len(ids_evidencias))
+        placeholders = ','.join(['%s'] * len(ids_evidencias))
         evidencias_originales = c.execute(f"SELECT * FROM Evidencias WHERE id IN ({placeholders})", ids_evidencias).fetchall()
 
         # 2. PROCESAR CADA EVIDENCIA
         for ev in evidencias_originales:
             # A) Mover al PRIMER estudiante de la lista (UPDATE)
             primer_destino = cedulas_destino[0]
-            c.execute("UPDATE Evidencias SET CI_Estudiante = ?, Asignado_Automaticamente = 0 WHERE id = ?", (primer_destino, ev['id']))
+            c.execute("UPDATE Evidencias SET CI_Estudiante = %s, Asignado_Automaticamente = 0 WHERE id = %s", (primer_destino, ev['id']))
             movidos += 1
             
             # B) Clonar para el RESTO de estudiantes (INSERT)
@@ -2586,7 +2570,7 @@ async def reasignar_evidencias(datos: ReasignarRequest):
                 for otro_destino in cedulas_destino[1:]:
                     c.execute("""
                         INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
-                        VALUES (?, ?, ?, ?, ?, ?, 0)
+                        VALUES (%s, %s, %s, %s, %s, %s, 0)
                     """, (otro_destino, ev['Url_Archivo'], ev['Hash'], ev['Estado'], ev['Tipo_Archivo'], ev['Tamanio_KB']))
                     clonados += 1
 
