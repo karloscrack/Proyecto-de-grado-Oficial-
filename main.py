@@ -303,28 +303,29 @@ def enviar_correo_real(destinatario: str, asunto: str, mensaje: str, html: bool 
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
     
-    # Forzamos los valores exactos aquí para evitar cualquier error de lectura
-    servidor_smtp = "smtp.gmail.com"
-    puerto_smtp = 465 
-    correo_remitente = "karlos.ayala.lopez.1234@gmail.com"
-    password_remitente = "mzjg jvxj mruk qgeb"
+    # Definición local para evitar errores de lectura de variables globales
+    S_SERVER = "smtp.gmail.com"
+    S_PORT = 465 
+    S_EMAIL = "karlos.ayala.lopez.1234@gmail.com"
+    S_PASS = "mzjg jvxj mruk qgeb"
 
     try:
         msg = MIMEMultipart()
-        msg['From'] = correo_remitente
+        msg['From'] = S_EMAIL
         msg['To'] = destinatario
         msg['Subject'] = asunto
         msg.attach(MIMEText(mensaje, 'html' if html else 'plain'))
         
-        # Agregamos un timeout explícito para que Railway no se quede esperando infinitamente
-        with smtplib.SMTP_SSL(servidor_smtp, puerto_smtp, timeout=15) as server:
-            server.login(correo_remitente, password_remitente)
-            server.sendmail(correo_remitente, destinatario, msg.as_string())
+        # SMTP_SSL es obligatorio para el puerto 465 en Railway
+        with smtplib.SMTP_SSL(S_SERVER, S_PORT, timeout=15) as server:
+            server.login(S_EMAIL, S_PASS)
+            server.sendmail(S_EMAIL, destinatario, msg.as_string())
         
-        logging.info(f"✅ Correo enviado exitosamente a {destinatario}")
+        logging.info(f"✅ ÉXITO: Correo enviado a {destinatario}")
         return True
     except Exception as e:
-        logging.error(f"❌ Error crítico de red en Railway: {e}")
+        # Esto nos confirmará por qué puerto está fallando realmente
+        logging.error(f"❌ Error crítico de red en Railway (Puerto {S_PORT}): {e}")
         return False
 
 def calcular_hash(ruta: str) -> str:
