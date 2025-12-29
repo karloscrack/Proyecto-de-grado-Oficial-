@@ -32,7 +32,7 @@ def ahora_ecuador():
 
 # --- CONFIGURACIÓN DE CORREO ---
 SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 465  # Cambiado de 587 a 465 (SSL Directo para Railway)
+SMTP_PORT = 465  # Cambiado a 465 para evitar el bloqueo de red de Railway
 SMTP_EMAIL = "karlos.ayala.lopez.1234@gmail.com"
 SMTP_PASSWORD = "mzjg jvxj mruk qgeb"
 
@@ -301,9 +301,8 @@ def registrar_auditoria(accion: str, detalle: str, usuario: str = "Sistema", ip:
 def enviar_correo_real(destinatario: str, asunto: str, mensaje: str, html: bool = False) -> bool:
     import smtplib
     try:
-        # Si no hay credenciales, simulamos el envío para no dar error
         if "tu_correo" in SMTP_EMAIL or not SMTP_PASSWORD:
-            print(f"📧 [SIMULACION] A: {destinatario}")
+            logging.info(f"📧 [SIMULACION] A: {destinatario}")
             return True
             
         msg = MIMEMultipart()
@@ -312,7 +311,8 @@ def enviar_correo_real(destinatario: str, asunto: str, mensaje: str, html: bool 
         msg['Subject'] = asunto
         msg.attach(MIMEText(mensaje, 'html' if html else 'plain'))
         
-        # SMTP_SSL es la conexión directa segura que pide Gmail en el puerto 465
+        # Conexión directa SSL para puerto 465
+        # Esto resuelve el error [Errno 101] al no usar STARTTLS en un puerto bloqueado
         with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=20) as server:
             server.login(SMTP_EMAIL, SMTP_PASSWORD)
             server.sendmail(SMTP_EMAIL, destinatario, msg.as_string())
