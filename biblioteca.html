@@ -1130,8 +1130,6 @@
         }
 
         console.log('🔍 Enviando login a:', API_URL + '/iniciar_sesion');
-        console.log('   - Cédula:', cedula);
-        console.log('   - Contraseña:', '*'.repeat(contrasena.length));
 
         try {
             const res = await fetch(`${API_URL}/iniciar_sesion`, { 
@@ -1143,28 +1141,34 @@
             console.log('📥 Respuesta del backend:', data);
 
             if (data.autenticado) {
-                // ✅ GUARDAR TODOS LOS DATOS CRÍTICOS EN LOCALSTORAGE
-                localStorage.setItem('usuario_id', data.datos.id);          // <--- ESTA ES LA CLAVE QUE FALTABA
+                // ✅ GUARDAR DATOS EN LOCALSTORAGE
+                localStorage.setItem('usuario_id', data.datos.id);
                 localStorage.setItem('usuario_cedula', data.datos.cedula);
                 localStorage.setItem('usuario_nombre', data.datos.nombre);
                 localStorage.setItem('usuario_apellido', data.datos.apellido);
                 localStorage.setItem('usuario_tipo', data.datos.tipo);
                 localStorage.setItem('usuario_foto', data.datos.url_foto);
                 localStorage.setItem('usuario_email', data.datos.email);
-                localStorage.setItem('tutorial_visto', data.datos.tutorial_visto); // <--- IMPORTANTE TAMBIÉN
+                localStorage.setItem('tutorial_visto', data.datos.tutorial_visto);
 
-                // Redireccionar según tipo de usuario
-                if (parseInt(data.datos.tipo) === 0) {
+                // --- CORRECCIÓN CLAVE: DIAGNÓSTICO DE TIPO ---
+                const tipoUsuario = Number(data.datos.tipo); // Convertimos a número seguro
+                console.log("👮 Tipo Detectado:", tipoUsuario, "(0=Admin, 1=Estudiante)");
+
+                if (tipoUsuario === 0) {
+                    console.log("✅ Redirigiendo a Panel ADMIN...");
                     window.location.href = 'perfiladmin.html';
                 } else {
+                    console.log("🎓 Redirigiendo a Perfil ESTUDIANTE...");
                     window.location.href = 'perfil.html';
                 }
             } else {
-                // ... manejo de errores ...
+                errorText.innerHTML = data.mensaje || 'Credenciales incorrectas';
+                errorBox.style.display = 'block';
             }
         } catch (error) {
             console.error('❌ Error en login:', error);
-            errorText.innerHTML = 'Error de conexión con el servidor. Intente nuevamente.';
+            errorText.innerHTML = 'Error de conexión con el servidor.';
             errorBox.style.display = 'block';
         } finally {
             btn.innerHTML = originalText;
