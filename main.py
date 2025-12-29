@@ -100,11 +100,11 @@ print(f"📁 Ruta base de datos: {DB_NAME}")
 
 def get_db_connection():
     try:
-        # Tu URL de Supabase con la contraseña correcta
-        conn_str = "postgresql://postgres:1ZulgnaY0cnsz2p4@db.wwrbrabdwhoiougbaskz.supabase.co:5432/postgres"
+        # CAMBIO CLAVE: Puerto 6543 (Pooler) en lugar de 5432
+        # También agregamos ?sslmode=require para asegurar la conexión
+        conn_str = "postgresql://postgres:1ZulgnaY0cnsz2p4@db.wwrbrabdwhoiougbaskz.supabase.co:6543/postgres?sslmode=require"
         
         conn = psycopg2.connect(conn_str)
-        # ESTA LÍNEA ES VITAL: Permite usar row['Nombre'] en lugar de row[0]
         conn.cursor_factory = RealDictCursor 
         return conn
     except Exception as e:
