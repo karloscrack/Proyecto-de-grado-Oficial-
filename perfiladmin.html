@@ -2745,44 +2745,52 @@ function imagenAnterior(e) {
 }
 
 async function eliminarEvidenciaActual() {
-    const evidencia = evidenciasVisor[indiceVisorActual];
-    if(!evidencia) return;
+        const evidencia = evidenciasVisor[indiceVisorActual];
+        if(!evidencia) return;
 
-    // Cerramos el lightbox temporalmente para que SweetAlert se vea bien
-    document.getElementById('lightbox').classList.remove('active');
+        // 1. Confirmación primero
+        const result = await Swal.fire({
+            title: '¿Eliminar evidencia?',
+            text: "Se borrará de la nube y la base de datos.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d32f2f',
+            confirmButtonText: 'Sí, eliminar'
+        });
 
-    const result = await Swal.fire({
-        title: '¿Eliminar evidencia?',
-        text: "Se borrará de la nube y la base de datos.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d32f2f',
-        confirmButtonText: 'Sí, eliminar'
-    });
+        if (result.isConfirmed) {
+            // 2. ¡CORRECCIÓN CRÍTICA! 
+            // Llamamos a cerrarLightbox() AQUÍ para desbloquear el scroll inmediatamente.
+            // Antes solo ocultábamos el div, por eso se quedaba congelada la pantalla.
+            cerrarLightbox(); 
 
-    if (result.isConfirmed) {
-        try {
-            const id = evidencia.id || evidencia.ID;
-            const res = await fetch(`${API_URL}/eliminar_evidencia/${id}`, { method: 'DELETE' });
-            
-            if(res.ok) {
-                evidenciasEstudianteActual.splice(indiceVisorActual, 1);
-                renderizarEvidenciasEstudiante();
-                Swal.fire('Eliminado', 'Evidencia borrada.', 'success');
-                // No reabrimos el visor porque la foto ya no existe
-            } else {
-                throw new Error('Error servidor');
+            try {
+                // 3. Mostrar cargando mientras borra
+                Swal.fire({
+                    title: 'Eliminando...',
+                    text: 'Procesando borrado en la nube...',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+
+                const id = evidencia.id || evidencia.ID;
+                const res = await fetch(`${API_URL}/eliminar_evidencia/${id}`, { method: 'DELETE' });
+                
+                if(res.ok) {
+                    // Actualizar lista visual
+                    evidenciasEstudianteActual.splice(indiceVisorActual, 1);
+                    renderizarEvidenciasEstudiante();
+                    
+                    Swal.fire('Eliminado', 'Evidencia borrada correctamente.', 'success');
+                } else {
+                    throw new Error('Error servidor');
+                }
+            } catch (error) {
+                console.error(error);
+                Swal.fire('Error', 'No se pudo eliminar.', 'error');
             }
-        } catch (error) {
-            Swal.fire('Error', 'No se pudo eliminar.', 'error');
-            // Si falló, reabrimos el visor
-            document.getElementById('lightbox').classList.add('active');
         }
-    } else {
-        // Si canceló, reabrimos el visor
-        document.getElementById('lightbox').classList.add('active');
     }
-}
 
     // ==========================================
     // 8. FUNCIONES DE SEGURIDAD Y LOGS
