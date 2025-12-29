@@ -303,7 +303,7 @@ def enviar_correo_real(destinatario: str, asunto: str, mensaje: str, html: bool 
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
     
-    # Definición local para evitar errores de lectura de variables globales
+    # Definición local para asegurar que use los datos correctos
     S_SERVER = "smtp.gmail.com"
     S_PORT = 465 
     S_EMAIL = "karlos.ayala.lopez.1234@gmail.com"
@@ -316,16 +316,16 @@ def enviar_correo_real(destinatario: str, asunto: str, mensaje: str, html: bool 
         msg['Subject'] = asunto
         msg.attach(MIMEText(mensaje, 'html' if html else 'plain'))
         
-        # SMTP_SSL es obligatorio para el puerto 465 en Railway
-        with smtplib.SMTP_SSL(S_SERVER, S_PORT, timeout=15) as server:
+        # Conexión SSL directa con timeout corto para no colgar el servidor
+        with smtplib.SMTP_SSL(S_SERVER, S_PORT, timeout=10) as server:
             server.login(S_EMAIL, S_PASS)
             server.sendmail(S_EMAIL, destinatario, msg.as_string())
         
-        logging.info(f"✅ ÉXITO: Correo enviado a {destinatario}")
+        logging.info(f"✅ Correo enviado a {destinatario}")
         return True
     except Exception as e:
-        # Esto nos confirmará por qué puerto está fallando realmente
-        logging.error(f"❌ Error crítico de red en Railway (Puerto {S_PORT}): {e}")
+        # Registramos el error pero permitimos que el sistema siga funcionando
+        logging.error(f"⚠️ No se pudo enviar correo: {e}")
         return False
 
 def calcular_hash(ruta: str) -> str:
@@ -664,15 +664,13 @@ async def al_iniciar_sistema():
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "*",                                         # Permite todo (útil para desarrollo)
-        "https://proyecto-grado-karlos.vercel.app",  # TU FRONTEND EN VERCEL
-        "http://localhost:5500",                     # Por si pruebas en local
-        "http://127.0.0.1:5500"
+        "https://proyecto-grado-karlos.vercel.app",  # Tu frontend
+        "http://localhost:5500",
+        "*" # Opcional: permite todos para pruebas
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"]
 )
 
 # =========================================================================
