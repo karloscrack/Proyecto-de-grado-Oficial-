@@ -299,33 +299,36 @@ def registrar_auditoria(accion: str, detalle: str, usuario: str = "Sistema", ip:
         logging.error(f"Error en auditoria: {e}")
 
 def enviar_correo_real(destinatario: str, asunto: str, mensaje: str, html: bool = False) -> bool:
-    import smtplib
-    from email.mime.text import MIMEText
-    from email.mime.multipart import MIMEMultipart
+    import requests # Usaremos la librería requests que es más sencilla para APIs
     
-    # Forzamos los datos aquí adentro para que Railway no use configuraciones viejas
-    S_SERVER = "smtp.gmail.com"
-    S_PORT = 465 
-    S_EMAIL = "karlos.ayala.lopez.1234@gmail.com"
-    S_PASS = "mzjg jvxj mruk qgeb"
-
+    # Tu clave gratuita de Resend
+    API_KEY = "re_UgHvnVwc_GoohB6so8khU8mCBmLJB1bzJ"
+    
     try:
-        msg = MIMEMultipart()
-        msg['From'] = S_EMAIL
-        msg['To'] = destinatario
-        msg['Subject'] = asunto
-        msg.attach(MIMEText(mensaje, 'html' if html else 'plain'))
+        url = "https://api.resend.com/emails"
+        payload = {
+            "from": "onboarding@resend.dev",
+            "to": [destinatario],
+            "subject": asunto,
+            "html": mensaje if html else f"<p>{mensaje}</p>"
+        }
+        headers = {
+            "Authorization": f"Bearer {API_KEY}",
+            "Content-Type": "application/json"
+        }
         
-        # EL CAMBIO CLAVE: Usamos SMTP_SSL con un tiempo de espera (timeout) corto
-        with smtplib.SMTP_SSL(S_SERVER, S_PORT, timeout=10) as server:
-            server.login(S_EMAIL, S_PASS)
-            server.sendmail(S_EMAIL, destinatario, msg.as_string())
+        # Enviamos el correo como una petición web normal (Puerto 443)
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
         
-        print(f"✅ Correo enviado con éxito a: {destinatario}")
-        return True
+        if response.status_code in [200, 201]:
+            print(f"✅ Correo enviado vía API Resend a {destinatario}")
+            return True
+        else:
+            print(f"❌ Error API Resend: {response.text}")
+            return False
+            
     except Exception as e:
-        # Usamos print para que lo veas claro en la consola de Railway sin que marque error crítico
-        print(f"⚠️ Aviso de Red: El puerto 465 falló. Detalles: {e}")
+        print(f"❌ Error de conexión con API Resend: {e}")
         return False
     
 def calcular_hash(ruta: str) -> str:
