@@ -1876,9 +1876,36 @@ async def gestionar_solicitud(
             else:
                 cuerpo_correo = f"Hola {nombre_usuario},\n\nTu solicitud de subida fue RECHAZADA.\n\nMotivo: {mensaje}"
 
-        elif tipo in ['RECUPERACION_CONTRASENA', 'PROBLEMA_ERROR']:
-            cuerpo_correo = f"Hola {nombre_usuario},\n\nRespuesta a tu solicitud ({tipo.replace('_',' ')}):\n\n{mensaje}\n\nAtentamente,\nSoporte U.E. Despertar"
-
+        elif tipo in ['RECUPERACION_CONTRASENA']:
+            asunto = "🔐 Tu nueva clave de acceso - U.E. Despertar"
+            # Diseño profesional: Letras grandes, negras y centrado 
+            cuerpo_correo = f"""
+            <div style="font-family: sans-serif; text-align: center; border: 1px solid #ddd; padding: 30px; border-radius: 15px; max-width: 500px; margin: auto;">
+                <h2 style="color: #333;">Hola {nombre_usuario},</h2>
+                <p style="font-size: 1.1em; color: #555;">Se ha procesado tu solicitud de recuperación. Tu contraseña funcional es:</p>
+                
+                <div style="background-color: #f9f9f9; padding: 25px; margin: 25px 0; border: 2px dashed #000; display: inline-block; border-radius: 10px;">
+                    <span style="font-size: 2.5em; font-weight: bold; color: #000; letter-spacing: 3px;">
+                        {mensaje}
+                    </span>
+                </div>
+                
+                <p style="color: #d32f2f; font-weight: bold; font-size: 1.1em;">
+                    ⚠️ Recordatorio: No olvides guardar tu contraseña en un lugar seguro.
+                </p>
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                <p style="font-size: 0.8em; color: #888;">Soporte Técnico - Unidad Educativa Particular Despertar</p>
+            </div>
+            """
+            # Enviamos como HTML (True) para que se vea el diseño 
+            background_tasks.add_task(enviar_correo_real, email_destino, asunto, cuerpo_correo, True)
+            
+            conn.execute("UPDATE Solicitudes SET Estado=?, Resuelto_Por=?, Respuesta=?, Fecha_Resolucion=? WHERE id=?", 
+                         (accion_norm, id_admin, mensaje, fecha_resolucion, id_solicitud))
+            conn.commit()
+            conn.close()
+            return JSONResponse({"status": "ok", "mensaje": "Correo enviado con formato profesional."})
+        
         else:
             cuerpo_correo = f"Hola {nombre_usuario},\n\nTu solicitud ha sido procesada: {mensaje}"
 

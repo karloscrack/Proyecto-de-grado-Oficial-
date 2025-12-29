@@ -2264,24 +2264,24 @@
             `;
         }
         else if (tipo === 'RECUPERACION_CONTRASENA') {
-            contenido += `
-                <div style="background:#e3f2fd; padding:10px; border-radius:8px; margin-bottom:15px;">
-                    <p><strong>Usuario olvidó contraseña.</strong></p>
-                </div>
-                <div class="form-group">
-                    <label style="color:var(--primary); font-weight:bold;">Escribe el correo (Incluye la clave aquí):</label>
-                    <textarea id="mensajeAdmin" class="form-control" rows="5" placeholder="Hola ${usuario ? usuario.nombre : ''}, tu nueva contraseña es..."></textarea>
-                </div>
-                <div style="display:flex; gap:10px;">
-                    <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'aprobar')" style="background:var(--secondary); flex:1;">
-                        <i class="fas fa-paper-plane"></i> Enviar Correo
-                    </button>
-                    <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'rechazar')" style="background:var(--error); flex:1;">
-                        <i class="fas fa-ban"></i> Denegar
-                    </button>
-                </div>
-            `;
-        }
+    contenido += `
+        <div style="background:#e3f2fd; padding:10px; border-radius:8px; margin-bottom:15px;">
+            <p><strong>Instrucción:</strong> El correo se enviará automáticamente con un diseño profesional.</p>
+        </div>
+        <div class="form-group">
+            <label style="color:var(--primary); font-weight:bold;">SOLO ESCRIBE LA CONTRASEÑA (Asegúrate que sea la funcional):</label>
+            <textarea id="mensajeAdmin" class="form-control" rows="2" placeholder="Ejemplo: Clave12345 (No escribas nada más, solo la clave)"></textarea>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'aprobar')" style="background:var(--secondary); flex:1;">
+                <i class="fas fa-paper-plane"></i> Enviar Contraseña
+            </button>
+            <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'rechazar')" style="background:var(--error); flex:1;">
+                <i class="fas fa-ban"></i> Denegar
+            </button>
+        </div>
+    `;
+}
         else { 
             contenido += `
                 <div class="form-group">
