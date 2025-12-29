@@ -251,10 +251,13 @@ def registrar_auditoria(accion: str, detalle: str, usuario: str = "Sistema", ip:
     try:
         fecha_ecuador = ahora_ecuador()
         conn = get_db_connection()
-        conn.execute("""
+        c = conn.cursor() # <--- IMPORTANTE: Creamos el cursor
+        
+        c.execute("""
             INSERT INTO Auditoria (Accion, Detalle, Usuario, IP, Fecha) 
             VALUES (%s, %s, %s, %s, %s)
         """, (accion, detalle, usuario, ip, fecha_ecuador))
+        
         conn.commit()
         conn.close()
         logging.info(f"AUDITORIA: {accion} - {detalle}")
@@ -2195,37 +2198,40 @@ from urllib.parse import urlparse
 
 def limpieza_duplicados_startup():
     """
-    V5.2 - VERSIÓN MAESTRA: Incluye TODAS las fases (0, 1, 2, 3) restauradas
-    y la Fase 4 corregida para Backblaze.
+    V5.3 - VERSIÓN CORREGIDA PARA POSTGRESQL (Usa Cursores)
     """
     print("🧹 INICIANDO PROTOCOLO DE LIMPIEZA Y MANTENIMIENTO...")
     
     try:
         conn = get_db_connection()
+        c = conn.cursor() # <--- CLAVE: Usamos cursor para todo
         
         # ---------------------------------------------------------
         # FASE 0: LIMPIEZA POR URL EXACTA
         # ---------------------------------------------------------
         print("🔍 FASE 0: Buscando URLs idénticas...")
-        urls_repetidas = conn.execute("""
+        c.execute("""
             SELECT Url_Archivo, COUNT(*) as cantidad FROM Evidencias 
             GROUP BY Url_Archivo HAVING cantidad > 1
-        """).fetchall()
+        """)
+        urls_repetidas = c.fetchall()
         
         eliminados_0 = 0
         for row in urls_repetidas:
-            copias = conn.execute("SELECT id FROM Evidencias WHERE Url_Archivo = %s ORDER BY id ASC", (row['Url_Archivo'],)).fetchall()
-            for copia in copias[1:]: # Borrar todos menos el primero (el original)
-                conn.execute("DELETE FROM Evidencias WHERE id = %s", (copia['id'],))
+            c.execute("SELECT id FROM Evidencias WHERE Url_Archivo = %s ORDER BY id ASC", (row['Url_Archivo'],))
+            copias = c.fetchall()
+            for copia in copias[1:]: # Borrar todos menos el primero
+                c.execute("DELETE FROM Evidencias WHERE id = %s", (copia['id'],))
                 eliminados_0 += 1
         
         if eliminados_0 > 0: print(f"   ✨ Fase 0: {eliminados_0} registros eliminados.")
 
         # ---------------------------------------------------------
-        # FASE 1: REPARAR ARCHIVOS ANTIGUOS (CALCULAR HASHES)
+        # FASE 1: REPARAR ARCHIVOS ANTIGUOS
         # ---------------------------------------------------------
         print("⏳ FASE 1: Verificando huellas digitales...")
-        pendientes = conn.execute("SELECT id, Url_Archivo FROM Evidencias WHERE Hash = 'PENDIENTE' OR Hash IS NULL").fetchall()
+        c.execute("SELECT id, Url_Archivo FROM Evidencias WHERE Hash = 'PENDIENTE' OR Hash IS NULL")
+        pendientes = c.fetchall()
         
         count_hashed = 0
         for row in pendientes:
@@ -2234,55 +2240,48 @@ def limpieza_duplicados_startup():
                 temp_path = None
                 file_hash = None
                 
-                # Intento de descarga para calcular hash
                 if "http" in url and s3_client:
                     try:
-                        # Extraer key usando urlparse para seguridad
                         parsed = urlparse(url)
                         key = parsed.path.lstrip('/')
-                        
                         with tempfile.NamedTemporaryFile(delete=False) as tmp:
                             s3_client.download_fileobj(BUCKET_NAME, key, tmp)
                             temp_path = tmp.name
                         file_hash = calcular_hash(temp_path)
                     except: pass 
-                
-                # Si es local
                 elif "/local/" in url:
-                    # Ajuste de ruta si es necesario
                     ruta_local = url.replace("/local/", "./")
                     if not os.path.exists(ruta_local):
-                         # Intento ruta absoluta para Docker
                          ruta_local = os.path.join(BASE_DIR, url.replace("/local/", "").lstrip("/"))
-                    
                     if os.path.exists(ruta_local):
                         file_hash = calcular_hash(ruta_local)
 
                 if file_hash:
-                    conn.execute("UPDATE Evidencias SET Hash = %s WHERE id = %s", (file_hash, row['id']))
+                    c.execute("UPDATE Evidencias SET Hash = %s WHERE id = %s", (file_hash, row['id']))
                     count_hashed += 1
                 
                 if temp_path and os.path.exists(temp_path): os.remove(temp_path)
             except: pass
             
-        conn.commit()
+        conn.commit() # Guardamos avance fase 1
         if count_hashed > 0: print(f"   ✨ Fase 1: {count_hashed} hashes calculados.")
 
         # ---------------------------------------------------------
-        # FASE 2: ELIMINAR POR HASH (CONTENIDO IDÉNTICO)
+        # FASE 2: ELIMINAR POR HASH
         # ---------------------------------------------------------
         print("🔍 FASE 2: Buscando contenido idéntico (Hash)...")
-        grupos_hash = conn.execute("""
+        c.execute("""
             SELECT Hash, COUNT(*) as cantidad FROM Evidencias 
             WHERE Hash NOT IN ('PENDIENTE', '', 'RECUPERADO') GROUP BY Hash HAVING cantidad > 1
-        """).fetchall()
+        """)
+        grupos_hash = c.fetchall()
         
         eliminados_2 = 0
         for grupo in grupos_hash:
-            copias = conn.execute("SELECT id, Url_Archivo FROM Evidencias WHERE Hash = %s ORDER BY id ASC", (grupo['Hash'],)).fetchall()
+            c.execute("SELECT id, Url_Archivo FROM Evidencias WHERE Hash = %s ORDER BY id ASC", (grupo['Hash'],))
+            copias = c.fetchall()
             original = copias[0]
             for copia in copias[1:]:
-                # Intentar borrar de S3 si la URL es diferente a la original
                 if s3_client and copia['Url_Archivo'] != original['Url_Archivo'] and BUCKET_NAME in copia['Url_Archivo']:
                     try:
                         parsed = urlparse(copia['Url_Archivo'])
@@ -2290,39 +2289,36 @@ def limpieza_duplicados_startup():
                         s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
                     except: pass
                 
-                conn.execute("DELETE FROM Evidencias WHERE id = %s", (copia['id'],))
+                c.execute("DELETE FROM Evidencias WHERE id = %s", (copia['id'],))
                 eliminados_2 += 1
         
         if eliminados_2 > 0: print(f"   ✨ Fase 2: {eliminados_2} duplicados exactos eliminados.")
 
         # ---------------------------------------------------------
-        # FASE 3: ELIMINAR POR NOMBRE + ESTUDIANTE (HEURÍSTICA)
+        # FASE 3: ELIMINAR POR NOMBRE + ESTUDIANTE
         # ---------------------------------------------------------
         print("🔍 FASE 3: Buscando duplicados por nombre de archivo...")
-        todas = conn.execute("SELECT id, CI_Estudiante, Url_Archivo FROM Evidencias").fetchall()
+        c.execute("SELECT id, CI_Estudiante, Url_Archivo FROM Evidencias")
+        todas = c.fetchall()
         agrupados = {}
-        import re
-        eliminados_3 = 0
         
         for ev in todas:
             url = ev['Url_Archivo']
             cedula = ev['CI_Estudiante']
             filename = os.path.basename(url)
-            # Limpiamos timestamp inicial (ej: 123456_foto.jpg -> foto.jpg)
             clean_name = re.sub(r'^\d+_', '', filename)
             clave = f"{cedula}|{clean_name}"
             
             if clave not in agrupados: agrupados[clave] = []
             agrupados[clave].append(ev)
             
+        eliminados_3 = 0
         for clave, lista in agrupados.items():
             if len(lista) > 1:
                 lista.sort(key=lambda x: x['id'])
-                # original = lista[0] # El primero se queda
-                duplicados = lista[1:] # El resto se va
+                duplicados = lista[1:] 
                 for dup in duplicados:
-                    conn.execute("DELETE FROM Evidencias WHERE id = %s", (dup['id'],))
-                    # Intento de borrado físico
+                    c.execute("DELETE FROM Evidencias WHERE id = %s", (dup['id'],))
                     if s3_client and BUCKET_NAME in dup['Url_Archivo']:
                         try:
                             parsed = urlparse(dup['Url_Archivo'])
@@ -2334,13 +2330,12 @@ def limpieza_duplicados_startup():
         if eliminados_3 > 0: print(f"   ✨ Fase 3: {eliminados_3} archivos eliminados por nombre.")
 
         # ---------------------------------------------------------
-        # FASE 4: SINCRONIZACIÓN SEGURA CON NUBE (Corrección 404)
+        # FASE 4: SINCRONIZACIÓN SEGURA CON NUBE
         # ---------------------------------------------------------
-        print("☁️ FASE 4: Auditando existencia real en la nube (Modo Seguro)...")
-        
-        # Recargamos la lista actualizada
+        print("☁️ FASE 4: Auditando existencia real en la nube...")
         conn.commit()
-        evidencias = conn.execute("SELECT id, Url_Archivo FROM Evidencias").fetchall()
+        c.execute("SELECT id, Url_Archivo FROM Evidencias")
+        evidencias = c.fetchall()
         
         actualizados_peso = 0
         eliminados_nube = 0
@@ -2350,53 +2345,38 @@ def limpieza_duplicados_startup():
             existe = False
             peso_kb = 0
             
-            # A) Si es archivo en Nube
             if s3_client and BUCKET_NAME in url:
                 try:
-                    # CORRECCIÓN CRÍTICA: Usamos urlparse
                     parsed = urlparse(url)
                     key = parsed.path.lstrip('/')
-                    
-                    # Preguntamos a Backblaze
                     meta = s3_client.head_object(Bucket=BUCKET_NAME, Key=key)
                     peso_kb = meta['ContentLength'] / 1024
                     existe = True
                 except Exception as e:
-                    # Solo marcamos como inexistente si es un error 404 REAL
-                    error_msg = str(e)
-                    if "404" in error_msg or "Not Found" in error_msg:
-                        existe = False
-                    else:
-                        # Si es otro error (conexión, permisos), asumimos que EXISTE para no borrarlo por error
-                        existe = True 
-                        # print(f"   ⚠️ Error conexión S3 ID {ev['id']}: {e}") 
-            
-            # B) Si es archivo Local
+                    if "404" in str(e) or "Not Found" in str(e): existe = False
+                    else: existe = True 
             elif "/local/" in url:
-                existe = True # En local asumimos que existe para evitar borrados accidentales en Docker
-                # Lógica opcional para local...
+                existe = True 
             
-            # ACCIONES FASE 4
             if existe:
-                # Actualizamos el peso real
-                conn.execute("UPDATE Evidencias SET Tamanio_KB = %s WHERE id = %s", (peso_kb, ev['id']))
+                c.execute("UPDATE Evidencias SET Tamanio_KB = %s WHERE id = %s", (peso_kb, ev['id']))
                 actualizados_peso += 1
             else:
-                # Solo borramos si estamos SEGUROS de que es un 404
-                print(f"   👻 Eliminando fantasma CONFIRMADO ID {ev['id']} (404 en nube)")
-                conn.execute("DELETE FROM Evidencias WHERE id = %s", (ev['id'],))
+                c.execute("DELETE FROM Evidencias WHERE id = %s", (ev['id'],))
                 eliminados_nube += 1
         
         conn.commit()
-        print(f"✅ FASE 4 COMPLETADA: {actualizados_peso} pesos actualizados, {eliminados_nube} fantasmas eliminados.")
+        print(f"✅ FASE 4 COMPLETADA: {actualizados_peso} actualizados, {eliminados_nube} eliminados.")
         
-        # --- FINALIZACIÓN ---
-        # Recalcular estadísticas inmediatamente
+        # Actualizar métricas
         try:
             stats = calcular_estadisticas_reales()
             fecha_hoy = ahora_ecuador().date().isoformat()
-            # Usar esta consulta en los 3 lugares donde guardas métricas:
-            conn.execute("""
+            
+            # Usar conexión nueva para métricas para evitar conflictos
+            conn_metricas = get_db_connection()
+            c_met = conn_metricas.cursor()
+            c_met.execute("""
                 INSERT INTO Metricas_Sistema 
                 (Fecha, Total_Usuarios, Total_Evidencias, Solicitudes_Pendientes, Almacenamiento_MB)
                 VALUES (%s, %s, %s, %s, %s)
@@ -2407,13 +2387,13 @@ def limpieza_duplicados_startup():
                 Almacenamiento_MB = EXCLUDED.Almacenamiento_MB
             """, (fecha_hoy, stats.get("usuarios_activos",0), stats.get("total_evidencias",0), 
                   stats.get("solicitudes_pendientes",0), stats.get("almacenamiento_mb",0)))
-            conn.commit()
-        except: pass
+            conn_metricas.commit()
+            conn_metricas.close()
+        except Exception as e:
+            print(f"⚠️ Error menor actualizando métricas: {e}")
         
         conn.close()
-        
-        total_limpieza = eliminados_0 + eliminados_2 + eliminados_3 + eliminados_nube
-        print(f"✅ MANTENIMIENTO TOTAL FINALIZADO. Total registros limpiados: {total_limpieza}")
+        print(f"✅ MANTENIMIENTO TOTAL FINALIZADO.")
 
     except Exception as e:
         print(f"❌ Error en limpieza startup: {e}")
