@@ -1773,113 +1773,112 @@ async def obtener_solicitudes_por_cedula(cedula: str):
 
 @app.post("/gestionar_solicitud")
 async def gestionar_solicitud(
-    background_tasks: BackgroundTasks,  # <--- MAGIA AQUÍ: Permite tareas de fondo
+    background_tasks: BackgroundTasks,
     id_solicitud: int = Form(...),
     accion: str = Form(...), 
     mensaje: str = Form(...), 
     id_admin: str = Form("Admin")
 ):
+    conn = None
     try:
-        # 1. Normalizar acción
-        accion_norm = "APROBADA" if accion.lower() in ['aprobar', 'aceptar', 'aprobada'] else "RECHAZADA"
-        fecha_resolucion = ahora_ecuador()
-        
         conn = get_db_connection()
+        c = conn.cursor(cursor_factory=RealDictCursor) # <--- INDISPENSABLE para PostgreSQL
         
-        # 2. Obtener datos
-        sol = conn.execute("""
+        # 🛡️ 1. BLOQUEO DE SEGURIDAD (MULTI-ADMIN)
+        c.execute("SELECT Estado, Resuelto_Por FROM Solicitudes WHERE id = %s", (id_solicitud,))
+        actual = c.fetchone()
+        
+        if not actual:
+            return JSONResponse({"status": "error", "mensaje": "La solicitud ya no existe."})
+        
+        # Si el estado ya no es PENDIENTE, detenemos todo para no duplicar correos o acciones
+        est_actual = (actual.get('estado') or actual.get('Estado') or 'PENDIENTE').upper()
+        if est_actual != 'PENDIENTE':
+            quien = actual.get('resuelto_por') or actual.get('Resuelto_Por') or "otro admin"
+            return JSONResponse({
+                "status": "error", 
+                "mensaje": f"⚠️ Esta solicitud ya fue resuelta por: {quien}."
+            })
+
+        # 2. OBTENER DATOS DEL ESTUDIANTE Y SOLICITUD
+        c.execute("""
             SELECT s.*, u.Nombre, u.Apellido, u.Email as UserEmail
             FROM Solicitudes s
             LEFT JOIN Usuarios u ON s.CI_Solicitante = u.CI
             WHERE s.id = %s
-        """, (id_solicitud,)).fetchone()
+        """, (id_solicitud,))
+        sol = c.fetchone()
         
-        if not sol:
-            return JSONResponse({"status": "error", "mensaje": "Solicitud no encontrada"})
+        accion_norm = "APROBADA" if accion.lower() in ['aprobar', 'aceptar', 'aprobada'] else "RECHAZADA"
+        fecha_resolucion = ahora_ecuador()
+        tipo = sol.get('tipo') or sol.get('Tipo')
+        ci_sol = sol.get('ci_solicitante') or sol.get('CI_Solicitante')
+        email_destino = sol.get('email') or sol.get('Email') or sol.get('UserEmail')
+        nombre_usuario = f"{sol.get('nombre') or sol.get('Nombre')} {sol.get('apellido') or sol.get('Apellido')}"
         
-        tipo = sol['Tipo']
-        ci_solicitante = sol['CI_Solicitante']
-        email_destino = sol['Email'] if sol['Email'] else sol['UserEmail']
-        nombre_usuario = f"{sol['Nombre']} {sol['Apellido']}"
-        
-        # --- LÓGICA DE ACCIONES ---
-        cuerpo_correo = "" # Inicializar variable
-        
+        cuerpo_correo = ""
+        es_html = False
+
+        # 3. LÓGICA DE ACCIONES (SIN QUITAR NADA)
         if tipo == 'REPORTE_EVIDENCIA':
-            id_evidencia = sol['Id_Evidencia']
+            id_ev = sol.get('id_evidencia') or sol.get('Id_Evidencia')
             if accion_norm == 'APROBADA':
-                conn.execute("DELETE FROM Evidencias WHERE id=%s", (id_evidencia,))
+                c.execute("DELETE FROM Evidencias WHERE id=%s", (id_ev,))
                 cuerpo_correo = f"Hola {nombre_usuario},\n\nTu reporte ha sido ACEPTADO. La evidencia ha sido eliminada.\n\nAdmin: {mensaje}"
             else:
-                cuerpo_correo = f"Hola {nombre_usuario},\n\nTu reporte fue revisado pero decidimos mantener la evidencia.\n\nMotivo: {mensaje}"
+                cuerpo_correo = f"Hola {nombre_usuario},\n\nTu reporte fue revisado pero la evidencia se mantendrá.\n\nMotivo: {mensaje}"
 
         elif tipo == 'SUBIR_EVIDENCIA':
-            url_archivo = sol['Evidencia_Reportada_Url']
+            url_arch = sol.get('evidencia_reportada_url') or sol.get('Evidencia_Reportada_Url')
             if accion_norm == 'APROBADA':
-                conn.execute("""
+                c.execute("""
                     INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
                     VALUES (%s, %s, 'MANUAL_APROBADO', 1, 'documento', 0, 0)
-                """, (ci_solicitante, url_archivo))
-                cuerpo_correo = f"Hola {nombre_usuario},\n\nTu solicitud de subida fue APROBADA. Ya está en tu perfil.\n\nAdmin: {mensaje}"
+                """, (ci_sol, url_arch))
+                cuerpo_correo = f"Hola {nombre_usuario},\n\nTu solicitud de subida fue APROBADA.\n\nAdmin: {mensaje}"
             else:
                 cuerpo_correo = f"Hola {nombre_usuario},\n\nTu solicitud de subida fue RECHAZADA.\n\nMotivo: {mensaje}"
 
-        elif tipo in ['RECUPERACION_CONTRASENA']:
+        elif tipo == 'RECUPERACION_CONTRASENA':
+            es_html = True
             asunto = "🔐 Tu nueva clave de acceso - U.E. Despertar"
-            # Diseño profesional: Letras grandes, negras y centrado 
             cuerpo_correo = f"""
             <div style="font-family: sans-serif; text-align: center; border: 1px solid #ddd; padding: 30px; border-radius: 15px; max-width: 500px; margin: auto;">
                 <h2 style="color: #333;">Hola {nombre_usuario},</h2>
-                <p style="font-size: 1.1em; color: #555;">Se ha procesado tu solicitud de recuperación. Tu contraseña funcional es:</p>
-                
+                <p style="font-size: 1.1em; color: #555;">Tu nueva contraseña es:</p>
                 <div style="background-color: #f9f9f9; padding: 25px; margin: 25px 0; border: 2px dashed #000; display: inline-block; border-radius: 10px;">
-                    <span style="font-size: 2.5em; font-weight: bold; color: #000; letter-spacing: 3px;">
-                        {mensaje}
-                    </span>
+                    <span style="font-size: 2.5em; font-weight: bold; color: #000;">{mensaje}</span>
                 </div>
-                
-                <p style="color: #d32f2f; font-weight: bold; font-size: 1.1em;">
-                    ⚠️ Recordatorio: No olvides guardar tu contraseña en un lugar seguro.
-                </p>
-                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-                <p style="font-size: 0.8em; color: #888;">Soporte Técnico - Unidad Educativa Particular Despertar</p>
+                <p style="color: #888; font-size: 0.8em;">Soporte Técnico - U.E.P. Despertar</p>
             </div>
             """
-            # Enviamos como HTML (True) para que se vea el diseño 
             background_tasks.add_task(enviar_correo_real, email_destino, asunto, cuerpo_correo, True)
-            
-            conn.execute("UPDATE Solicitudes SET Estado=%s, Resuelto_Por=%s, Respuesta=%s, Fecha_Resolucion=%s WHERE id=%s", 
-                         (accion_norm, id_admin, mensaje, fecha_resolucion, id_solicitud))
-            conn.commit()
-            conn.close()
-            return JSONResponse({"status": "ok", "mensaje": "Correo enviado con formato profesional."})
         
         else:
             cuerpo_correo = f"Hola {nombre_usuario},\n\nTu solicitud ha sido procesada: {mensaje}"
 
-        # 3. ACTUALIZAR BD
-        conn.execute("""
+        # 4. ACTUALIZAR ESTADO FINAL
+        c.execute("""
             UPDATE Solicitudes 
             SET Estado=%s, Resuelto_Por=%s, Respuesta=%s, Fecha_Resolucion=%s
             WHERE id=%s
         """, (accion_norm, id_admin, mensaje, fecha_resolucion, id_solicitud))
         
         conn.commit()
-        conn.close()
-        
-        # 4. ENVIAR CORREO EN SEGUNDO PLANO (AQUÍ ESTÁ LA VELOCIDAD)
-        if email_destino:
+
+        # 5. ENVÍO DE CORREO (Si no fue de contraseña, que ya se envió arriba)
+        if email_destino and not es_html:
             asunto = f"Respuesta a Solicitud: {tipo.replace('_', ' ')}"
-            # IMPORTANTE: Que los nombres coincidan con los de enviar_correo_real
             background_tasks.add_task(enviar_correo_real, email_destino, asunto, cuerpo_correo)
         
-        return JSONResponse({
-            "status": "ok", 
-            "mensaje": "Acción procesada correctamente (Correo enviándose en segundo plano)."
-        })
+        return JSONResponse({"status": "ok", "mensaje": f"Gestionado por {id_admin}."})
 
     except Exception as e:
+        if conn: conn.rollback()
+        print(f"Error gestionando: {e}")
         return JSONResponse({"status": "error", "mensaje": str(e)})
+    finally:
+        if conn: conn.close()
 # =========================================================================
 # 12. ENDPOINTS DE LOGS Y AUDITORÍA
 # =========================================================================

@@ -2401,83 +2401,86 @@
     }
 
     async function procesarSolicitud(accion) {
-        const id = document.getElementById('solicitudIdRespuesta').value;
-        const tipo = document.getElementById('tipoRespuesta').value;
-        const mensaje = document.getElementById('respuestaAdmin').value;
-        const nuevaPassInput = document.getElementById('nuevaContrasena');
-        const nuevaPass = nuevaPassInput ? nuevaPassInput.value : null;
+    // 1. Obtener valores de los campos del modal
+    const id = document.getElementById('solicitudIdRespuesta').value;
+    const tipo = document.getElementById('tipoRespuesta').value;
+    const mensaje = document.getElementById('respuestaAdmin').value.trim();
+    
+    // 🛡️ Obtener el nombre real del administrador desde la sesión
+    const nombreAdminLogueado = localStorage.getItem('usuario_nombre') || 'Administrador';
 
-        if (!mensaje.trim()) {
+    // 2. Validación de mensaje obligatorio (Evita respuestas vacías)
+    if (!mensaje) {
+        Swal.fire({
+            title: 'Campo requerido',
+            text: 'Por favor escribe un mensaje de respuesta para el usuario.',
+            icon: 'warning',
+            confirmButtonColor: '#6A0DAD'
+        });
+        return;
+    }
+
+    // 3. Preparar los datos para el envío
+    const formData = new FormData();
+    formData.append('id_solicitud', id);
+    formData.append('accion', accion === 'aceptar' ? 'aprobar' : 'rechazar');
+    formData.append('mensaje', mensaje);
+    formData.append('id_admin', nombreAdminLogueado); // Se envía el nombre real
+
+    try {
+        // Mostrar estado de carga en el botón
+        const btn = event.target;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+        btn.disabled = true;
+
+        const res = await fetch(`${API_URL}/gestionar_solicitud`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await res.json();
+        
+        if (result.status === 'ok') {
+            // ✅ ÉXITO: La solicitud se guardó y el correo se está enviando
             Swal.fire({
-                title: 'Campo requerido',
-                text: 'Por favor escribe un mensaje de respuesta para el usuario.',
-                icon: 'warning',
+                title: '¡Solicitud procesada!',
+                text: result.mensaje, // Muestra quién lo gestionó
+                icon: 'success',
                 confirmButtonColor: '#6A0DAD'
             });
-            return;
-        }
-
-        const solicitud = solicitudes.find(s => s.id == id);
-        if (!solicitud) {
-            mostrarMensaje('Solicitud no encontrada', 'error');
-            return;
-        }
-
-        // Determinar estado final según el tipo de solicitud y acción
-        let estadoFinal = 'PENDIENTE';
-        
-        if (accion === 'aceptar') {
-            if (tipo === 'PROBLEMA_ERROR') {
-                estadoFinal = 'RESUELTO';
-            } else if (tipo === 'RECUPERACION_CONTRASENA') {
-                estadoFinal = 'APROBADA';
-            } else {
-                estadoFinal = 'APROBADA';
-            }
-        } else {
-            estadoFinal = 'RECHAZADA';
-        }
-
-        // Crear FormData para enviar al endpoint
-        const formData = new FormData();
-        formData.append('id_solicitud', id);
-        formData.append('accion', accion === 'aceptar' ? 'aprobar' : 'rechazar');
-        formData.append('mensaje', mensaje);
-        formData.append('id_admin', 'Admin');
-
-        try {
-            mostrarMensaje("Procesando solicitud...", "info");
             
-            const res = await fetch(`${API_URL}/gestionar_solicitud`, {
-                method: 'POST',
-                body: formData
+            cerrarModal('modalResponderSolicitud');
+            
+            // Recargar datos para que desaparezca de la lista de pendientes
+            await cargarSolicitudes();
+            await cargarSolicitudesPendientes();
+            actualizarDatosDashboard();
+            
+        } else {
+            // ❌ ERROR O BLOQUEO: Muestra si otro admin ya la resolvió
+            Swal.fire({
+                title: 'No se pudo procesar',
+                text: result.mensaje,
+                icon: 'error',
+                confirmButtonColor: '#d32f2f'
             });
             
-            const result = await res.json();
-            
-            if (result.status === 'ok' || result.mensaje) {
-                // Mostrar confirmación
-                Swal.fire({
-                    title: '¡Solicitud procesada!',
-                    text: `La respuesta ha sido enviada al estudiante${tipo === 'RECUPERACION_CONTRASENA' ? ' por correo' : ''}.`,
-                    icon: 'success',
-                    confirmButtonColor: '#6A0DAD'
-                });
-                
+            // Si el error es por duplicado, refrescamos para limpiar la lista
+            if(result.mensaje.includes('ya fue gestionada')) {
                 cerrarModal('modalResponderSolicitud');
-                
-                // Recargar datos
-                await cargarSolicitudes();
-                await cargarSolicitudesPendientes();
-                
-            } else {
-                mostrarMensaje("Error: " + (result.error || "Desconocido"), "error");
+                cargarSolicitudes();
             }
-        } catch (error) {
-            console.error(error);
-            mostrarMensaje("Error de conexión con el servidor", "error");
         }
+    } catch (error) {
+        console.error("Error gestionando solicitud:", error);
+        Swal.fire('Error', 'Error de conexión con el servidor', 'error');
+    } finally {
+        // Restaurar botón
+        const btn = document.querySelector('.btn-primary'); // O el botón activo
+        if(btn) { btn.disabled = false; }
     }
+}
 
     // ==========================================
     // 6. FUNCIONES DE EVIDENCIAS
