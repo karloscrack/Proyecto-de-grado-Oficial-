@@ -680,53 +680,61 @@ async def health_check():
 # =========================================================================
 
 @app.post("/iniciar_sesion")
-async def iniciar_sesion(request: Request, cedula: str = Form(...), contrasena: str = Form(...)):
-    """Versión CORREGIDA: Verifica contraseña Y estado activo"""
+async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
+    conn = None
     try:
         conn = get_db_connection()
-        # Aseguramos que el cursor devuelva un diccionario para buscar por nombre
-        c = conn.cursor(cursor_factory=RealDictCursor) 
+        c = conn.cursor(cursor_factory=RealDictCursor)
         
-        c.execute("SELECT * FROM Usuarios WHERE TRIM(CI) = %s", (cedula.strip(),))
+        # Usamos lowercase en la consulta para mayor compatibilidad
+        c.execute("SELECT * FROM Usuarios WHERE CI = %s", (cedula.strip(),))
+        u = c.fetchone()
+        
+        # 🛡️ PROTECCIÓN DE LLAVES: Buscamos 'Password' o 'password'
+        pass_db = u.get('password') or u.get('Password')
+        
+        if u and pass_db == contrasena:
+            # Construimos la respuesta asegurando que las llaves existan
+            datos = {
+                "id": u.get('id') or u.get('ID'),
+                "cedula": u.get('ci') or u.get('CI'),
+                "nombre": u.get('nombre') or u.get('Nombre'),
+                "apellido": u.get('apellido') or u.get('Apellido'),
+                "url_foto": u.get('url_foto') or u.get('Url_Foto') or "",
+                "email": u.get('email') or u.get('Email') or "",
+                "tipo": u.get('tipo') or u.get('Tipo'),
+                "tutorial_visto": u.get('tutorial_visto') or u.get('Tutorial_Visto') or 0
+            }
+            # Usamos jsonable_encoder para evitar errores de fecha si existieran
+            return JSONResponse({"autenticado": True, "datos": jsonable_encoder(datos)})
+        
+        return JSONResponse({"autenticado": False, "mensaje": "Cédula o contraseña incorrectos."})
+    except Exception as e:
+        print(f"❌ Error en iniciar_sesion: {e}")
+        return JSONResponse({"autenticado": False, "mensaje": f"Error: {str(e)}"})
+    finally:
+        if conn: conn.close()
+
+@app.post("/buscar_estudiante")
+async def buscar_estudiante(cedula: str = Form(...)):
+    conn = None
+    try:
+        conn = get_db_connection()
+        c = conn.cursor(cursor_factory=RealDictCursor)
+        c.execute("SELECT * FROM Usuarios WHERE CI = %s", (cedula.strip(),))
         user = c.fetchone()
         
-        # 1. Verificar si el usuario existe
-        if not user:
-            conn.close()
-            return JSONResponse({"autenticado": False, "mensaje": "Usuario no encontrado."})
-
-        # 2. Verificar Contraseña (buscando 'password' o 'Password')
-        pass_db = user.get("password") or user.get("Password")
-        if pass_db != contrasena.strip():
-            conn.close()
-            return JSONResponse({"autenticado": False, "mensaje": "Contraseña incorrecta."})
-            
-        # 3. VERIFICACIÓN DE ESTADO (¡ESTO FALTABA!)
-        # Buscamos 'activo', 'Activo' o asumimos 1 si no existe la columna
-        estado = user.get("activo") if user.get("activo") is not None else user.get("Activo")
+        if user:
+            # ✅ SOLUCIÓN CRÍTICA: jsonable_encoder convierte fechas (datetime) a texto
+            return JSONResponse({"status": "ok", "datos": jsonable_encoder(user)})
         
-        if estado is not None and int(estado) == 0:
-            conn.close()
-            return JSONResponse({"autenticado": False, "mensaje": "Tu cuenta ha sido DESACTIVADA por administración."})
-
-        # Si pasa todo, preparamos los datos
-        datos_usuario = {
-            "id": user.get("id") or user.get("ID"),
-            "nombre": user.get("nombre") or user.get("Nombre"),
-            "apellido": user.get("apellido") or user.get("Apellido"),
-            "cedula": user.get("ci") or user.get("CI"),
-            "tipo": user.get("tipo") or user.get("Tipo"),
-            "url_foto": user.get("foto") or user.get("Foto") or "",
-            "email": user.get("email") or user.get("Email") or "",
-            "tutorial_visto": bool(user.get("tutorialvisto") or user.get("TutorialVisto", 0))
-        }
-        
-        conn.close()
-        return JSONResponse({"autenticado": True, "mensaje": "Bienvenido", "datos": datos_usuario})
-        
+        return JSONResponse({"status": "error", "mensaje": "Usuario no encontrado"})
     except Exception as e:
-        print(f"Error login: {e}")
-        return JSONResponse({"autenticado": False, "mensaje": f"Error del servidor: {str(e)}"})
+        # Esto es lo que ves en el log de Railway
+        print(f"❌ Error en buscar_estudiante: {e}") 
+        return JSONResponse({"status": "error", "mensaje": str(e)})
+    finally:
+        if conn: conn.close()
     
 # =========================================================================
 # 7. ENDPOINTS DE GESTIÓN DE USUARIOS
@@ -1638,7 +1646,7 @@ def obtener_solicitudes(limit: int = 100):
 
 @app.post("/solicitar_recuperacion")
 async def solicitar_recuperacion(
-    background_tasks: BackgroundTasks, # Permite que el aviso al admin se envíe de fondo
+    background_tasks: BackgroundTasks, # Debe ir primero y sin = Form(...)
     cedula: str = Form(...),
     email: str = Form(...),
     mensaje: Optional[str] = Form(None)
