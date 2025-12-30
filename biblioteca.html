@@ -365,13 +365,19 @@
             padding: 12px 15px;
             margin-bottom: 20px;
             text-align: left;
-            display: none; /* Se mantiene oculto por defecto */
+            display: none; 
             color: var(--error);
             position: relative; z-index: 1;
             font-size: 0.9rem;
             
-            /* NUEVO: Esto hace que aparezca suave */
-            animation: fadeInDown 0.4s ease forwards;
+            /* CAMBIO: Usamos una animación que NO cambia el tamaño, solo aparece */
+            animation: aparecerSuave 0.3s ease forwards;
+        }
+
+        /* Nueva animación que no rompe el shake */
+        @keyframes aparecerSuave {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
         /* Agrega esto justo debajo de .error-box */
@@ -1191,23 +1197,20 @@
                     window.location.href = 'perfil.html';
                 }
             } else {
-                // 1. Mostrar el mensaje (El CSS se encarga de que baje suave)
+                // 1. Ponemos el mensaje y mostramos la caja PRIMERO
+                // Al ser display:block sin animación de altura, el espacio se ocupa instantáneamente
                 errorText.innerHTML = data.mensaje || 'Credenciales incorrectas.';
                 errorBox.style.display = 'block'; 
                 
-                // 2. Animación de Vibración (Sin hacks raros)
+                // 2. Activamos el Shake inmediatamente
                 const card = document.querySelector('.login-card');
                 
-                // A) Quitamos la clase primero
+                // Reinicio forzado limpio
                 card.classList.remove('shake-animation');
+                void card.offsetWidth; // Truco para reiniciar la animación
+                card.classList.add('shake-animation');
                 
-                // B) Esperamos 50ms (imperceptible) para que el navegador respire
-                // y luego aplicamos la vibración. Esto evita el "flash".
-                setTimeout(() => {
-                    card.classList.add('shake-animation');
-                }, 50);
-                
-                // C) Limpiamos cuando termine
+                // 3. Limpieza automática
                 card.addEventListener('animationend', () => {
                     card.classList.remove('shake-animation');
                 }, { once: true });
