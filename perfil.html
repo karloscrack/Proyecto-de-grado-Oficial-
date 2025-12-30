@@ -759,7 +759,7 @@
 
     <div class="container">
         <div class="profile-card">
-            <img id="profilePhoto" src="https://via.placeholder.com/150" alt="Foto Perfil" class="profile-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNTAiIGhlaWdodD0iMTUwIiB2aWV3Qm94PSIwIDAgMTUwIDE1MCI+PHJlY3Qgd2lkdGg9IjE1MCIgaGVpZ2h0PSIxNTAiIGZpbGw9IiNGRUZFRkUiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTkiPlNpbiBGb3RvPC90ZXh0Pjwvc3ZnPg=='">
+            <img id="profilePhoto" src="Img/Logo_pestaña.png" alt="Foto Perfil" class="profile-img" onerror="this.src='Img/Logo_pestaña.png'">
             <div class="profile-info">
                 <h1 id="userNameDisplay">Cargando datos...</h1>
                 <h2 id="userCedulaDisplay">Verificando...</h2>
@@ -962,24 +962,26 @@
 }
 
         function actualizarUI(datos) {
-    // 🛡️ Buscamos el nombre tanto en minúsculas como en mayúsculas para Supabase
-    const nombre = datos.nombre || datos.Nombre || 'Usuario';
+    // 🛡️ Buscamos la foto en cualquier formato (minúsculas o mayúsculas)
+    const fotoUrl = datos.url_foto || datos.Url_Foto || datos.Foto || 'Img/default-user.png';
+    const nombre = datos.nombre || datos.Nombre || 'Estudiante';
     const apellido = datos.apellido || datos.Apellido || '';
-    const cedula = datos.cedula || datos.CI || localStorage.getItem('usuario_cedula');
-    const foto = datos.url_foto || datos.Foto || datos.Url_Foto || '';
 
-    document.getElementById('userNameDisplay').textContent = `${nombre.split(' ')[0]} ${apellido.split(' ')[0]}`;
-    document.getElementById('userCedulaDisplay').textContent = `C.I: ${cedula}`;
+    // Actualizar foto y textos
+    const imgPerfil = document.getElementById('profilePhoto');
+    if(imgPerfil) imgPerfil.src = fotoUrl;
     
-    if(foto) document.getElementById('profilePhoto').src = foto;
+    document.getElementById('userNameDisplay').textContent = `${nombre} ${apellido}`;
     
-    // Mapeo de evidencias
-    appState.galeria = (datos.galeria || []).map(item => ({
-        id: item.id || item.ID, 
-        url: item.url || item.Url_Archivo || item.url_archivo, 
-        tipo: obtenerTipo(item.url || item.Url_Archivo || item.url_archivo)
-    }));
-    filtrarGaleria('todo');
+    // 🖼️ Cargar la galería de fotos/videos
+    if (datos.galeria) {
+        appState.galeria = datos.galeria.map(item => ({
+            id: item.id || item.ID,
+            url: item.url_archivo || item.Url_Archivo,
+            tipo: item.tipo_archivo || item.Tipo_Archivo
+        }));
+        filtrarGaleria('todo'); // Esto dibuja las fotos en pantalla
+    }
 }
 
         async function cargarNotificacionesEstudiante(cedula) {

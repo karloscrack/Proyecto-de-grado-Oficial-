@@ -717,24 +717,35 @@ async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
 
 @app.post("/buscar_estudiante")
 async def buscar_estudiante(cedula: str = Form(...)):
-    """Carga el perfil del estudiante sin errores de serialización de fechas"""
+    """
+    Versión Única y Corregida:
+    Trae los datos del estudiante Y su galería de evidencias.
+    """
     conn = None
     try:
         conn = get_db_connection()
         c = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # 1. Buscamos los datos personales del usuario
         c.execute("SELECT * FROM Usuarios WHERE CI = %s", (cedula.strip(),))
         user = c.fetchone()
         
-        if user:
-            # Creamos un mapeo extra para que perfil.html encuentre las mayúsculas que busca
-            datos_completos = jsonable_encoder(user)
-            datos_completos["CI"] = user.get('ci') or user.get('CI')
-            datos_completos["Nombre"] = user.get('nombre') or user.get('Nombre')
-            datos_completos["Apellido"] = user.get('apellido') or user.get('Apellido')
-            datos_completos["Url_Foto"] = user.get('url_foto') or user.get('Url_Foto') or ""
-            
-            return JSONResponse({"status": "ok", "datos": datos_completos})
-        return JSONResponse({"status": "error", "mensaje": "Usuario no encontrado"})
+        if not user:
+            return JSONResponse({"status": "error", "mensaje": "Usuario no encontrado"})
+
+        # 2. Buscamos todas sus fotos y videos (ESTO ES LO QUE TE FALTABA)
+        c.execute("SELECT * FROM Evidencias WHERE CI_Estudiante = %s ORDER BY id DESC", (cedula.strip(),))
+        evidencias = c.fetchall()
+        
+        # 3. Empaquetamos todo (jsonable_encoder arregla el error de las fechas)
+        datos_completos = jsonable_encoder(user)
+        datos_completos["galeria"] = jsonable_encoder(evidencias)
+        
+        # Compatibilidad de nombres para perfil.html
+        datos_completos["Url_Foto"] = user.get('foto') or user.get('Foto') or user.get('url_foto')
+        
+        return JSONResponse({"status": "ok", "datos": datos_completos})
+        
     except Exception as e:
         print(f"❌ Error en buscar_estudiante: {e}")
         return JSONResponse({"status": "error", "mensaje": str(e)})
@@ -863,33 +874,6 @@ async def registrar_usuario(
     except Exception as e:
         print(f"❌ Error en registrar_usuario: {e}")
         return JSONResponse(content={"error": str(e)})
-
-@app.post("/buscar_estudiante")
-async def buscar_estudiante(cedula: str = Form(...)):
-    """
-    Busca los datos de un estudiante. 
-    Mantiene todas las funciones de perfil y arregla el error de fechas.
-    """
-    conn = None
-    try:
-        conn = get_db_connection()
-        c = conn.cursor(cursor_factory=RealDictCursor) # <--- RealDictCursor es clave para Postgres
-        
-        c.execute("SELECT * FROM Usuarios WHERE CI = %s", (cedula.strip(),))
-        user = c.fetchone()
-        
-        if user:
-            # ✅jsonable_encoder procesa todo el diccionario (incluyendo fechas) 
-            # de forma automática y segura.
-            return JSONResponse({"status": "ok", "datos": jsonable_encoder(user)})
-        else:
-            return JSONResponse({"status": "error", "mensaje": "Usuario no encontrado"})
-            
-    except Exception as e:
-        print(f"❌ Error en buscar_estudiante: {e}")
-        return JSONResponse({"status": "error", "mensaje": str(e)})
-    finally:
-        if conn: conn.close()
     
 @app.post("/cambiar_estado_usuario")
 async def cambiar_estado_usuario(datos: EstadoUsuarioRequest):
