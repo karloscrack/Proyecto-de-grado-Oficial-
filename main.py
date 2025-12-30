@@ -1069,20 +1069,10 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
         with open(path, "wb") as f: shutil.copyfileobj(archivo.file, f)
         file_hash = calcular_hash(path)
         
-        # 2. Verificación inmediata de Duplicado Global (Seguridad ante todo)
         conn = get_db_connection()
         c = conn.cursor(cursor_factory=RealDictCursor)
-        
-        c.execute("SELECT id FROM Evidencias WHERE Hash = %s LIMIT 1", (file_hash,))
-        if c.fetchone():
-            conn.close()
-            if temp_dir: shutil.rmtree(temp_dir)
-            return JSONResponse({
-                "status": "alerta", 
-                "mensaje": f"⚠️ ARCHIVO DUPLICADO: '{archivo.filename}' ya existe en el sistema global."
-            })
 
-        # 3. Identificación de tipo y preparación de IA
+        # 2. Identificación de tipo y procesamiento con IA (Rostros y Texto)
         ext = os.path.splitext(archivo.filename)[1].lower()
         es_imagen = ext in ['.jpg', '.jpeg', '.png', '.bmp', '.webp', '.avif']
         es_video = ext in ['.mp4', '.avi', '.mov', '.mkv']
@@ -1092,13 +1082,13 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
         
         if rekog:
             if es_imagen:
-                # Rostros + Texto (OCR)
+                # Mantiene Rostros + Texto (OCR)
                 rostros = identificar_varios_rostros_aws(path)
                 cedulas_detectadas.update(rostros)
                 textos_ceds, _ = buscar_estudiantes_por_texto(path, c) 
                 cedulas_detectadas.update(textos_ceds)
             elif es_video:
-                # Análisis de fotogramas de video
+                # Mantiene análisis de fotogramas de video con OpenCV
                 cap = cv2.VideoCapture(path)
                 frame_count = 0
                 while cap.isOpened():
@@ -1115,18 +1105,30 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
                     frame_count += 1
                 cap.release()
 
-        # 4. Subida física a la nube (solo si pasó los filtros anteriores)
-        path_procesado = garantizar_limite_storage(path)
-        tamanio_kb = os.path.getsize(path_procesado) / 1024
-        url_final = f"/local/{archivo.filename}"
-        if s3_client:
-            try:
-                nube = f"evidencias/{int(ahora_ecuador().timestamp())}_{archivo.filename}"
-                s3_client.upload_file(path_procesado, BUCKET_NAME, nube, ExtraArgs={'ACL':'public-read'})
-                url_final = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nube}"
-            except: pass
+        # 3. Verificar existencia física (Para no resubir a Backblaze innecesariamente)
+        c.execute("SELECT Url_Archivo, Tamanio_KB FROM Evidencias WHERE Hash = %s LIMIT 1", (file_hash,))
+        evidencia_existente = c.fetchone()
+        
+        url_final = ""
+        tamanio_kb = 0
+        
+        if evidencia_existente:
+            # Si el archivo ya está en el sistema, usamos su URL actual
+            url_final = evidencia_existente.get('Url_Archivo') or evidencia_existente.get('url_archivo')
+            tamanio_kb = evidencia_existente.get('Tamanio_KB') or evidencia_existente.get('tamanio_kb') or 0
+        else:
+            # Si es nuevo, subimos a Backblaze
+            path_procesado = garantizar_limite_storage(path)
+            tamanio_kb = os.path.getsize(path_procesado) / 1024
+            url_final = f"/local/{archivo.filename}"
+            if s3_client:
+                try:
+                    nube = f"evidencias/{int(ahora_ecuador().timestamp())}_{archivo.filename}"
+                    s3_client.upload_file(path_procesado, BUCKET_NAME, nube, ExtraArgs={'ACL':'public-read'})
+                    url_final = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nube}"
+                except: pass
 
-        # 5. ASIGNACIÓN DETALLADA Y REPORTE (Lo que pediste)
+        # 4. ASIGNACIÓN INTELIGENTE Y REPORTE DETALLADO (Lo que solicitaste)
         asignados_nuevos = []
         ya_tenian = []
         
@@ -1138,33 +1140,43 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
                 if u and (u.get('Tipo') or u.get('tipo')) == 1:
                     nombre_completo = f"{u.get('Nombre') or u.get('nombre')} {u.get('Apellido') or u.get('apellido')}"
                     
-                    # Verificar si este estudiante específico ya tiene este archivo
+                    # Verificamos si ESE estudiante específico ya tiene la evidencia
                     c.execute("SELECT id FROM Evidencias WHERE CI_Estudiante = %s AND Hash = %s", (ced, file_hash))
                     if c.fetchone():
                         ya_tenian.append(nombre_completo)
                     else:
+                        # Se asigna solo al perfil que no lo tiene
                         c.execute("""
                             INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente) 
                             VALUES (%s, %s, %s, 1, %s, %s, 1)
                         """, (ced, url_final, file_hash, tipo_archivo, tamanio_kb))
                         asignados_nuevos.append(nombre_completo)
 
-            # Construcción del mensaje inteligente
-            partes_mensaje = []
+            # Construcción del mensaje de respuesta inteligente
+            msg_parts = []
             if asignados_nuevos:
-                partes_mensaje.append(f"✅ Asignado a: {', '.join(asignados_nuevos)}.")
+                msg_parts.append(f"✅ Evidencia asignada correctamente a: {', '.join(asignados_nuevos)}.")
             if ya_tenian:
-                partes_mensaje.append(f"ℹ️ {', '.join(ya_tenian)} ya contaban con esta evidencia.")
+                msg_parts.append(f"ℹ️ Omitiendo a: {', '.join(ya_tenian)} (ya la tenían en su perfil).")
             
-            msg = " ".join(partes_mensaje)
-            status = "exito" if asignados_nuevos else "alerta"
+            # Caso donde todos ya la tenían
+            if not asignados_nuevos and ya_tenian:
+                msg = f"⚠️ Todos los usuarios detectados ({', '.join(ya_tenian)}) ya contaban con esta evidencia."
+                status = "alerta"
+            else:
+                msg = " ".join(msg_parts)
+                status = "exito"
         else:
-            # Nadie detectado -> Carpeta Pendientes
-            c.execute("""
-                INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente) 
-                VALUES ('PENDIENTE', %s, %s, 1, %s, %s, 0)
-            """, (url_final, file_hash, tipo_archivo, tamanio_kb))
-            msg, status = "⚠️ No se identificó a nadie. Guardado en 'Pendientes'.", "alerta"
+            # Nadie detectado -> Se guarda una sola vez en Pendientes si no existe ya
+            c.execute("SELECT id FROM Evidencias WHERE Hash = %s AND CI_Estudiante = 'PENDIENTE'", (file_hash,))
+            if not c.fetchone():
+                c.execute("""
+                    INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente) 
+                    VALUES ('PENDIENTE', %s, %s, 1, %s, %s, 0)
+                """, (url_final, file_hash, tipo_archivo, tamanio_kb))
+                msg, status = "⚠️ No se identificó a nadie. Guardado en 'Pendientes'.", "alerta"
+            else:
+                msg, status = "⚠️ El archivo ya se encuentra en la bandeja de 'Pendientes'.", "alerta"
 
         conn.commit()
         conn.close()
@@ -1175,7 +1187,7 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
         if temp_dir: shutil.rmtree(temp_dir)
         print(f"❌ Error IA: {e}")
         return JSONResponse({"status": "error", "mensaje": f"Error procesando {archivo.filename}: {str(e)}"})
-    
+
 @app.post("/subir_manual")
 async def subir_manual(
     cedulas: str = Form(...), 
