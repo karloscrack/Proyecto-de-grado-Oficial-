@@ -1319,7 +1319,9 @@ import os
 @app.post("/optimizar_sistema")
 async def optimizar_sistema(tipo: str = "full"):
     """
-    V5.5 - Mantenimiento Blindado (Soporta mayúsculas/minúsculas en BD)
+    V6.0 - Mantenimiento Inteligente: 
+    - Solo borra duplicados si pertenecen AL MISMO ESTUDIANTE.
+    - Reporta espacio recuperado con precisión.
     """
     try:
         conn = get_db_connection()
@@ -1328,47 +1330,51 @@ async def optimizar_sistema(tipo: str = "full"):
         mensaje_resultado = []
         
         # ==========================================
-        # 1. ANALIZAR DUPLICADOS
+        # 1. ANALIZAR DUPLICADOS (POR ESTUDIANTE)
         # ==========================================
         if tipo == "duplicados" or tipo == "full":
-            print("🧹 [1/4] Buscando duplicados...")
+            print("🧹 [1/4] Buscando duplicados por estudiante...")
+            # Nueva lógica: Agrupamos por Hash Y CI_Estudiante
             c.execute("""
-                SELECT Hash, COUNT(*) as cantidad FROM Evidencias 
+                SELECT Hash, CI_Estudiante, COUNT(*) as cantidad 
+                FROM Evidencias 
                 WHERE Hash NOT IN ('PENDIENTE', '', 'RECUPERADO') 
-                GROUP BY Hash HAVING COUNT(*) > 1
+                GROUP BY Hash, CI_Estudiante 
+                HAVING COUNT(*) > 1
             """)
             grupos = c.fetchall()
             elim_dups = 0
             espacio_kb = 0
             
             for g in grupos:
-                # 🛡️ CORRECCIÓN: Usamos .get() para leer 'Hash' o 'hash'
                 hash_val = g.get('Hash') or g.get('hash')
+                cedula = g.get('CI_Estudiante') or g.get('ci_estudiante')
                 
-                c.execute("SELECT id, Url_Archivo, Tamanio_KB FROM Evidencias WHERE Hash = %s ORDER BY id ASC", (hash_val,))
+                # Obtenemos todas las copias de ESE estudiante para ESE archivo
+                c.execute("""
+                    SELECT id, Url_Archivo, Tamanio_KB 
+                    FROM Evidencias 
+                    WHERE Hash = %s AND CI_Estudiante = %s 
+                    ORDER BY id ASC
+                """, (hash_val, cedula))
                 copias = c.fetchall()
                 
-                # Dejar el original (index 0), borrar el resto
+                # Dejamos el primer registro (original del alumno) y borramos el resto
                 for copia in copias[1:]:
                     copia_id = copia.get('id')
-                    copia_url = copia.get('Url_Archivo') or copia.get('url_archivo')
                     copia_kb = copia.get('Tamanio_KB') or copia.get('tamanio_kb') or 0
                     
-                    # Borrar de nube si es archivo diferente
-                    if s3_client and BUCKET_NAME in copia_url:
-                        try:
-                            key = copia_url.split(f"/file/{BUCKET_NAME}/")[1]
-                            s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
-                        except: pass
-                    
+                    # NOTA: No borramos de la nube aquí porque otros alumnos 
+                    # podrían estar usando el mismo archivo físico. Solo borramos el registro.
                     c.execute("DELETE FROM Evidencias WHERE id = %s", (copia_id,))
                     elim_dups += 1
                     espacio_kb += copia_kb
             
             if elim_dups > 0:
-                mensaje_resultado.append(f"Eliminados {elim_dups} duplicados ({round(espacio_kb/1024, 2)} MB recuperados).")
+                mb_recuperados = round(espacio_kb / 1024, 2)
+                mensaje_resultado.append(f"Se eliminaron {elim_dups} duplicados internos. Espacio optimizado: {mb_recuperados} MB.")
             elif tipo == "duplicados":
-                mensaje_resultado.append("No se encontraron duplicados.")
+                mensaje_resultado.append("No se encontraron evidencias repetidas en un mismo perfil.")
 
         # ==========================================
         # 2. LIMPIAR HUÉRFANOS (VERSION PROTEGIDA)

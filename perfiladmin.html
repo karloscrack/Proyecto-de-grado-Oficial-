@@ -3492,9 +3492,10 @@ function configurarDragAndDrop() {
             const resultado = await respuesta.json();
             
             if (respuesta.ok && resultado.status === 'ok') {
-                Swal.fire('Éxito', resultado.mensaje, 'success');
-                setTimeout(() => actualizarDatosDashboard(), 2000);
-            } else {
+             // Esto mostrará el mensaje de MB recuperados que configuramos arriba
+              Swal.fire('Éxito', resultado.mensaje, 'success'); 
+               setTimeout(() => actualizarDatosDashboard(), 2000);
+            }else {
                 throw new Error(resultado.error || 'Error desconocido');
             }
         } catch (error) {
