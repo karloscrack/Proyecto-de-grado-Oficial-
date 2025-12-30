@@ -1162,7 +1162,6 @@
         const originalText = btn.innerHTML;
         
         const datos = new FormData(this);
-        const res = await fetch(`${API_URL}/solicitar_recuperacion`, { method: "POST", body: datos });
         const cedula = datos.get('cedula').trim();
         const contrasena = datos.get('contrasena').trim();
         
@@ -1246,7 +1245,6 @@
         const datos = new FormData(this);
 
         try {
-            const res = await fetch(`${API_URL}/solicitar_recuperacion`, { method: "POST", body: datos });
             const data = await res.json();
             
             if (data.status === 'ok') {

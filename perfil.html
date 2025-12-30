@@ -938,42 +938,49 @@
         }
 
         async function cargarDatos(cedula) {
-            const fd = new FormData();
-            fd.append('cedula', cedula);
-            // Si existe contraseña guardada, la enviamos (opcional según backend)
-            if(localStorage.getItem('usuario_contrasena')) fd.append('contrasena', localStorage.getItem('usuario_contrasena'));
-            
-            try {
-                const res = await fetch(`${API_URL}/buscar_estudiante`, { method: "POST", body: fd });
-                const data = await res.json();
-                
-                if (data.encontrado) {
-                    actualizarUI(data.datos);
-                    // Cargar notificaciones del estudiante (incluyendo respuestas a solicitudes)
-                    await cargarNotificacionesEstudiante(cedula);
-                } else { 
-                    alert("Sesión expirada o usuario no encontrado"); 
-                    cerrarSesion(); 
-                }
-            } catch (e) { 
-                console.error("Error conexión:", e);
-                alert("Error de conexión con el servidor. Verifica tu internet."); 
-            }
+    const fd = new FormData();
+    fd.append('cedula', cedula);
+    
+    try {
+        const res = await fetch(`${API_URL}/buscar_estudiante`, { method: "POST", body: fd });
+        const data = await res.json();
+        
+        // ✅ CORRECCIÓN: Ahora verifica 'data.status === "ok"' que es lo que manda el servidor
+        if (data.status === 'ok' || data.encontrado) {
+            actualizarUI(data.datos);
+            await cargarNotificacionesEstudiante(cedula);
+        } else { 
+            // Si el servidor manda error, mostramos el mensaje real
+            console.error("Error del servidor:", data.mensaje);
+            alert("Sesión expirada o usuario no encontrado"); 
+            cerrarSesion(); 
         }
+    } catch (e) { 
+        console.error("Error conexión:", e);
+        alert("Error de conexión con el servidor."); 
+    }
+}
 
         function actualizarUI(datos) {
-            document.getElementById('userNameDisplay').textContent = `${datos.nombre.split(' ')[0]} ${datos.apellido.split(' ')[0]}`;
-            document.getElementById('userCedulaDisplay').textContent = `C.I: ${datos.cedula || localStorage.getItem('usuario_cedula')}`;
-            if(datos.url_foto) document.getElementById('profilePhoto').src = datos.url_foto;
-            
-            // Mapeo de evidencias
-            appState.galeria = (datos.galeria || []).map(item => ({
-                id: item.id, 
-                url: item.url || item.url_foto, 
-                tipo: obtenerTipo(item.url || item.url_foto)
-            }));
-            filtrarGaleria('todo');
-        }
+    // 🛡️ Buscamos el nombre tanto en minúsculas como en mayúsculas para Supabase
+    const nombre = datos.nombre || datos.Nombre || 'Usuario';
+    const apellido = datos.apellido || datos.Apellido || '';
+    const cedula = datos.cedula || datos.CI || localStorage.getItem('usuario_cedula');
+    const foto = datos.url_foto || datos.Foto || datos.Url_Foto || '';
+
+    document.getElementById('userNameDisplay').textContent = `${nombre.split(' ')[0]} ${apellido.split(' ')[0]}`;
+    document.getElementById('userCedulaDisplay').textContent = `C.I: ${cedula}`;
+    
+    if(foto) document.getElementById('profilePhoto').src = foto;
+    
+    // Mapeo de evidencias
+    appState.galeria = (datos.galeria || []).map(item => ({
+        id: item.id || item.ID, 
+        url: item.url || item.Url_Archivo || item.url_archivo, 
+        tipo: obtenerTipo(item.url || item.Url_Archivo || item.url_archivo)
+    }));
+    filtrarGaleria('todo');
+}
 
         async function cargarNotificacionesEstudiante(cedula) {
             try {
