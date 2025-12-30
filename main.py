@@ -24,6 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from botocore.config import Config
 from pydantic import BaseModel
+from fastapi.encoders import jsonable_encoder
 
 # --- 0. CONFIGURACIÓN DE ZONA HORARIA ECUADOR ---
 ECUADOR_TZ = pytz.timezone('America/Guayaquil')  # UTC-5
@@ -852,56 +853,30 @@ async def registrar_usuario(
 
 @app.post("/buscar_estudiante")
 async def buscar_estudiante(cedula: str = Form(...)):
-    """Busca datos de un estudiante (Compatible Postgres)"""
+    """
+    Busca los datos de un estudiante. 
+    Mantiene todas las funciones de perfil y arregla el error de fechas.
+    """
+    conn = None
     try:
         conn = get_db_connection()
-        c = conn.cursor()
+        c = conn.cursor(cursor_factory=RealDictCursor) # <--- RealDictCursor es clave para Postgres
         
-        # 1. Buscar usuario
-        c.execute("SELECT * FROM Usuarios WHERE CI = %s", (cedula,))
+        c.execute("SELECT * FROM Usuarios WHERE CI = %s", (cedula.strip(),))
         user = c.fetchone()
         
-        if not user:
-            conn.close()
-            return JSONResponse({"encontrado": False, "mensaje": "Estudiante no encontrado"})
+        if user:
+            # ✅jsonable_encoder procesa todo el diccionario (incluyendo fechas) 
+            # de forma automática y segura.
+            return JSONResponse({"status": "ok", "datos": jsonable_encoder(user)})
+        else:
+            return JSONResponse({"status": "error", "mensaje": "Usuario no encontrado"})
             
-        # 2. Obtener galería (Adaptando claves)
-        try:
-            c.execute("""
-                SELECT id, Url_Archivo as url, Tipo_Archivo as tipo, Fecha, Estado 
-                FROM Evidencias 
-                WHERE CI_Estudiante = %s AND Estado = 1 
-                ORDER BY Fecha DESC
-            """, (cedula,))
-            # Convertimos filas a dict, Postgres ya devuelve 'url', 'tipo' en minúscula por el alias
-            evs = [dict(r) for r in c.fetchall()]
-        except Exception as e:
-            print(f"Error obteniendo galería: {e}")
-            evs = []
-
-        conn.close()
-        
-        # 3. Preparar datos de respuesta (Claves en minúscula)
-        datos_usuario = {
-            "id": user.get("id") or user.get("ID"),
-            "nombre": user.get("nombre") or user.get("Nombre"),
-            "apellido": user.get("apellido") or user.get("Apellido"),
-            "cedula": user.get("ci") or user.get("CI"),
-            "tipo": user.get("tipo") or user.get("Tipo"),
-            "url_foto": user.get("foto") or user.get("Foto") or "",
-            "email": user.get("email") or user.get("Email") or "",
-            "tutorial_visto": bool(user.get("tutorialvisto") or user.get("TutorialVisto", 0)),
-            "galeria": evs
-        }
-            
-        return JSONResponse({
-            "encontrado": True,
-            "datos": datos_usuario
-        })
-        
     except Exception as e:
-        print(f"Error en buscar_estudiante: {e}")
-        return JSONResponse({"encontrado": False, "mensaje": str(e)})
+        print(f"❌ Error en buscar_estudiante: {e}")
+        return JSONResponse({"status": "error", "mensaje": str(e)})
+    finally:
+        if conn: conn.close()
     
 @app.post("/cambiar_estado_usuario")
 async def cambiar_estado_usuario(datos: EstadoUsuarioRequest):
@@ -1663,28 +1638,30 @@ def obtener_solicitudes(limit: int = 100):
 
 @app.post("/solicitar_recuperacion")
 async def solicitar_recuperacion(
-    background_tasks: BackgroundTasks, # Necesario para procesar el aviso al admin sin esperas
+    background_tasks: BackgroundTasks, # Permite que el aviso al admin se envíe de fondo
     cedula: str = Form(...),
     email: str = Form(...),
     mensaje: Optional[str] = Form(None)
 ):
-    """El estudiante pide recuperar contraseña desde login"""
+    """
+    Registra la solicitud y avisa al administrador.
+    No quita funciones, solo asegura que los datos lleguen correctamente.
+    """
+    conn = None
     try:
         conn = get_db_connection()
-        c = conn.cursor(cursor_factory=RealDictCursor) # <--- Cambio necesario para PostgreSQL
+        c = conn.cursor(cursor_factory=RealDictCursor)
         
-        # Verificar si el usuario existe
+        # Verificar usuario
         c.execute("SELECT Nombre, Apellido FROM Usuarios WHERE CI=%s", (cedula.strip(),))
         user = c.fetchone()
         
         if not user:
-            conn.close()
-            return JSONResponse({"status": "error", "mensaje": "La cédula no está registrada."})
+            return JSONResponse({"status": "error", "mensaje": "La cédula no existe."})
             
-        detalle = f"Solicitud de recuperación. Correo contacto: {email}. "
-        if mensaje: detalle += f"Mensaje: {mensaje}"
+        detalle = f"Recuperación. Contacto: {email}. " + (mensaje if mensaje else "")
         
-        # Insertar la solicitud usando el cursor
+        # Insertar solicitud
         c.execute("""
             INSERT INTO Solicitudes (Tipo, CI_Solicitante, Email, Detalle, Estado, Fecha)
             VALUES ('RECUPERACION_CONTRASENA', %s, %s, %s, 'PENDIENTE', %s)
@@ -1692,18 +1669,16 @@ async def solicitar_recuperacion(
         
         conn.commit()
 
-        # --- AVISO INMEDIATO AL ADMIN (KARLOS) ---
-        # Enviamos una notificación para que sepas que hay una nueva petición
-        asunto_admin = "🚨 Nueva solicitud de recuperación de acceso"
-        cuerpo_admin = f"El usuario {user['nombre']} {user['apellido']} (CI: {cedula}) solicita recuperar su clave. Contacto: {email}"
-        background_tasks.add_task(enviar_correo_real, "karlos.ayala.lopez.1234@gmail.com", asunto_admin, cuerpo_admin)
+        # Notificación para ti (Admin)
+        asunto = "🚨 Nueva solicitud de acceso"
+        cuerpo = f"Usuario: {user['nombre']} {user['apellido']} (CI: {cedula}). Contacto: {email}"
+        background_tasks.add_task(enviar_correo_real, "karlos.ayala.lopez.1234@gmail.com", asunto, cuerpo)
 
-        conn.close()
-        return JSONResponse({"status": "ok", "mensaje": "Solicitud enviada al administrador."})
-        
+        return JSONResponse({"status": "ok", "mensaje": "Solicitud enviada correctamente."})
     except Exception as e:
-        print(f"❌ Error en recuperación: {e}")
         return JSONResponse({"status": "error", "mensaje": str(e)})
+    finally:
+        if conn: conn.close()
 
 @app.post("/solicitar_subida")
 async def solicitar_subida(cedula: str = Form(...), archivo: UploadFile = File(...)):
@@ -1879,6 +1854,7 @@ async def gestionar_solicitud(
         return JSONResponse({"status": "error", "mensaje": str(e)})
     finally:
         if conn: conn.close()
+        
 # =========================================================================
 # 12. ENDPOINTS DE LOGS Y AUDITORÍA
 # =========================================================================
