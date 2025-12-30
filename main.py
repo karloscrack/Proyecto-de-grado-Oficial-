@@ -901,13 +901,16 @@ async def buscar_estudiante(cedula: str = Form(...)):
     
 @app.post("/cambiar_estado_usuario")
 async def cambiar_estado_usuario(datos: EstadoUsuarioRequest):
-    """Activa/desactiva un usuario"""
+    """Activa/desactiva un usuario (Blindado contra errores de mayúsculas)"""
     try:
         conn = get_db_connection()
+        # Usamos RealDictCursor
+        c = conn.cursor(cursor_factory=RealDictCursor) 
         
         fecha_desactivacion = ahora_ecuador() if datos.activo == 0 else None
         
-        conn.execute("""
+        # 1. Actualizamos el estado
+        c.execute("""
             UPDATE Usuarios 
             SET Activo = %s, Fecha_Desactivacion = %s
             WHERE CI = %s
@@ -915,17 +918,23 @@ async def cambiar_estado_usuario(datos: EstadoUsuarioRequest):
         
         conn.commit()
         
-        # Obtener datos del usuario para auditoría
-        c = conn.cursor()
+        # 2. Obtenemos datos para el reporte (usando .get para evitar error 500)
         c.execute("SELECT Nombre, Apellido FROM Usuarios WHERE CI = %s", (datos.cedula,))
         user = c.fetchone()
         
         conn.close()
         
+        # Validación segura de nombres
+        nombre = "Usuario"
+        apellido = ""
+        if user:
+            nombre = user.get('Nombre') or user.get('nombre') or "Usuario"
+            apellido = user.get('Apellido') or user.get('apellido') or ""
+        
         estado_texto = "desactivada" if datos.activo == 0 else "activada"
         registrar_auditoria(
             "CAMBIO_ESTADO_USUARIO",
-            f"Usuario {datos.cedula} ({user['Nombre']} {user['Apellido']}) {estado_texto}"
+            f"Usuario {datos.cedula} ({nombre} {apellido}) {estado_texto}"
         )
         
         return JSONResponse(content={
@@ -934,43 +943,46 @@ async def cambiar_estado_usuario(datos: EstadoUsuarioRequest):
         })
         
     except Exception as e:
-        return JSONResponse(content={"error": str(e)})
+        print(f"❌ Error cambiando estado: {e}")
+        return JSONResponse(content={"error": str(e)}, status_code=500)
 
 
 @app.delete("/eliminar_usuario/{cedula}")
 async def eliminar_usuario(cedula: str):
+    """Elimina usuario y todos sus datos (Blindado contra errores de mayúsculas)"""
     try:
         conn = get_db_connection()
-        # Usamos RealDictCursor para poder leer los campos por nombre
         c = conn.cursor(cursor_factory=RealDictCursor)
         
         # 1. PRIMERO: Obtener y borrar evidencias asociadas (Nube + BD)
-        # Si no hacemos esto, la base de datos dará error por claves foráneas
         c.execute("SELECT Url_Archivo FROM Evidencias WHERE CI_Estudiante = %s", (cedula,))
         evidencias = c.fetchall()
         
         if s3_client and BUCKET_NAME:
             for ev in evidencias:
-                url = ev['Url_Archivo']
+                # 🛡️ CORRECCIÓN: Buscamos URL con seguridad (Mayús/Minús)
+                url = ev.get('Url_Archivo') or ev.get('url_archivo')
+                
                 if url and "backblazeb2.com" in url:
                     try:
-                        # Extraer la clave del archivo (todo lo que está después del nombre del bucket)
                         partes = url.split(f"/file/{BUCKET_NAME}/")
                         if len(partes) > 1:
                             s3_client.delete_object(Bucket=BUCKET_NAME, Key=partes[1])
                     except Exception as e:
-                        print(f"⚠️ No se pudo borrar archivo de evidencia B2: {e}")
+                        print(f"⚠️ No se pudo borrar archivo B2: {e}")
 
-        # Ahora sí borramos los registros de evidencias de la BD
+        # Borrar registros de evidencias
         c.execute("DELETE FROM Evidencias WHERE CI_Estudiante = %s", (cedula,))
         
         # 2. SEGUNDO: Obtener y borrar foto de perfil (Nube)
         c.execute("SELECT Foto FROM Usuarios WHERE CI = %s", (cedula,))
         usuario = c.fetchone()
         
-        if usuario and usuario['Foto']:
-            url_foto = usuario['Foto']
-            if s3_client and BUCKET_NAME and "backblazeb2.com" in url_foto:
+        # 🛡️ CORRECCIÓN: Buscamos Foto con seguridad
+        if usuario:
+            url_foto = usuario.get('Foto') or usuario.get('foto')
+            
+            if url_foto and s3_client and BUCKET_NAME and "backblazeb2.com" in url_foto:
                 try:
                     partes = url_foto.split(f"/file/{BUCKET_NAME}/")
                     if len(partes) > 1:
@@ -978,7 +990,7 @@ async def eliminar_usuario(cedula: str):
                 except Exception as e:
                      print(f"⚠️ No se pudo borrar foto perfil B2: {e}")
 
-        # 3. TERCERO: Finalmente borrar el usuario
+        # 3. TERCERO: Borrar el usuario
         c.execute("DELETE FROM Usuarios WHERE CI = %s", (cedula,))
         
         conn.commit()
