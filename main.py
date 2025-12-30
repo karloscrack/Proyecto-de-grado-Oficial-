@@ -1174,62 +1174,67 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
 
 @app.post("/subir_manual")
 async def subir_manual(
-    cedulas: str = Form(...), 
-    archivo: UploadFile = File(...), 
-    comentario: Optional[str] = Form(None)
+    archivo: UploadFile = File(...),
+    cedula: str = Form(...)
 ):
+    """Sube una evidencia manualmente asignada a un estudiante específico."""
+    temp_dir = None
+    conn = None
     try:
-        lista_cedulas = [c.strip() for c in cedulas.split(",") if c.strip()]
-        if not lista_cedulas:
-            return JSONResponse(content={"error": "Debe especificar al menos una cédula"})
-        
-        # 1. Guardar temporalmente
+        # 1. Preparar archivo temporal y calcular Hash
         temp_dir = tempfile.mkdtemp()
         path = os.path.join(temp_dir, archivo.filename)
-        with open(path, "wb") as f: shutil.copyfileobj(archivo.file, f)
-
-        # --- NUEVO: DETECCIÓN DE DUPLICADOS ---
-        file_hash = calcular_hash(path)
-        conn = get_db_connection()
-        duplicado = conn.execute("SELECT id FROM Evidencias WHERE Hash = %s", (file_hash,)).fetchone()
+        with open(path, "wb") as f:
+            shutil.copyfileobj(archivo.file, f)
         
-        if duplicado:
-            conn.close()
-            shutil.rmtree(temp_dir)
-            # Mostramos un error claro en el frontend
-            return JSONResponse({"error": "⚠️ ARCHIVO DUPLICADO: Esta evidencia ya fue subida anteriormente."})
-        # --------------------------------------
-            
-        # 2. Subir a la nube
-        tamanio_kb = os.path.getsize(path) / 1024
-        url_archivo = f"/local/{archivo.filename}"
+        file_hash = calcular_hash(path)
+        
+        # 2. Conectar a la base de datos
+        conn = get_db_connection()
+        c = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # 3. Verificar si el archivo ya existe para este estudiante (Evitar duplicados)
+        c.execute("SELECT id FROM Evidencias WHERE CI_Estudiante = %s AND Hash = %s", (cedula, file_hash))
+        if c.fetchone():
+            return JSONResponse({"status": "error", "mensaje": "Este estudiante ya tiene esta evidencia registrada."})
+
+        # 4. Determinar tipo y subir a la nube (Backblaze)
+        ext = os.path.splitext(archivo.filename)[1].lower()
+        tipo_archivo = "video" if ext in ['.mp4', '.avi', '.mov'] else "imagen"
+        
+        path_procesado = garantizar_limite_storage(path)
+        tamanio_kb = os.path.getsize(path_procesado) / 1024
+        url_final = f"/local/{archivo.filename}"
         
         if s3_client:
             try:
-                nombre_nube = f"evidencias/manual_{int(ahora_ecuador().timestamp())}_{archivo.filename}"
-                s3_client.upload_file(path, BUCKET_NAME, nombre_nube, ExtraArgs={'ACL': 'public-read'})
-                url_archivo = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nombre_nube}"
-            except: pass
-            
-        c = conn.cursor()
-        count = 0
-        
-        # 3. Guardar en BD (Incluyendo Hash)
-        for ced in lista_cedulas:
-            if c.execute("SELECT CI FROM Usuarios WHERE CI=%s", (ced,)).fetchone():
-                c.execute("""
-                    INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
-                    VALUES (%s, %s, %s, 1, 'documento', %s, 0)
-                """, (ced, url_archivo, file_hash, tamanio_kb))
-                count += 1
+                nube = f"evidencias/{int(ahora_ecuador().timestamp())}_{archivo.filename}"
+                s3_client.upload_file(path_procesado, BUCKET_NAME, nube, ExtraArgs={'ACL':'public-read'})
+                url_final = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nube}"
+            except Exception as e:
+                print(f"Error subiendo a S3: {e}")
+
+        # 5. Insertar en la base de datos usando el cursor
+        c.execute("""
+            INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
+            VALUES (%s, %s, %s, 1, %s, %s, 0)
+        """, (cedula, url_final, file_hash, tipo_archivo, tamanio_kb))
         
         conn.commit()
-        conn.close()
-        shutil.rmtree(temp_dir)
         
-        return JSONResponse({"status": "ok", "mensaje": f"Asignado a {count} estudiantes"})
+        # Registrar en auditoría
+        registrar_auditoria("Subida Manual", f"Archivo {archivo.filename} asignado a {cedula}")
+        
+        return JSONResponse({"status": "ok", "mensaje": "Evidencia subida y asignada correctamente."})
+
     except Exception as e:
-        return JSONResponse({"error": str(e)})
+        if conn: conn.rollback()
+        print(f"❌ Error en subir_manual: {e}")
+        return JSONResponse({"status": "error", "mensaje": str(e)})
+    finally:
+        if conn: conn.close()
+        if temp_dir and os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
     
 # =========================================================================
 # 9. ENDPOINTS DE BACKUP Y MANTENIMIENTO
