@@ -1460,16 +1460,23 @@
             return;
         }
 
-        // --- CARGA DE DATOS Y CONFIGURACIÓN ---
+        // --- CARGA DE DATOS Y CONFIGURACIÓN (OPTIMIZADO) ---
         inicializarTema();
+        
+        // TRUCO DE VELOCIDAD: 
+        // 1. Cargamos los números del Dashboard y notificaciones INMEDIATAMENTE (sin esperar a la tabla)
+        actualizarDatosDashboard(); 
+        cargarSolicitudesPendientes();
+        
+        // 2. Y al mismo tiempo, cargamos las tablas pesadas (Usuarios, Evidencias, Logs)
         cargarDatosIniciales();
         
         // Configurar todas las funciones interactivas
         configurarFormularios();
-        configurarDragAndDrop();      // Arrastrar archivos
-        configurarEventosTeclado();   // Flechas y borrar con teclado (¡IMPORTANTE!)
+        configurarDragAndDrop();      
+        configurarEventosTeclado();   
         
-        // Iniciar actualizaciones automáticas
+        // Iniciar actualizaciones automáticas (para que se refresque cada 10s)
         iniciarActualizacionesAutomaticas();
         
         // --- EVENTOS DEL MENÚ Y UI ---
@@ -1640,9 +1647,6 @@
             logs = await resLogs.json();
 
             // Actualizar interfaz
-            await actualizarDatosDashboard();
-            await cargarSolicitudesPendientes();
-            
             renderizarUsuarios();
             renderizarEvidencias();
             renderizarSolicitudes();
