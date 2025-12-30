@@ -681,21 +681,21 @@ async def health_check():
 
 @app.post("/iniciar_sesion")
 async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
+    """Maneja el inicio de sesión asegurando nombres de columnas compatibles con el Frontend"""
     conn = None
     try:
         conn = get_db_connection()
         c = conn.cursor(cursor_factory=RealDictCursor)
-        
-        # Usamos lowercase en la consulta para mayor compatibilidad
+        # Buscamos al usuario por cédula
         c.execute("SELECT * FROM Usuarios WHERE CI = %s", (cedula.strip(),))
         u = c.fetchone()
         
-        # 🛡️ PROTECCIÓN DE LLAVES: Buscamos 'Password' o 'password'
-        pass_db = u.get('password') or u.get('Password')
+        # Obtenemos la contraseña sin importar si la columna es 'Password' o 'password'
+        pass_db = u.get('password') or u.get('Password') if u else None
         
-        if u and pass_db == contrasena:
-            # Construimos la respuesta asegurando que las llaves existan
-            datos = {
+        if u and pass_db == contrasena.strip():
+            # Creamos un diccionario con los nombres EXACTOS que busca biblioteca.html
+            datos_para_front = {
                 "id": u.get('id') or u.get('ID'),
                 "cedula": u.get('ci') or u.get('CI'),
                 "nombre": u.get('nombre') or u.get('Nombre'),
@@ -705,18 +705,19 @@ async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
                 "tipo": u.get('tipo') or u.get('Tipo'),
                 "tutorial_visto": u.get('tutorial_visto') or u.get('Tutorial_Visto') or 0
             }
-            # Usamos jsonable_encoder para evitar errores de fecha si existieran
-            return JSONResponse({"autenticado": True, "datos": jsonable_encoder(datos)})
+            # jsonable_encoder arregla el error de las fechas (datetime)
+            return JSONResponse({"autenticado": True, "datos": jsonable_encoder(datos_para_front)})
         
         return JSONResponse({"autenticado": False, "mensaje": "Cédula o contraseña incorrectos."})
     except Exception as e:
         print(f"❌ Error en iniciar_sesion: {e}")
-        return JSONResponse({"autenticado": False, "mensaje": f"Error: {str(e)}"})
+        return JSONResponse({"autenticado": False, "mensaje": str(e)})
     finally:
         if conn: conn.close()
 
 @app.post("/buscar_estudiante")
 async def buscar_estudiante(cedula: str = Form(...)):
+    """Carga el perfil del estudiante sin errores de serialización de fechas"""
     conn = None
     try:
         conn = get_db_connection()
@@ -725,13 +726,17 @@ async def buscar_estudiante(cedula: str = Form(...)):
         user = c.fetchone()
         
         if user:
-            # ✅ SOLUCIÓN CRÍTICA: jsonable_encoder convierte fechas (datetime) a texto
-            return JSONResponse({"status": "ok", "datos": jsonable_encoder(user)})
-        
+            # Creamos un mapeo extra para que perfil.html encuentre las mayúsculas que busca
+            datos_completos = jsonable_encoder(user)
+            datos_completos["CI"] = user.get('ci') or user.get('CI')
+            datos_completos["Nombre"] = user.get('nombre') or user.get('Nombre')
+            datos_completos["Apellido"] = user.get('apellido') or user.get('Apellido')
+            datos_completos["Url_Foto"] = user.get('url_foto') or user.get('Url_Foto') or ""
+            
+            return JSONResponse({"status": "ok", "datos": datos_completos})
         return JSONResponse({"status": "error", "mensaje": "Usuario no encontrado"})
     except Exception as e:
-        # Esto es lo que ves en el log de Railway
-        print(f"❌ Error en buscar_estudiante: {e}") 
+        print(f"❌ Error en buscar_estudiante: {e}")
         return JSONResponse({"status": "error", "mensaje": str(e)})
     finally:
         if conn: conn.close()
@@ -1646,7 +1651,7 @@ def obtener_solicitudes(limit: int = 100):
 
 @app.post("/solicitar_recuperacion")
 async def solicitar_recuperacion(
-    background_tasks: BackgroundTasks, # Debe ir primero y sin = Form(...)
+    background_tasks: BackgroundTasks, # Debe ser el primer parámetro
     cedula: str = Form(...),
     email: str = Form(...),
     mensaje: Optional[str] = Form(None)
