@@ -1727,12 +1727,27 @@ async def reportar_evidencia(cedula: str = Form(...), id_evidencia: int = Form(.
 
 @app.get("/obtener_solicitudes_por_cedula")
 async def obtener_solicitudes_por_cedula(cedula: str):
+    """Obtiene el historial de solicitudes de un estudiante con respuestas del admin"""
+    conn = None
     try:
         conn = get_db_connection()
-        rows = conn.execute("SELECT * FROM Solicitudes WHERE CI_Solicitante=%s ORDER BY Fecha DESC", (cedula,)).fetchall()
-        conn.close()
-        return JSONResponse([dict(r) for r in rows])
-    except: return JSONResponse([])
+        # Usamos cursor para evitar errores en Postgres
+        c = conn.cursor(cursor_factory=RealDictCursor)
+        
+        c.execute("""
+            SELECT * FROM Solicitudes 
+            WHERE CI_Solicitante = %s 
+            ORDER BY Fecha DESC
+        """, (cedula.strip(),))
+        
+        rows = c.fetchall()
+        # Convertimos fechas a formato JSON seguro
+        return JSONResponse(jsonable_encoder(rows))
+    except Exception as e:
+        print(f"❌ Error historial estudiante: {e}")
+        return JSONResponse([])
+    finally:
+        if conn: conn.close()
 
 # =========================================================================
 # AQUI DEBERÍA SEGUIR TU FUNCIÓN @app.post("/gestionar_solicitud") ...

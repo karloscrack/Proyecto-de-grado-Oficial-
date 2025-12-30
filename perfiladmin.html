@@ -1681,61 +1681,27 @@
         const list = document.getElementById('notisList');
         
         if (pendientes.length > 0) {
-            badge.style.display = 'flex';
-            badge.textContent = pendientes.length > 9 ? '9+' : pendientes.length;
+        badge.style.display = 'flex';
+        badge.textContent = pendientes.length;
+        
+        list.innerHTML = pendientes.map(sol => {
+            const usuario = usuarios.find(u => u.cedula === sol.CI_Solicitante);
+            const nombreUsuario = usuario ? `${usuario.nombre} ${usuario.apellido}` : sol.CI_Solicitante;
             
-            list.innerHTML = pendientes.slice(0, 5).map(sol => {
-                let icono = 'fas fa-exclamation-circle';
-                let color = 'var(--warning)';
-                let tipoTexto = 'Solicitud';
-                
-                switch(sol.Tipo) {
-                    case 'REPORTE_EVIDENCIA': 
-                        icono = 'fas fa-user-times'; 
-                        color = 'var(--error)';
-                        tipoTexto = 'Reporte de evidencia';
-                        break;
-                    case 'PROBLEMA_ERROR': 
-                        icono = 'fas fa-bug'; 
-                        color = 'var(--warning)';
-                        tipoTexto = 'Problema/Error';
-                        break;
-                    case 'SUBIR_EVIDENCIA': 
-                        icono = 'fas fa-cloud-upload-alt'; 
-                        color = 'var(--info)';
-                        tipoTexto = 'Subir evidencia';
-                        break;
-                    case 'RECUPERACION_CONTRASENA': 
-                        icono = 'fas fa-key'; 
-                        color = 'var(--primary)';
-                        tipoTexto = 'Recuperar contraseña';
-                        break;
-                }
-                
-                const usuario = usuarios.find(u => u.cedula === sol.CI_Solicitante);
-                const nombreUsuario = usuario ? `${usuario.nombre} ${usuario.apellido}` : sol.CI_Solicitante || 'Usuario';
-                
-                return `
-                    <div class="noti-item unread" onclick="navTo('solicitudes'); toggleNotis();">
-                        <i class="${icono}" style="color:${color}; margin-top:3px;"></i>
-                        <div style="flex:1;">
-                            <div style="font-weight:600;">${tipoTexto}</div>
-                            <div style="font-size:0.8rem;">${nombreUsuario}</div>
-                            <div style="font-size:0.7rem; color:#888;">${formatearFecha(sol.Fecha)}</div>
-                        </div>
+            return `
+                <div class="noti-item unread" onclick="navTo('solicitudes'); toggleNotis();">
+                    <i class="fas fa-bell" style="color:var(--warning);"></i>
+                    <div style="flex:1;">
+                        <div style="font-weight:600;">${sol.Tipo.replace(/_/g, ' ')}</div>
+                        <div style="font-size:0.8rem;">${nombreUsuario}</div>
                     </div>
-                `;
-            }).join('');
-            
-            if (pendientes.length > 5) {
-                list.innerHTML += `<div style="padding:10px; text-align:center; border-top:1px solid var(--border-color);">
-                    <small>${pendientes.length - 5} más pendientes...</small>
-                </div>`;
-            }
-        } else {
-            badge.style.display = 'none';
-            list.innerHTML = '<div style="padding:15px; text-align:center; color:#888;">No hay notificaciones nuevas</div>';
-        }
+                </div>
+            `;
+        }).join('');
+    } else {
+        badge.style.display = 'none';
+        list.innerHTML = '<div style="padding:15px; text-align:center; color:#888;">No hay tareas pendientes</div>';
+    }
     }
 
     function formatearFecha(fechaStr) {

@@ -753,6 +753,9 @@
                 <button class="menu-btn" onclick="cerrarSesion()" style="color:var(--error); font-weight:700;">
                     <i class="fas fa-power-off"></i> Cerrar Sesión
                 </button>
+                <button onclick="abrirHistorial()" class="btn-menu-item">
+                    <i class="fas fa-history"></i> Historial de Solicitudes
+                </button>
             </li>
         </ul>
     </div>
@@ -887,6 +890,17 @@
             </div>
         </div>
     </footer>
+
+    <div class="modal-overlay" id="modalHistorial">
+    <div class="modal-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h3 style="color:var(--primary);"><i class="fas fa-clipboard-list"></i> Mi Historial</h3>
+            <button onclick="cerrarModal('modalHistorial')" style="border:none; background:none; font-size:1.5rem;">&times;</button>
+        </div>
+        <div id="listaHistorial" style="max-height:400px; overflow-y:auto;">
+            </div>
+    </div>
+</div>
 
     <script>
         // URL DE PRODUCCIÓN
@@ -1573,6 +1587,47 @@
         function reportarSeleccionados() {
            alert("Por favor, reporta las evidencias individualmente desde el visor para detallar el problema de cada una.");
         }
+        async function abrirHistorial() {
+    const cedula = localStorage.getItem('usuario_cedula');
+    document.getElementById('modalHistorial').classList.add('active');
+    const contenedor = document.getElementById('listaHistorial');
+    contenedor.innerHTML = '<p style="text-align:center;">Cargando historial...</p>';
+
+    try {
+        const res = await fetch(`${API_URL}/obtener_solicitudes_por_cedula?cedula=${cedula}`);
+        const historial = await res.json();
+
+        if (historial.length === 0) {
+            contenedor.innerHTML = '<p style="text-align:center; color:#888;">No has realizado solicitudes aún.</p>';
+            return;
+        }
+
+        contenedor.innerHTML = historial.map(sol => {
+            const estado = (sol.Estado || sol.estado).toUpperCase();
+            const esRecuperacion = sol.Tipo === 'RECUPERACION_CONTRASENA';
+            
+            // Mensaje especial para recuperación solicitado
+            const msgEstudiante = esRecuperacion ? 
+                'Peticion de recuperacion de contraseña realizada' : 
+                (sol.Respuesta || sol.respuesta || 'En espera de revisión');
+
+            return `
+                <div style="padding:15px; border-bottom:1px solid #eee; margin-bottom:10px; background:var(--bg-input); border-radius:8px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <strong style="font-size:0.85rem;">${sol.Tipo.replace(/_/g, ' ')}</strong>
+                        <span style="font-size:0.7rem; color:${estado === 'PENDIENTE' ? 'orange' : (estado === 'APROBADA' ? 'green' : 'red')}">${estado}</span>
+                    </div>
+                    <p style="font-size:0.9rem; color:var(--text-main); margin:5px 0;">
+                        <strong>Respuesta del Admin:</strong> ${msgEstudiante}
+                    </p>
+                    <small style="color:#888; font-size:0.75rem;">${new Date(sol.Fecha || sol.fecha).toLocaleDateString()}</small>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        contenedor.innerHTML = '<p style="color:red;">Error al cargar datos.</p>';
+    }
+}
     </script>
 </body>
 </html>

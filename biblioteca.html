@@ -1190,8 +1190,7 @@
                 // ... (Tu código de guardado en localStorage sigue igual) ...
                 localStorage.setItem('usuario_id', data.datos.id);
                 localStorage.setItem('usuario_cedula', data.datos.cedula);
-                localStorage.setItem('usuario_nombre', data.datos.nombre);
-                localStorage.setItem('usuario_apellido', data.datos.apellido);
+                localStorage.setItem('usuario_nombre', data.datos.nombre + ' ' + data.datos.apellido);
                 localStorage.setItem('usuario_foto', data.datos.url_foto || '');
                 localStorage.setItem('usuario_email', data.datos.email || '');
                 localStorage.setItem('tutorial_visto', data.datos.tutorial_visto);
