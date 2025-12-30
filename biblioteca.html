@@ -574,8 +574,6 @@
             0% { opacity: 0; transform: scale(0.8); }
             100% { opacity: 1; transform: scale(1); }
         }
-
-        /* --- AGREGAR ESTO AQUÍ --- */
         .shake-animation {
             animation: shake 0.5s;
         }
@@ -587,11 +585,12 @@
             75% { transform: translateX(-10px); }
             100% { transform: translateX(0); }
         }
-        /* ------------------------- */
 
         /* ==========================================================================
-           10. RESPONSIVE PARA MÓVILES...
-        ========================================================================== */
+           10. RESPONSIVE PARA MÓVILES - MEJORADO PARA MODALES
+           ========================================================================== */
+        @media (max-width: 768px) {
+            /* Header móvil */
             .main-header { 
                 height: var(--header-height-mobile); 
                 padding: 0 12px; 
@@ -734,7 +733,7 @@
                 font-size: 0.75rem;
                 padding-top: 12px;
             }
-        
+        }
 
         /* ==========================================================================
            11. PARA PANTALLAS MUY PEQUEÑAS
