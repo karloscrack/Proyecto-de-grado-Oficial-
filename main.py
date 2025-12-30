@@ -371,7 +371,7 @@ def preparar_imagen_aws(ruta_imagen):
         print(f"⚠️ Error preparando imagen AWS: {e}")
         with open(ruta_imagen, 'rb') as f: return f.read()
 
-def identificar_varios_rostros_aws(imagen_path: str, confidence_threshold: float = 80.0) -> List[str]:
+def identificar_varios_rostros_aws(imagen_path: str, confidence_threshold: float = 70.0) -> List[str]:
     if not rekog: return []
     cedulas_encontradas = set()
     
@@ -1109,7 +1109,9 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
                         
                         # Usamos tu función existente para identificar rostros en este fotograma
                         rostros_en_frame = identificar_varios_rostros_aws(tmp_frame_path)
-                        cedulas_detectadas.update(rostros_en_frame)
+                        for r in rostros_en_frame:
+                            if r:
+                             cedulas_detectadas.add(str(r))
                         
                         # Limpiar el fotograma temporal inmediatamente
                         if os.path.exists(tmp_frame_path): 
