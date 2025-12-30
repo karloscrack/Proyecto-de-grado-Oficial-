@@ -877,50 +877,38 @@ async def registrar_usuario(
     
 @app.post("/cambiar_estado_usuario")
 async def cambiar_estado_usuario(datos: EstadoUsuarioRequest):
-    """Activa/desactiva un usuario (Blindado contra errores de mayúsculas)"""
+    """Activa/desactiva un usuario en un solo paso (Optimizado)"""
+    conn = None
     try:
         conn = get_db_connection()
-        # Usamos RealDictCursor
         c = conn.cursor(cursor_factory=RealDictCursor) 
         
         fecha_desactivacion = ahora_ecuador() if datos.activo == 0 else None
         
-        # 1. Actualizamos el estado
+        # ✅ OPTIMIZACIÓN: 'RETURNING' nos devuelve los datos sin hacer un segundo SELECT
         c.execute("""
             UPDATE Usuarios 
             SET Activo = %s, Fecha_Desactivacion = %s
             WHERE CI = %s
+            RETURNING Nombre, Apellido
         """, (datos.activo, fecha_desactivacion, datos.cedula))
         
+        user = c.fetchone()
         conn.commit()
         
-        # 2. Obtenemos datos para el reporte (usando .get para evitar error 500)
-        c.execute("SELECT Nombre, Apellido FROM Usuarios WHERE CI = %s", (datos.cedula,))
-        user = c.fetchone()
+        # Lógica de reporte
+        nombre = f"{user['nombre']} {user['apellido']}" if user else "Usuario"
+        estado_texto = "activada" if datos.activo == 1 else "desactivada"
         
-        conn.close()
+        registrar_auditoria("CAMBIO_ESTADO", f"Cuenta de {nombre} {estado_texto}", "Admin")
         
-        # Validación segura de nombres
-        nombre = "Usuario"
-        apellido = ""
-        if user:
-            nombre = user.get('Nombre') or user.get('nombre') or "Usuario"
-            apellido = user.get('Apellido') or user.get('apellido') or ""
-        
-        estado_texto = "desactivada" if datos.activo == 0 else "activada"
-        registrar_auditoria(
-            "CAMBIO_ESTADO_USUARIO",
-            f"Usuario {datos.cedula} ({nombre} {apellido}) {estado_texto}"
-        )
-        
-        return JSONResponse(content={
-            "mensaje": f"Estado del usuario actualizado a {'activo' if datos.activo == 1 else 'inactivo'}",
-            "fecha_cambio": ahora_ecuador().isoformat()
-        })
+        return JSONResponse(content={"mensaje": "OK", "nombre": nombre})
         
     except Exception as e:
-        print(f"❌ Error cambiando estado: {e}")
+        if conn: conn.rollback()
         return JSONResponse(content={"error": str(e)}, status_code=500)
+    finally:
+        if conn: conn.close()
 
 
 @app.delete("/eliminar_usuario/{cedula}")
