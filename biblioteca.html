@@ -360,26 +360,34 @@
 
         .error-box {
             background: rgba(211, 47, 47, 0.1);
-            border: 1px solid rgba(211, 47, 47, 0.3);
-            border-radius: 10px;
-            padding: 12px 15px;
-            margin-bottom: 20px;
-            text-align: left;
-            display: none; 
             color: var(--error);
-            position: relative; z-index: 1;
+            border-radius: 10px;
             font-size: 0.9rem;
+            text-align: left;
+            position: relative;
+            z-index: 1;
             
-            /* CAMBIO: Usamos una animación que NO cambia el tamaño, solo aparece */
-            animation: aparecerSuave 0.3s ease forwards;
+            /* ESTADO INVISIBLE (Por defecto) */
+            display: block; /* Siempre está en el DOM */
+            max-height: 0;
+            opacity: 0;
+            margin-bottom: 0;
+            padding: 0 15px; /* Padding lateral fijo */
+            overflow: hidden;
+            border: 1px solid transparent;
+            
+            /* MAGIA DE TRANSICIÓN: Todo se anima suavemente */
+            transition: all 0.3s ease-out;
         }
 
-        /* Nueva animación que no rompe el shake */
-        @keyframes aparecerSuave {
-            from { opacity: 0; }
-            to { opacity: 1; }
+        /* ESTADO VISIBLE (Se activa con JS) */
+        .error-box.visible {
+            max-height: 120px; /* Altura suficiente para el texto */
+            opacity: 1;
+            margin-bottom: 20px;
+            padding: 12px 15px;
+            border-color: rgba(211, 47, 47, 0.3);
         }
-
         /* Agrega esto justo debajo de .error-box */
         @keyframes fadeInDown {
             from { 
@@ -1157,15 +1165,17 @@
         const cedula = datos.get('cedula').trim();
         const contrasena = datos.get('contrasena').trim();
         
-        // Validación inicial visual
+        // 1. OCULTAR ERROR PREVIO (Suavemente)
+        errorBox.classList.remove('visible');
+
+        // Validación visual rápida
         if (!cedula || !contrasena) {
             errorText.innerHTML = 'Por favor, completa todos los campos.';
-            errorBox.style.display = 'block'; // Mostramos cajita roja
+            // Pequeña espera para que se note si ya estaba abierto
+            setTimeout(() => errorBox.classList.add('visible'), 50);
             return;
         }
 
-        // Ocultar error anterior y mostrar carga
-        errorBox.style.display = 'none';
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
         btn.disabled = true;
 
@@ -1174,11 +1184,10 @@
                 method: "POST", 
                 body: datos 
             });
-            
             const data = await res.json();
 
             if (data.autenticado) {
-                // --- ÉXITO ---
+                // ... (Tu código de guardado en localStorage sigue igual) ...
                 localStorage.setItem('usuario_id', data.datos.id);
                 localStorage.setItem('usuario_cedula', data.datos.cedula);
                 localStorage.setItem('usuario_nombre', data.datos.nombre);
@@ -1190,37 +1199,35 @@
                 const tipoUsuario = Number(data.datos.tipo);
                 localStorage.setItem('usuario_tipo', tipoUsuario); 
 
-                // Redirección directa
                 if (tipoUsuario === 0) {
                     window.location.href = 'perfiladmin.html';
                 } else {
                     window.location.href = 'perfil.html';
                 }
             } else {
-                // 1. Ponemos el mensaje y mostramos la caja PRIMERO
-                // Al ser display:block sin animación de altura, el espacio se ocupa instantáneamente
+                // 🛑 AQUÍ ESTÁ LA SOLUCIÓN DEL PARPADEO
                 errorText.innerHTML = data.mensaje || 'Credenciales incorrectas.';
-                errorBox.style.display = 'block'; 
                 
-                // 2. Activamos el Shake inmediatamente
-                const card = document.querySelector('.login-card');
+                // 1. Expandimos la caja suavemente
+                errorBox.classList.add('visible');
                 
-                // Reinicio forzado limpio
-                card.classList.remove('shake-animation');
-                void card.offsetWidth; // Truco para reiniciar la animación
-                card.classList.add('shake-animation');
-                
-                // 3. Limpieza automática
-                card.addEventListener('animationend', () => {
+                // 2. Esperamos 300ms (lo que dura la expansión) ANTES de sacudir
+                // Esto evita que el navegador se vuelva loco haciendo dos cosas a la vez
+                setTimeout(() => {
+                    const card = document.querySelector('.login-card');
                     card.classList.remove('shake-animation');
-                }, { once: true });
+                    void card.offsetWidth; // Reset
+                    card.classList.add('shake-animation');
+                    
+                    card.addEventListener('animationend', () => {
+                        card.classList.remove('shake-animation');
+                    }, { once: true });
+                }, 300); 
             }
-
         } catch (error) {
-            // --- ERROR DE CONEXIÓN ---
-            console.error('❌ Error en login:', error);
+            console.error('❌ Error:', error);
             errorText.innerHTML = 'No se pudo conectar con el servidor.';
-            errorBox.style.display = 'block';
+            errorBox.classList.add('visible');
         } finally {
             btn.innerHTML = originalText;
             btn.disabled = false;
