@@ -576,39 +576,25 @@ app = FastAPI(title="Sistema Educativo Despertar", version="7.0")
 @app.on_event("startup")
 async def startup_event():
     """
-    V8.0 - INICIO LIMPIO (Karlos Edition)
-    No restaura nada antiguo, solo prepara la base de datos para lo nuevo.
+    V8.1 - INICIO LIMPIO CORREGIDO
+    Se cambió 'init_db' por 'init_db_completa' para que coincida con tu código.
     """
     print("\n" + "="*50)
     print("🚀 INICIANDO SERVIDOR - MODO PRODUCCIÓN LIMPIO")
     print("="*50)
     
     try:
-        # 1. Crear tablas si no existen (Indispensable)
-        init_db()
+        # ✅ CORRECCIÓN: El nombre correcto de tu función es init_db_completa
+        init_db_completa() 
         print("✅ Base de datos conectada y estructura verificada.")
 
-        # 2. Protocolo de mantenimiento silenciado
-        # Se eliminó la búsqueda de URLs y archivos antiguos para evitar restauraciones.
+        # Protocolo de mantenimiento silenciado para evitar restauraciones automáticas
         
         print("✅ Servidor listo. No se restauraron evidencias antiguas.")
         print("="*50 + "\n")
 
     except Exception as e:
         print(f"❌ Error crítico en el inicio: {e}")
-
-# Configuración CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://proyecto-grado-karlos.vercel.app",  # Tu frontend
-        "http://localhost:5500",
-        "*" # Opcional: permite todos para pruebas
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # =========================================================================
 # 5. ENDPOINTS PRINCIPALES
@@ -1075,17 +1061,47 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
         cedulas_detectadas = set() 
         texto_debug = []
         conn = get_db_connection()
-        c = conn.cursor(cursor_factory=RealDictCursor) # <--- Cursor para diccionarios
+        c = conn.cursor(cursor_factory=RealDictCursor) # Cursor para diccionarios
         
         if rekog:
             if es_imagen:
+                # Lógica para imágenes
                 rostros = identificar_varios_rostros_aws(path)
                 cedulas_detectadas.update(rostros)
-                # Pasamos el CURSOR 'c' en lugar de 'conn'
                 textos_ceds, debug_ocr = buscar_estudiantes_por_texto(path, c) 
                 cedulas_detectadas.update(textos_ceds)
                 if debug_ocr: texto_debug = debug_ocr
-            # ... (el bloque de video se mantiene igual, solo asegúrate de usar cursores si haces SQL)
+            
+            elif es_video:
+                # ✅ NUEVA LÓGICA: PROCESAMIENTO DE VIDEO PARA IA
+                print(f"🎬 Analizando video fotograma a fotograma: {archivo.filename}")
+                cap = cv2.VideoCapture(path)
+                frame_count = 0
+                
+                # Analizamos 1 fotograma cada 60 (aprox. cada 2 segundos de video a 30fps)
+                while cap.isOpened():
+                    ret, frame = cap.read()
+                    if not ret: break
+                    
+                    if frame_count % 60 == 0:
+                        # Crear un archivo temporal para el fotograma actual
+                        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp_frame:
+                            _, buffer = cv2.imencode('.jpg', frame)
+                            tmp_frame.write(buffer.tobytes())
+                            tmp_frame_path = tmp_frame.name
+                        
+                        # Usamos tu función existente para identificar rostros en este fotograma
+                        rostros_en_frame = identificar_varios_rostros_aws(tmp_frame_path)
+                        cedulas_detectadas.update(rostros_en_frame)
+                        
+                        # Limpiar el fotograma temporal inmediatamente
+                        if os.path.exists(tmp_frame_path): 
+                            os.remove(tmp_frame_path)
+                    
+                    frame_count += 1
+                    # Límite de seguridad: analizamos máximo 1800 frames (aprox 1 min de video)
+                    if frame_count > 1800: break 
+                cap.release()
         
         # 3. Verificar si el archivo ya existe (Usando el cursor 'c')
         c.execute("SELECT Url_Archivo, Tamanio_KB FROM Evidencias WHERE Hash = %s LIMIT 1", (file_hash,))
