@@ -2887,20 +2887,22 @@ async function eliminarEvidenciaActual() {
     async function ejecutarMantenimiento(tipo) {
         let titulo, texto, icono;
         
+        // Configuramos los mensajes según el botón presionado
         if (tipo === 'duplicados') {
             titulo = '¿Analizar y Borrar Duplicados?';
-            texto = 'El sistema buscará archivos idénticos y borrará las copias sobrantes para ahorrar espacio.';
+            texto = 'El sistema buscará archivos idénticos (mismo contenido) y borrará las copias sobrantes para ahorrar espacio.';
             icono = 'question';
         } else if (tipo === 'cache') {
             titulo = '¿Limpiar Caché y Compactar?';
-            texto = 'Se ejecutará VACUUM para reducir el tamaño de la base de datos y acelerar el sistema.';
+            texto = 'Se ejecutará VACUUM para reducir el tamaño de la base de datos y acelerar las consultas.';
             icono = 'info';
         } else if (tipo === 'huerfanos') {
             titulo = '¿Limpiar Archivos Fantasma?';
-            texto = 'Se eliminarán de la lista los archivos que no existen físicamente en la nube/disco.';
+            texto = 'Se eliminarán de la lista los archivos que aparecen en el sistema pero NO existen físicamente en la nube.';
             icono = 'warning';
         }
 
+        // Confirmación
         const confirmacion = await Swal.fire({
             title: titulo,
             text: texto,
@@ -2914,80 +2916,30 @@ async function eliminarEvidenciaActual() {
         if (!confirmacion.isConfirmed) return;
 
         try {
-            mostrarMensaje('Ejecutando mantenimiento...', 'info');
+            // Mostramos cargando
+            Swal.fire({
+                title: 'Procesando...',
+                html: 'Analizando sistema, por favor espera...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
             
-            // TODOS llaman a la función maestra V4.1 porque ella hace todo junto de forma segura
-            const respuesta = await fetch(`${API_URL}/optimizar_sistema`, { method: 'POST' });
+            // --- CORRECCIÓN: ENVIAMOS EL TIPO EN LA URL ---
+            const respuesta = await fetch(`${API_URL}/optimizar_sistema?tipo=${tipo}`, { method: 'POST' });
             const resultado = await respuesta.json();
             
             if (resultado.status === 'ok') {
-                mostrarMensaje('Proceso finalizado correctamente.', 'success');
+                // Mensaje de éxito con los datos precisos
+                Swal.fire('Mantenimiento Exitoso', resultado.mensaje, 'success');
+                
                 // Recargar estadísticas para ver el ahorro de espacio
                 setTimeout(() => actualizarDatosDashboard(), 2000);
             } else {
-                mostrarMensaje('Error: ' + resultado.error, 'error');
+                Swal.fire('Error', 'Hubo un problema: ' + resultado.error, 'error');
             }
         } catch (error) {
-            mostrarMensaje('Error de conexión', 'error');
-        }
-    }
-
-    // Botones individuales que llaman a la maestra
-    function analizarDuplicados() { ejecutarMantenimiento('duplicados'); }
-    function limpiarCache() { ejecutarMantenimiento('cache'); }
-    function limpiarHuerfanos() { ejecutarMantenimiento('huerfanos'); }
-
-    // (Aquí sigue tu función abrirModalAgregarRef...)
-    function abrirModalAgregarRef() {
-        const select = document.getElementById('selectUsuarioRef');
-        select.innerHTML = '<option value="">-- Seleccionar --</option>' +
-            usuarios.filter(u => u.tipo == 1).map(u => 
-                `<option value="${u.cedula}">${u.nombre} ${u.apellido} (${u.cedula})</option>`
-            ).join('');
-        
-        document.getElementById('modalAgregarRef').classList.add('active');
-    }
-
-    async function agregarReferencia(evento) {
-        evento.preventDefault();
-        
-        const cedula = document.getElementById('selectUsuarioRef').value;
-        const archivoInput = document.getElementById('fotoRef');
-        
-        if (!cedula || !archivoInput.files.length) {
-            mostrarMensaje('Completa todos los campos', 'warning');
-            return;
-        }
-        
-        const datos = new FormData();
-        datos.append('cedula', cedula);
-        datos.append('foto', archivoInput.files[0]);
-        
-        const boton = evento.target.querySelector('button[type="submit"]');
-        
-        try {
-            boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subiendo...';
-            boton.disabled = true;
-            
-            const respuesta = await fetch(`${API_URL}/agregar_referencia_facial`, {
-                method: 'POST',
-                body: datos
-            });
-            
-            const resultado = await respuesta.json();
-            
-            if (resultado.mensaje) {
-                mostrarMensaje('Foto de referencia agregada correctamente', 'success');
-                cerrarModal('modalAgregarRef');
-                evento.target.reset();
-            } else {
-                mostrarMensaje('Error: ' + (resultado.error || 'Desconocido'), 'error');
-            }
-        } catch (error) {
-            mostrarMensaje('Error de conexión: ' + error.message, 'error');
-        } finally {
-            boton.innerHTML = '<i class="fas fa-save"></i> Agregar Referencia';
-            boton.disabled = false;
+            console.error(error);
+            Swal.fire('Error', 'Error de conexión con el servidor', 'error');
         }
     }
 

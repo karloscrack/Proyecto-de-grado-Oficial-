@@ -1420,92 +1420,128 @@ import re
 import os
 
 @app.post("/optimizar_sistema")
-async def optimizar_sistema():
+async def optimizar_sistema(tipo: str = "full"):
+    """
+    V5.0 - Mantenimiento Total: Duplicados, Caché, Huérfanos y Reasignación.
+    """
     try:
         conn = get_db_connection()
         c = conn.cursor(cursor_factory=RealDictCursor)
         
-        print("🧹 [MANTENIMIENTO] Iniciando análisis y reparación del sistema...")
+        mensaje_resultado = []
         
-        # --- FASE 1: BORRAR EVIDENCIAS "FANTASMA" (LOGO DEL COLEGIO) ---
-        # Buscamos archivos que están en la base de datos pero NO existen en la nube.
-        c.execute("SELECT id, Url_Archivo FROM Evidencias")
-        todas_evidencias = c.fetchall()
-        
-        eliminadas = 0
-        validas = [] # Lista temporal para la fase 2
+        # ==========================================
+        # 1. ANALIZAR DUPLICADOS (Si se pide o es Full)
+        # ==========================================
+        if tipo == "duplicados" or tipo == "full":
+            print("🧹 [1/4] Buscando duplicados...")
+            c.execute("""
+                SELECT Hash, COUNT(*) as cantidad FROM Evidencias 
+                WHERE Hash NOT IN ('PENDIENTE', '', 'RECUPERADO') 
+                GROUP BY Hash HAVING COUNT(*) > 1
+            """)
+            grupos = c.fetchall()
+            elim_dups = 0
+            espacio_kb = 0
+            
+            for g in grupos:
+                c.execute("SELECT id, Url_Archivo, Tamanio_KB FROM Evidencias WHERE Hash = %s ORDER BY id ASC", (g['Hash'],))
+                copias = c.fetchall()
+                # Dejar el original (index 0), borrar el resto
+                for copia in copias[1:]:
+                    # Borrar de nube si es archivo diferente
+                    if s3_client and BUCKET_NAME in copia['Url_Archivo']:
+                        try:
+                            key = copia['Url_Archivo'].split(f"/file/{BUCKET_NAME}/")[1]
+                            s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
+                        except: pass
+                    c.execute("DELETE FROM Evidencias WHERE id = %s", (copia['id'],))
+                    elim_dups += 1
+                    espacio_kb += (copia['Tamanio_KB'] or 0)
+            
+            if elim_dups > 0:
+                mensaje_resultado.append(f"Eliminados {elim_dups} duplicados ({round(espacio_kb/1024, 2)} MB recuperados).")
+            elif tipo == "duplicados":
+                mensaje_resultado.append("No se encontraron duplicados.")
 
-        if s3_client and BUCKET_NAME:
-            for ev in todas_evidencias:
+        # ==========================================
+        # 2. LIMPIAR HUÉRFANOS (Si se pide o es Full)
+        # ==========================================
+        if tipo == "huerfanos" or tipo == "full":
+            print("👻 [2/4] Buscando archivos fantasma...")
+            c.execute("SELECT id, Url_Archivo FROM Evidencias")
+            todas = c.fetchall()
+            elim_huerfanos = 0
+            
+            for ev in todas:
                 url = ev['Url_Archivo']
-                existe_en_nube = False
-                
-                # Verificamos solo archivos de Backblaze
-                if url and "backblazeb2.com" in url:
+                existe = True
+                if url and "backblazeb2.com" in url and s3_client:
                     try:
-                        # Extraemos la clave (path) del archivo
-                        partes = url.split(f"/file/{BUCKET_NAME}/")
-                        if len(partes) > 1:
-                            key = partes[1]
-                            # Preguntamos a B2 si el archivo existe (head_object es rápido)
-                            s3_client.head_object(Bucket=BUCKET_NAME, Key=key)
-                            existe_en_nube = True
-                    except Exception:
-                        # Si entra aquí (Error 404), el archivo NO existe físicamente
-                        existe_en_nube = False
-                
-                # Si es un enlace local roto, también cuenta como no existente
+                        key = url.split(f"/file/{BUCKET_NAME}/")[1]
+                        s3_client.head_object(Bucket=BUCKET_NAME, Key=key)
+                    except: existe = False
                 elif url and not "http" in url and not os.path.exists(url):
-                    existe_en_nube = False
+                    existe = False
                 
-                # Acciones
-                if not existe_en_nube:
-                    # Borramos el registro corrupto de la BD
+                if not existe:
                     c.execute("DELETE FROM Evidencias WHERE id = %s", (ev['id'],))
-                    eliminadas += 1
-                else:
-                    validas.append(ev) # Guardamos para analizar reasignación
+                    elim_huerfanos += 1
+            
+            if elim_huerfanos > 0:
+                mensaje_resultado.append(f"Eliminados {elim_huerfanos} registros rotos (fantasmas).")
+            elif tipo == "huerfanos":
+                mensaje_resultado.append("El sistema está limpio de archivos rotos.")
 
-        # --- FASE 2: AUTO-REASIGNACIÓN POR NOMBRE DE ARCHIVO ---
-        # Si un archivo se llama "1750296418_foto.jpg", pertenece al usuario "1750296418".
-        
-        # Obtenemos lista de cédulas reales
-        c.execute("SELECT CI FROM Usuarios")
-        cedulas_reales = [u['CI'] for u in c.fetchall()]
-        
-        reasignadas = 0
-        
-        for ev in validas:
-            url = ev['Url_Archivo']
-            for ci in cedulas_reales:
-                # Verificamos si la cédula está incrustada en el nombre del archivo
-                # Y que la cédula tenga longitud válida para evitar falsos positivos
-                if ci in url and len(ci) >= 10:
-                    
-                    # Verificamos a quién pertenece actualmente
-                    c.execute("SELECT CI_Estudiante FROM Evidencias WHERE id = %s", (ev['id'],))
-                    actual = c.fetchone()
-                    
-                    # Si está huérfana o asignada a otro, la corregimos
-                    if actual and actual['CI_Estudiante'] != ci:
-                        c.execute("UPDATE Evidencias SET CI_Estudiante = %s WHERE id = %s", (ci, ev['id']))
-                        reasignadas += 1
-                        print(f"🔄 [REPARACIÓN] Evidencia {ev['id']} reasignada a {ci}")
-                    
-                    break # Ya encontramos su dueño, pasamos a la siguiente foto
+        # ==========================================
+        # 3. AUTO-REASIGNACIÓN (SOLO EN MODO FULL)
+        # ==========================================
+        # Esta es la función que recuperaba tus archivos por nombre. 
+        # Solo se ejecuta en el botón naranja grande ("Optimizar"), no en los pequeños.
+        if tipo == "full":
+            print("🔄 [3/4] Auto-reasignando evidencias perdidas...")
+            c.execute("SELECT CI FROM Usuarios")
+            cedulas = [u['CI'] for u in c.fetchall()]
+            
+            c.execute("SELECT id, Url_Archivo, CI_Estudiante FROM Evidencias")
+            evidencias = c.fetchall()
+            reasignadas = 0
+            
+            for ev in evidencias:
+                url = ev['Url_Archivo']
+                # Buscar cédula en el nombre del archivo
+                for ci in cedulas:
+                    if ci in url and len(ci) >= 10:
+                        if ev['CI_Estudiante'] != ci:
+                            c.execute("UPDATE Evidencias SET CI_Estudiante = %s WHERE id = %s", (ci, ev['id']))
+                            reasignadas += 1
+                        break
+            
+            if reasignadas > 0:
+                mensaje_resultado.append(f"Reasignadas {reasignadas} evidencias a sus dueños correctos.")
 
-        conn.commit()
+        # ==========================================
+        # 4. LIMPIAR CACHÉ (Si se pide o es Full)
+        # ==========================================
+        if tipo == "cache" or tipo == "full":
+            print("🚀 [4/4] Compactando base de datos...")
+            conn.commit()
+            conn.autocommit = True
+            with conn.cursor() as c_vac:
+                c_vac.execute("VACUUM") # Optimización de PostgreSQL
+                c_vac.execute("ANALYZE")
+            if tipo == "cache":
+                mensaje_resultado.append("Base de datos compactada y optimizada.")
+
         conn.close()
         
-        mensaje_resultado = f"Limpieza finalizada: {eliminadas} archivos corruptos eliminados. {reasignadas} evidencias recuperadas y asignadas a sus dueños."
-        print(f"✅ {mensaje_resultado}")
-        
-        return JSONResponse({"status": "ok", "mensaje": mensaje_resultado})
+        # Respuesta final combinada
+        texto_final = " ".join(mensaje_resultado) if mensaje_resultado else "Mantenimiento completado. Todo parece estar en orden."
+        return JSONResponse({"status": "ok", "mensaje": texto_final})
 
     except Exception as e:
-        print(f"❌ Error crítico en mantenimiento: {e}")
+        print(f"❌ Error en mantenimiento: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
-    
 # =========================================================================
 # 10. ENDPOINTS DE ESTADÍSTICAS Y REPORTES
 # =========================================================================
