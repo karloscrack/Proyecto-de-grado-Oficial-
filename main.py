@@ -690,22 +690,35 @@ async def health_check():
 
 @app.post("/iniciar_sesion")
 async def iniciar_sesion(request: Request, cedula: str = Form(...), contrasena: str = Form(...)):
-    """Versión compatible PostgreSQL (Claves en minúscula)"""
+    """Versión CORREGIDA: Verifica contraseña Y estado activo"""
     try:
         conn = get_db_connection()
-        c = conn.cursor()
+        # Aseguramos que el cursor devuelva un diccionario para buscar por nombre
+        c = conn.cursor(cursor_factory=RealDictCursor) 
+        
         c.execute("SELECT * FROM Usuarios WHERE TRIM(CI) = %s", (cedula.strip(),))
         user = c.fetchone()
         
-        # CORRECCIÓN: Postgres devuelve 'password' (minúscula), no 'Password'
-        # Usamos .get() para intentar ambas por seguridad
-        pass_db = user.get("password") or user.get("Password")
-        
-        if not user or pass_db != contrasena.strip():
+        # 1. Verificar si el usuario existe
+        if not user:
             conn.close()
-            return JSONResponse({"autenticado": False, "mensaje": "Credenciales inválidas"})
+            return JSONResponse({"autenticado": False, "mensaje": "Usuario no encontrado."})
 
-        # Datos seguros (Mapeando claves minúsculas a lo que espera el frontend)
+        # 2. Verificar Contraseña (buscando 'password' o 'Password')
+        pass_db = user.get("password") or user.get("Password")
+        if pass_db != contrasena.strip():
+            conn.close()
+            return JSONResponse({"autenticado": False, "mensaje": "Contraseña incorrecta."})
+            
+        # 3. VERIFICACIÓN DE ESTADO (¡ESTO FALTABA!)
+        # Buscamos 'activo', 'Activo' o asumimos 1 si no existe la columna
+        estado = user.get("activo") if user.get("activo") is not None else user.get("Activo")
+        
+        if estado is not None and int(estado) == 0:
+            conn.close()
+            return JSONResponse({"autenticado": False, "mensaje": "Tu cuenta ha sido DESACTIVADA por administración."})
+
+        # Si pasa todo, preparamos los datos
         datos_usuario = {
             "id": user.get("id") or user.get("ID"),
             "nombre": user.get("nombre") or user.get("Nombre"),
@@ -722,7 +735,8 @@ async def iniciar_sesion(request: Request, cedula: str = Form(...), contrasena: 
         
     except Exception as e:
         print(f"Error login: {e}")
-        return JSONResponse({"autenticado": False, "mensaje": str(e)})
+        return JSONResponse({"autenticado": False, "mensaje": f"Error del servidor: {str(e)}"})
+    
 # =========================================================================
 # 7. ENDPOINTS DE GESTIÓN DE USUARIOS
 # =========================================================================

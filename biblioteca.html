@@ -847,6 +847,7 @@
             box-sizing: border-box;
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
 <body class="login-page">
@@ -1108,6 +1109,67 @@
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
         e.preventDefault(); 
         
+    // Dentro de document.getElementById('loginForm').addEventListener...
+    try {
+        const res = await fetch(`${API_URL}/iniciar_sesion`, { 
+            method: "POST", 
+            body: datos 
+        });
+        
+        const data = await res.json();
+        console.log('📥 Respuesta del backend:', data);
+
+        if (data.autenticado) {
+            // ... (Tu código de guardado en localStorage y redirección sigue igual) ...
+            localStorage.setItem('usuario_id', data.datos.id);
+            localStorage.setItem('usuario_cedula', data.datos.cedula);
+            localStorage.setItem('usuario_nombre', data.datos.nombre);
+            localStorage.setItem('usuario_apellido', data.datos.apellido);
+            localStorage.setItem('usuario_foto', data.datos.url_foto || '');
+            localStorage.setItem('usuario_email', data.datos.email || '');
+            localStorage.setItem('tutorial_visto', data.datos.tutorial_visto);
+            
+            const tipoUsuario = Number(data.datos.tipo);
+            localStorage.setItem('usuario_tipo', tipoUsuario); 
+
+            // Redirección
+            if (tipoUsuario === 0) {
+                window.location.href = 'perfiladmin.html';
+            } else {
+                window.location.href = 'perfil.html';
+            }
+        } else {
+            // 🛑 AQUÍ MOSTRAMOS LA ALERTA DE ERROR
+            Swal.fire({
+                title: 'Acceso Denegado',
+                text: data.mensaje || 'Credenciales incorrectas',
+                icon: 'error',
+                confirmButtonColor: '#d32f2f',
+                background: '#fff',
+                color: '#333'
+            });
+            
+            // También mostramos el error en texto rojo (backup)
+            errorText.innerHTML = data.mensaje || 'Credenciales incorrectas';
+            errorBox.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('❌ Error en login:', error);
+        
+        Swal.fire({
+            title: 'Error de Conexión',
+            text: 'No se pudo contactar con el servidor. Revisa tu internet.',
+            icon: 'warning',
+            confirmButtonColor: '#f9a825'
+        });
+        
+        errorText.innerHTML = 'Error de conexión con el servidor.';
+        errorBox.style.display = 'block';
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+
         // Elementos de la interfaz
         const errorBox = document.getElementById('errorMessage');
         const errorText = document.getElementById('errorText');
