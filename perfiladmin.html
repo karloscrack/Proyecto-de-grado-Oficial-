@@ -3002,32 +3002,27 @@ async function eliminarEvidenciaActual() {
             
             const resultado = await respuesta.json();
             
-            if (resultado.mensaje === 'OK' || resultado.status === 'ok') {
-                mostrarMensaje(`Archivo asignado a ${resultado.asignado_a?.length || cedulas.length} estudiantes`, 'success');
+            // ✅ CORRECCIÓN: Manejo de respuesta uniforme
+            if (resultado.status === 'ok') {
+                Swal.fire('¡Subido!', resultado.mensaje, 'success');
                 archivoInput.value = '';
                 nombresInput.value = '';
                 await cargarDatosIniciales();
             } else {
                 Swal.fire({
-                    title: 'Error al subir',
-                    text: resultado.error || 'Error desconocido al subir el archivo',
-                    icon: 'error',
+                    title: 'Aviso del sistema',
+                    text: resultado.mensaje || 'No se pudo completar la subida.',
+                    icon: 'warning',
                     confirmButtonColor: '#6A0DAD'
                 });
             }
         } catch (error) {
-            Swal.fire({
-                title: 'Error de conexión',
-                text: 'No se pudo conectar con el servidor: ' + error.message,
-                icon: 'error',
-                confirmButtonColor: '#6A0DAD'
-            });
+            Swal.fire('Error', 'No se pudo conectar con el servidor: ' + error.message, 'error');
         } finally {
             boton.innerHTML = '<i class="fas fa-user-check"></i> Asignar Manualmente';
             boton.disabled = false;
         }
     }
-
     async function handleUploadIA(input) {
         const archivos = input.files;
         if (archivos.length === 0) return;

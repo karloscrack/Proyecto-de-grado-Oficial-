@@ -1174,58 +1174,60 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
 
 @app.post("/subir_manual")
 async def subir_manual(
-    archivo: UploadFile = File(...),
-    cedula: str = Form(...)
+    cedulas: str = Form(...), 
+    archivo: UploadFile = File(...)
 ):
-    """Sube una evidencia manualmente asignada a un estudiante específico."""
+    """Sube una evidencia manualmente asignada a una lista de cédulas."""
     temp_dir = None
     conn = None
     try:
-        # 1. Preparar archivo temporal y calcular Hash
+        # 1. Validar que existan cédulas
+        lista_cedulas = [c.strip() for c in cedulas.split(",") if c.strip()]
+        if not lista_cedulas:
+            return JSONResponse(content={"status": "error", "mensaje": "Debe especificar al menos una cédula"})
+        
+        # 2. Guardar archivo temporalmente
         temp_dir = tempfile.mkdtemp()
         path = os.path.join(temp_dir, archivo.filename)
         with open(path, "wb") as f:
             shutil.copyfileobj(archivo.file, f)
         
         file_hash = calcular_hash(path)
-        
-        # 2. Conectar a la base de datos
         conn = get_db_connection()
-        c = conn.cursor(cursor_factory=RealDictCursor)
+        c = conn.cursor(cursor_factory=RealDictCursor) # Cursor obligatorio para Postgres
         
-        # 3. Verificar si el archivo ya existe para este estudiante (Evitar duplicados)
-        c.execute("SELECT id FROM Evidencias WHERE CI_Estudiante = %s AND Hash = %s", (cedula, file_hash))
+        # 3. Verificar si el archivo ya existe globalmente
+        c.execute("SELECT id FROM Evidencias WHERE Hash = %s LIMIT 1", (file_hash,))
         if c.fetchone():
-            return JSONResponse({"status": "error", "mensaje": "Este estudiante ya tiene esta evidencia registrada."})
-
-        # 4. Determinar tipo y subir a la nube (Backblaze)
-        ext = os.path.splitext(archivo.filename)[1].lower()
-        tipo_archivo = "video" if ext in ['.mp4', '.avi', '.mov'] else "imagen"
-        
+            return JSONResponse({"status": "error", "mensaje": "⚠️ ARCHIVO DUPLICADO: Esta evidencia ya existe en el sistema."})
+            
+        # 4. Procesar y subir a la nube
         path_procesado = garantizar_limite_storage(path)
         tamanio_kb = os.path.getsize(path_procesado) / 1024
         url_final = f"/local/{archivo.filename}"
         
         if s3_client:
             try:
-                nube = f"evidencias/{int(ahora_ecuador().timestamp())}_{archivo.filename}"
-                s3_client.upload_file(path_procesado, BUCKET_NAME, nube, ExtraArgs={'ACL':'public-read'})
-                url_final = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nube}"
-            except Exception as e:
-                print(f"Error subiendo a S3: {e}")
-
-        # 5. Insertar en la base de datos usando el cursor
-        c.execute("""
-            INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
-            VALUES (%s, %s, %s, 1, %s, %s, 0)
-        """, (cedula, url_final, file_hash, tipo_archivo, tamanio_kb))
+                nombre_nube = f"evidencias/manual_{int(ahora_ecuador().timestamp())}_{archivo.filename}"
+                s3_client.upload_file(path_procesado, BUCKET_NAME, nombre_nube, ExtraArgs={'ACL': 'public-read'})
+                url_final = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nombre_nube}"
+            except: pass
+            
+        # 5. Asignar a cada estudiante de la lista
+        count = 0
+        for ced in lista_cedulas:
+            c.execute("SELECT CI FROM Usuarios WHERE CI=%s", (ced,))
+            if c.fetchone():
+                c.execute("""
+                    INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
+                    VALUES (%s, %s, %s, 1, 'documento', %s, 0)
+                """, (ced, url_final, file_hash, tamanio_kb))
+                count += 1
         
         conn.commit()
+        registrar_auditoria("Subida Manual", f"Archivo {archivo.filename} asignado a {count} estudiantes")
         
-        # Registrar en auditoría
-        registrar_auditoria("Subida Manual", f"Archivo {archivo.filename} asignado a {cedula}")
-        
-        return JSONResponse({"status": "ok", "mensaje": "Evidencia subida y asignada correctamente."})
+        return JSONResponse({"status": "ok", "mensaje": f"✅ Éxito: Archivo asignado a {count} estudiantes."})
 
     except Exception as e:
         if conn: conn.rollback()
