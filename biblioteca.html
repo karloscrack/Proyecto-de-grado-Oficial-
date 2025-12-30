@@ -1170,15 +1170,27 @@
                     window.location.href = 'perfil.html';
                 }
             } else {
-                // --- AQUÍ EL CAMBIO: ERROR DISCRETO ---
-                // En lugar de Swal.fire (la ventana grande), usamos la cajita roja
+                // 1. Mostrar el mensaje de error
                 errorText.innerHTML = data.mensaje || 'Credenciales incorrectas.';
-                errorBox.style.display = 'block'; // Aparece arriba del formulario
+                errorBox.style.display = 'block'; 
                 
-                // Efecto visual: Sacudida pequeña si quieres (opcional)
+                // 2. Animación "Shake" (Vibración) MEJORADA
                 const card = document.querySelector('.login-card');
+                
+                // A) Quitamos la clase por si acaso ya estaba (reset)
+                card.classList.remove('shake-animation');
+                
+                // B) TRUCO MÁGICO: Forzamos al navegador a "leer" el cambio (Reflow)
+                // Esto permite reiniciar la animación si le das clic varias veces seguidas
+                void card.offsetWidth; 
+                
+                // C) Agregamos la clase para que empiece a moverse
                 card.classList.add('shake-animation');
-                setTimeout(() => card.classList.remove('shake-animation'), 500);
+                
+                // D) Detectamos AUTOMÁTICAMENTE cuando termina, en lugar de adivinar el tiempo
+                card.addEventListener('animationend', () => {
+                    card.classList.remove('shake-animation');
+                }, { once: true }); // 'once: true' borra el detector para no acumular basura
             }
         } catch (error) {
             // --- ERROR DE CONEXIÓN ---
