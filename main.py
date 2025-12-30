@@ -573,6 +573,23 @@ def calcular_estadisticas_reales() -> dict:
 # =========================================================================
 app = FastAPI(title="Sistema Educativo Despertar", version="7.0")
 
+# Lista de dominios permitidos para conectar con el backend
+origins = [
+    "https://www.uepdespertar-evidencias.work",  # Tu nuevo dominio principal
+    "https://uepdespertar-evidencias.work",      # Versión sin www
+    "https://proyecto-grado-karlos.vercel.app",  # Tu dominio antiguo de Vercel
+    "http://localhost:5500",                     # Pruebas locales
+    "http://127.0.0.1:5500"                      # Pruebas locales
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins, # <--- Usamos la lista de arriba
+    allow_credentials=True,
+    allow_methods=["*"],   # Permite GET, POST, DELETE, etc.
+    allow_headers=["*"],   # Permite todos los encabezados
+)
+
 @app.on_event("startup")
 async def startup_event():
     """
