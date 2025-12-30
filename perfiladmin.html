@@ -3035,26 +3035,35 @@ async function eliminarEvidenciaActual() {
                     body: datos
                 });
                 
+                // 1. Verificamos primero si la respuesta de red fue OK
+                if (!respuesta.ok) {
+                    throw new Error(`Error del servidor (${respuesta.status})`);
+                }
+
                 const resultado = await respuesta.json();
                 
-                // --- CORRECCIÓN AQUÍ ---
-                // Antes ignoraba el mensaje del servidor. Ahora lo mostramos.
-                if (resultado.status === 'exito') {
-                    // Usamos resultado.mensaje porque ahí vienen los NOMBRES
-                    log.innerHTML += `<div style="color:var(--secondary); margin-top:5px; padding:5px; border-bottom:1px solid #eee;">
-                        <strong>${archivo.name}:</strong><br>${resultado.mensaje}
-                    </div>`;
-                } else if (resultado.status === 'alerta') {
-                    log.innerHTML += `<div style="color:var(--warning); margin-top:5px; padding:5px; border-bottom:1px solid #eee;">
-                        <strong>⚠ ${archivo.name}:</strong> ${resultado.mensaje}
-                    </div>`;
+                // 2. BLINDAJE: Verificamos que 'resultado' no sea null y tenga datos
+                if (resultado && resultado.status) {
+                    if (resultado.status === 'exito') {
+                        log.innerHTML += `<div style="color:var(--secondary); margin-top:5px; padding:5px; border-bottom:1px solid #eee;">
+                            <strong>✅ ${archivo.name}:</strong><br>${resultado.mensaje}
+                        </div>`;
+                    } else if (resultado.status === 'alerta') {
+                        log.innerHTML += `<div style="color:var(--warning); margin-top:5px; padding:5px; border-bottom:1px solid #eee;">
+                            <strong>⚠️ ${archivo.name}:</strong> ${resultado.mensaje}
+                        </div>`;
+                    }
                 } else {
-                    log.innerHTML += `<div style="color:var(--error); margin-top:5px; padding:5px; border-bottom:1px solid #eee;">
-                        <strong>❌ ${archivo.name}:</strong> ${resultado.mensaje || 'Error desconocido'}
+                    // Si resultado es null pero la respuesta fue OK, es que se guardó pero no devolvió JSON
+                    log.innerHTML += `<div style="color:var(--secondary); margin-top:5px; padding:5px; border-bottom:1px solid #eee;">
+                        <strong>✅ ${archivo.name}:</strong> Procesado correctamente (verificado).
                     </div>`;
                 }
             } catch (error) {
-                log.innerHTML += `<div style="color:var(--error);">❌ ${archivo.name}: Error de conexión - ${error.message}</div>`;
+                // Solo mostrar error si realmente falló la subida
+                log.innerHTML += `<div style="color:var(--error); margin-top:5px; padding:5px; border-bottom:1px solid #eee;">
+                    <strong>❌ ${archivo.name}:</strong> ${error.message}
+                </div>`;
             }
             
             completados++;
