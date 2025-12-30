@@ -2162,73 +2162,87 @@
     }
 
     function crearCardSolicitud(sol) {
-        // Manejo de estado
-        const estado = (sol.Estado || '').toUpperCase();
-        const esPendiente = estado === 'PENDIENTE' || estado === '';
-        
-        // Determinar la clase del badge y el texto
-        let badgeClass, badgeText;
-        if (esPendiente) {
-            badgeClass = 'badge-pending';
-            badgeText = 'PENDIENTE';
-        } else if (estado === 'APROBADA' || estado === 'RESUELTO') {
-            badgeClass = 'badge-resolved';
-            badgeText = 'RESUELTA';
-        } else {
-            badgeClass = 'badge-rejected';
-            badgeText = 'RECHAZADA';
-        }
-        
-        // Buscar información del usuario
-        const usuario = usuarios.find(u => u.cedula === sol.CI_Solicitante);
-        const nombreUsuario = usuario ? `${usuario.nombre} ${usuario.apellido}` : sol.CI_Solicitante || 'Usuario';
-        
-        return `
-            <div class="request-card">
-                <div class="request-header">
-                    <div>
-                        <h4 style="color:var(--text-main); margin-bottom:5px;">
-                            ${sol.Tipo ? sol.Tipo.replace(/_/g, ' ') : 'Solicitud'} - ${nombreUsuario}
-                            <span class="solicitud-tipo ${sol.Tipo ? 'tipo-' + sol.Tipo.toLowerCase().split('_')[0] : 'tipo-reporte'}">
-                                ${sol.Tipo ? sol.Tipo.replace(/_/g, ' ') : 'General'}
-                            </span>
-                        </h4>
-                        <p style="color:var(--text-sec); font-size:0.9rem; margin-bottom:5px;">
-                            ${sol.Detalle || 'Sin detalles'}
-                        </p>
-                        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                            <span class="request-badge ${badgeClass}">${badgeText}</span>
-                            <span style="color:var(--text-muted); font-size:0.8rem;">${formatearFecha(sol.Fecha)}</span>
-                            ${sol.Email ? `<span style="color:var(--text-muted); font-size:0.8rem;"><i class="fas fa-envelope"></i> ${sol.Email}</span>` : ''}
-                        </div>
-                    </div>
-                    ${esPendiente ? 
-                        `<button class="btn-primary" onclick="procesarSolicitudDesdeCard('${sol.Tipo}', ${sol.id})" 
-                                 style="background:var(--info); padding:8px 15px;">
-                            <i class="fas fa-reply"></i> Responder
-                         </button>` : 
-                        `<div style="font-size:0.85rem; text-align:right; color:var(--text-main);">
-                            <div><strong>Resuelto por:</strong> ${sol.Resuelto_Por || 'Admin'}</div>
-                            ${sol.Respuesta ? `<div style="color:var(--primary); margin-top:3px;"><em>"${sol.Respuesta.substring(0,30)}..."</em></div>` : ''}
-                         </div>`
-                    }
-                </div>
-                ${sol.Evidencia_Reportada_Url ? `
-                    <div style="margin-top:10px;">
-                        <p style="color:var(--text-sec); font-size:0.9rem; margin-bottom:5px;">Evidencia relacionada:</p>
-                        <img src="${sol.Evidencia_Reportada_Url}" class="request-preview" 
-                             onclick="abrirPrevisualizacion('${sol.Evidencia_Reportada_Url}')">
-                    </div>
-                ` : ''}
-                ${!esPendiente && sol.Respuesta ? `
-                    <div style="margin-top:15px; padding:10px; background:var(--bg-input); border-radius:8px;">
-                        <strong style="color:var(--primary);">Respuesta enviada:</strong>
-                        <p style="margin-top:5px; color:var(--text-main);">${sol.Respuesta}</p>
-                    </div>
-                ` : ''}
-            </div>
-        `;
+    // --- MAPEO DE SEGURIDAD PARA POSTGRESQL ---
+    // Esto extrae el valor sin importar si viene como 'Estado' o 'estado'
+    const _estado = sol.estado || sol.Estado || '';
+    const _tipo = sol.tipo || sol.Tipo || 'Solicitud';
+    const _detalle = sol.detalle || sol.Detalle || 'Sin detalles';
+    const _fecha = sol.fecha || sol.Fecha;
+    const _ci = sol.ci_solicitante || sol.CI_Solicitante;
+    const _id = sol.id || sol.ID;
+    const _email = sol.email || sol.Email;
+    const _url = sol.evidencia_reportada_url || sol.Evidencia_Reportada_Url;
+    const _resueltoPor = sol.resuelto_por || sol.Resuelto_Por || 'Admin';
+    const _respuesta = sol.respuesta || sol.Respuesta;
+
+    // Manejo de estado
+    const estado = _estado.toUpperCase();
+    const esPendiente = estado === 'PENDIENTE' || estado === '';
+    
+    // Determinar la clase del badge y el texto
+    let badgeClass, badgeText;
+    if (esPendiente) {
+        badgeClass = 'badge-pending';
+        badgeText = 'PENDIENTE';
+    } else if (estado === 'APROBADA' || estado === 'RESUELTO') {
+        badgeClass = 'badge-resolved';
+        badgeText = 'RESUELTA';
+    } else {
+        badgeClass = 'badge-rejected';
+        badgeText = 'RECHAZADA';
     }
+    
+    // Buscar información del usuario
+    const usuario = usuarios.find(u => u.cedula === _ci);
+    const nombreUsuario = usuario ? `${usuario.nombre} ${usuario.apellido}` : _ci || 'Usuario';
+    
+    // RETORNO DE DISEÑO (Mantenido 100% original)
+    return `
+        <div class="request-card">
+            <div class="request-header">
+                <div>
+                    <h4 style="color:var(--text-main); margin-bottom:5px;">
+                        ${_tipo.replace(/_/g, ' ')} - ${nombreUsuario}
+                        <span class="solicitud-tipo ${_tipo ? 'tipo-' + _tipo.toLowerCase().split('_')[0] : 'tipo-reporte'}">
+                            ${_tipo.replace(/_/g, ' ')}
+                        </span>
+                    </h4>
+                    <p style="color:var(--text-sec); font-size:0.9rem; margin-bottom:5px;">
+                        ${_detalle}
+                    </p>
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <span class="request-badge ${badgeClass}">${badgeText}</span>
+                        <span style="color:var(--text-muted); font-size:0.8rem;">${formatearFecha(_fecha)}</span>
+                        ${_email ? `<span style="color:var(--text-muted); font-size:0.8rem;"><i class="fas fa-envelope"></i> ${_email}</span>` : ''}
+                    </div>
+                </div>
+                ${esPendiente ? 
+                    `<button class="btn-primary" onclick="procesarSolicitudDesdeCard('${_tipo}', ${_id})" 
+                               style="background:var(--info); padding:8px 15px;">
+                        <i class="fas fa-reply"></i> Responder
+                     </button>` : 
+                    `<div style="font-size:0.85rem; text-align:right; color:var(--text-main);">
+                        <div><strong>Resuelto por:</strong> ${_resueltoPor}</div>
+                        ${_respuesta ? `<div style="color:var(--primary); margin-top:3px;"><em>"${_respuesta.substring(0,30)}..."</em></div>` : ''}
+                     </div>`
+                }
+            </div>
+            ${_url ? `
+                <div style="margin-top:10px;">
+                    <p style="color:var(--text-sec); font-size:0.9rem; margin-bottom:5px;">Evidencia relacionada:</p>
+                    <img src="${_url}" class="request-preview" 
+                         onclick="abrirPrevisualizacion('${_url}')">
+                </div>
+            ` : ''}
+            ${!esPendiente && _respuesta ? `
+                <div style="margin-top:15px; padding:10px; background:var(--bg-input); border-radius:8px;">
+                    <strong style="color:var(--primary);">Respuesta enviada:</strong>
+                    <p style="margin-top:5px; color:var(--text-main);">${_respuesta}</p>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
 
     // ==========================================
     // 5. GESTIÓN COMPLETA DE SOLICITUDES
@@ -2834,28 +2848,33 @@ async function eliminarEvidenciaActual() {
     }
 
     function renderizarLogs() {
-        const tbody = document.getElementById('logsTableBody');
-        if (!tbody) return;
+    const tbody = document.getElementById('logsTableBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = logs.map(log => {
+        // Soporte para minúsculas (Postgres) y mayúsculas
+        const fechaRaw = log.fecha || log.Fecha; // Lee 'fecha' si viene de Postgres o 'Fecha' si es antiguo
+        const accion = log.accion || log.Accion || 'Sin acción';
+        const detalle = log.detalle || log.Detalle || 'Sin detalle';
+        const usuario = log.usuario || log.Usuario || 'Sistema';
         
-        tbody.innerHTML = logs.map(log => {
-            const fechaFormateada = formatearFecha(log.Fecha);
-            const colorAccion = obtenerColorAccion(log.Accion);
-            const usuario = log.Usuario || 'Sistema';
-            
-            return `
-                <tr>
-                    <td>${fechaFormateada}</td>
-                    <td>
-                        <span style="font-weight:600; color:${colorAccion}">
-                            ${log.Accion || 'Sin acción'}
-                        </span>
-                    </td>
-                    <td>${log.Detalle || 'Sin detalle'}</td>
-                    <td>${usuario}</td>
-                </tr>
-            `;
-        }).join('');
-    }
+        const fechaFormateada = formatearFecha(fechaRaw);
+        const colorAccion = obtenerColorAccion(accion);
+        
+        return `
+            <tr>
+                <td>${fechaFormateada}</td>
+                <td>
+                    <span style="font-weight:600; color:${colorAccion}">
+                        ${accion}
+                    </span>
+                </td>
+                <td>${detalle}</td>
+                <td>${usuario}</td>
+            </tr>
+        `;
+    }).join('');
+}
 
     function obtenerColorAccion(accion) {
         if (!accion) return 'var(--text-main)';

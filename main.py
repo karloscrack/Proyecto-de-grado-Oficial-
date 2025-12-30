@@ -247,22 +247,34 @@ init_db_completa()
 # =========================================================================
 
 def registrar_auditoria(accion: str, detalle: str, usuario: str = "Sistema", ip: str = ""):
-    """Registra una acción en la tabla de auditoría con fecha de Ecuador"""
+    """
+    Registra una acción en la tabla de auditoría con fecha de Ecuador.
+    Versión optimizada para PostgreSQL (Supabase).
+    """
+    conn = None
     try:
+        # 1. Obtener la hora exacta de Ecuador
         fecha_ecuador = ahora_ecuador()
+        
+        # 2. Establecer conexión
         conn = get_db_connection()
-        c = conn.cursor() # <--- IMPORTANTE: Creamos el cursor
-        
-        c.execute("""
-            INSERT INTO Auditoria (Accion, Detalle, Usuario, IP, Fecha) 
-            VALUES (%s, %s, %s, %s, %s)
-        """, (accion, detalle, usuario, ip, fecha_ecuador))
-        
-        conn.commit()
-        conn.close()
-        logging.info(f"AUDITORIA: {accion} - {detalle}")
+        if conn:
+            c = conn.cursor()
+            
+            # 3. Ejecutar la inserción (Usando los nombres de columna de tu init_db_completa)
+            c.execute("""
+                INSERT INTO Auditoria (Accion, Detalle, Usuario, IP, Fecha) 
+                VALUES (%s, %s, %s, %s, %s)
+            """, (accion, detalle, usuario, ip, fecha_ecuador))
+            
+            conn.commit()
+            logging.info(f"✅ AUDITORIA REGISTRADA: {accion} - {detalle}")
     except Exception as e:
-        logging.error(f"Error en auditoria: {e}")
+        logging.error(f"❌ Error en auditoria: {e}")
+    finally:
+        # 🛡️ FUNCIÓN CRÍTICA: Cerramos la conexión siempre para evitar errores de "too many clients"
+        if conn:
+            conn.close()
 
 def enviar_correo_real(destinatario: str, asunto: str, mensaje: str, html: bool = False) -> bool:
     import requests # Asegúrate de poner 'requests' en tu requirements.txt
