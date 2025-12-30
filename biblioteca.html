@@ -365,10 +365,31 @@
             padding: 12px 15px;
             margin-bottom: 20px;
             text-align: left;
-            display: none;
+            display: none; /* Se mantiene oculto por defecto */
             color: var(--error);
             position: relative; z-index: 1;
             font-size: 0.9rem;
+            
+            /* NUEVO: Esto hace que aparezca suave */
+            animation: fadeInDown 0.4s ease forwards;
+        }
+
+        /* Agrega esto justo debajo de .error-box */
+        @keyframes fadeInDown {
+            from { 
+                opacity: 0; 
+                transform: translateY(-10px); 
+                max-height: 0;
+                padding: 0 15px;
+                margin-bottom: 0;
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+                max-height: 100px; /* Altura aproximada */
+                padding: 12px 15px;
+                margin-bottom: 20px;
+            }
         }
         .error-box i { margin-right: 8px; }
 
@@ -1170,31 +1191,28 @@
                     window.location.href = 'perfil.html';
                 }
             } else {
-                // 1. PRIMERO: Preparamos el terreno (Mensaje y Caja)
+                // 1. Mostrar el mensaje (El CSS se encarga de que baje suave)
                 errorText.innerHTML = data.mensaje || 'Credenciales incorrectas.';
                 errorBox.style.display = 'block'; 
                 
-                // 2. SEGUNDO: Esperamos un instante (10ms) para que el navegador dibuje los cambios
-                // Esto evita el "parpadeo" o sensación de recarga
+                // 2. Animación de Vibración (Sin hacks raros)
+                const card = document.querySelector('.login-card');
+                
+                // A) Quitamos la clase primero
+                card.classList.remove('shake-animation');
+                
+                // B) Esperamos 50ms (imperceptible) para que el navegador respire
+                // y luego aplicamos la vibración. Esto evita el "flash".
                 setTimeout(() => {
-                    const card = document.querySelector('.login-card');
-                    
-                    // A) Limpieza (por si acaso)
-                    card.classList.remove('shake-animation');
-                    
-                    // B) Truco de Reflow (Reinicio forzado)
-                    void card.offsetWidth; 
-                    
-                    // C) ¡Ahora sí, tiembla!
                     card.classList.add('shake-animation');
-                    
-                    // D) Limpieza automática al terminar
-                    card.addEventListener('animationend', () => {
-                        card.classList.remove('shake-animation');
-                    }, { once: true });
-                }, 10);
+                }, 50);
+                
+                // C) Limpiamos cuando termine
+                card.addEventListener('animationend', () => {
+                    card.classList.remove('shake-animation');
+                }, { once: true });
             }
-            
+
         } catch (error) {
             // --- ERROR DE CONEXIÓN ---
             console.error('❌ Error en login:', error);
