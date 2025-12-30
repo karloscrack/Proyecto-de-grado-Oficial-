@@ -1474,10 +1474,10 @@ async def optimizar_sistema(tipo: str = "full"):
                 mensaje_resultado.append("No se encontraron duplicados.")
 
         # ==========================================
-        # 2. LIMPIAR HUÉRFANOS
+        # 2. LIMPIAR HUÉRFANOS (VERSION PROTEGIDA)
         # ==========================================
         if tipo == "huerfanos" or tipo == "full":
-            print("👻 [2/4] Buscando archivos fantasma...")
+            print("👻 [2/4] Analizando archivos fantasma con protección...")
             c.execute("SELECT id, Url_Archivo FROM Evidencias")
             todas = c.fetchall()
             elim_huerfanos = 0
@@ -1486,23 +1486,31 @@ async def optimizar_sistema(tipo: str = "full"):
                 url = ev.get('Url_Archivo') or ev.get('url_archivo')
                 ev_id = ev.get('id')
                 
+                # SEGURIDAD: Si la URL está vacía, no la borramos por si es un error de carga
+                if not url: continue 
+
                 existe = True
                 if url and "backblazeb2.com" in url and s3_client:
                     try:
                         key = url.split(f"/file/{BUCKET_NAME}/")[1]
+                        # Verificamos existencia física
                         s3_client.head_object(Bucket=BUCKET_NAME, Key=key)
-                    except: existe = False
-                elif url and not "http" in url and not os.path.exists(url):
-                    existe = False
+                    except Exception as e:
+                        # 🛡️ PROTECCIÓN CRÍTICA: Solo borramos si el error es "404 Not Found"
+                        # Si es un error de red o timeout (500, 403), NO BORRAMOS nada.
+                        error_str = str(e)
+                        if "404" in error_str or "Not Found" in error_str:
+                            existe = False
+                        else:
+                            print(f"⚠️ Salto de seguridad: Error de conexión con la nube para ID {ev_id}. No se borrará.")
+                            existe = True 
                 
                 if not existe:
                     c.execute("DELETE FROM Evidencias WHERE id = %s", (ev_id,))
                     elim_huerfanos += 1
             
             if elim_huerfanos > 0:
-                mensaje_resultado.append(f"Eliminados {elim_huerfanos} registros rotos (fantasmas).")
-            elif tipo == "huerfanos":
-                mensaje_resultado.append("El sistema está limpio de archivos rotos.")
+                mensaje_resultado.append(f"Limpieza completada: {elim_huerfanos} registros inexistentes eliminados.")
 
         # ==========================================
         # 3. AUTO-REASIGNACIÓN (SOLO EN MODO FULL)
@@ -1552,7 +1560,7 @@ async def optimizar_sistema(tipo: str = "full"):
     except Exception as e:
         print(f"❌ Error en mantenimiento: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
-        
+    
 # =========================================================================
 # 10. ENDPOINTS DE ESTADÍSTICAS Y REPORTES
 # =========================================================================
