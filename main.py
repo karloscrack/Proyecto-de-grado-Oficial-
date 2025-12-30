@@ -1063,124 +1063,118 @@ def garantizar_limite_storage(ruta_archivo, limite_mb=1000):
 async def subir_evidencia_ia(archivo: UploadFile = File(...)):
     temp_dir = None
     try:
-        # 1. Preparación de archivo
+        # 1. Preparación de archivo y cálculo de Hash inicial
         temp_dir = tempfile.mkdtemp()
         path = os.path.join(temp_dir, archivo.filename)
         with open(path, "wb") as f: shutil.copyfileobj(archivo.file, f)
         file_hash = calcular_hash(path)
         
+        # 2. Verificación inmediata de Duplicado Global (Seguridad ante todo)
+        conn = get_db_connection()
+        c = conn.cursor(cursor_factory=RealDictCursor)
+        
+        c.execute("SELECT id FROM Evidencias WHERE Hash = %s LIMIT 1", (file_hash,))
+        if c.fetchone():
+            conn.close()
+            if temp_dir: shutil.rmtree(temp_dir)
+            return JSONResponse({
+                "status": "alerta", 
+                "mensaje": f"⚠️ ARCHIVO DUPLICADO: '{archivo.filename}' ya existe en el sistema global."
+            })
+
+        # 3. Identificación de tipo y preparación de IA
         ext = os.path.splitext(archivo.filename)[1].lower()
         es_imagen = ext in ['.jpg', '.jpeg', '.png', '.bmp', '.webp', '.avif']
         es_video = ext in ['.mp4', '.avi', '.mov', '.mkv']
         tipo_archivo = "video" if es_video else ("imagen" if es_imagen else "documento")
         
-        # 2. IA de Reconocimiento
         cedulas_detectadas = set() 
-        texto_debug = []
-        conn = get_db_connection()
-        c = conn.cursor(cursor_factory=RealDictCursor) # Cursor para diccionarios
         
         if rekog:
             if es_imagen:
-                # Lógica para imágenes
+                # Rostros + Texto (OCR)
                 rostros = identificar_varios_rostros_aws(path)
                 cedulas_detectadas.update(rostros)
-                textos_ceds, debug_ocr = buscar_estudiantes_por_texto(path, c) 
+                textos_ceds, _ = buscar_estudiantes_por_texto(path, c) 
                 cedulas_detectadas.update(textos_ceds)
-                if debug_ocr: texto_debug = debug_ocr
-            
             elif es_video:
-                # ✅ NUEVA LÓGICA: PROCESAMIENTO DE VIDEO PARA IA
-                print(f"🎬 Analizando video fotograma a fotograma: {archivo.filename}")
+                # Análisis de fotogramas de video
                 cap = cv2.VideoCapture(path)
                 frame_count = 0
-                
-                # Analizamos 1 fotograma cada 60 (aprox. cada 2 segundos de video a 30fps)
                 while cap.isOpened():
                     ret, frame = cap.read()
-                    if not ret: break
-                    
+                    if not ret or frame_count > 1800: break
                     if frame_count % 60 == 0:
-                        # Crear un archivo temporal para el fotograma actual
-                        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp_frame:
+                        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
                             _, buffer = cv2.imencode('.jpg', frame)
-                            tmp_frame.write(buffer.tobytes())
-                            tmp_frame_path = tmp_frame.name
-                        
-                        # Usamos tu función existente para identificar rostros en este fotograma
-                        rostros_en_frame = identificar_varios_rostros_aws(tmp_frame_path)
-                        for r in rostros_en_frame:
-                            if r:
-                             cedulas_detectadas.add(str(r))
-                        
-                        # Limpiar el fotograma temporal inmediatamente
-                        if os.path.exists(tmp_frame_path): 
-                            os.remove(tmp_frame_path)
-                    
+                            tmp.write(buffer.tobytes())
+                            tmp_path = tmp.name
+                        rostros_f = identificar_varios_rostros_aws(tmp_path)
+                        cedulas_detectadas.update(rostros_f)
+                        if os.path.exists(tmp_path): os.remove(tmp_path)
                     frame_count += 1
-                    # Límite de seguridad: analizamos máximo 1800 frames (aprox 1 min de video)
-                    if frame_count > 1800: break 
                 cap.release()
-        
-        # 3. Verificar si el archivo ya existe (Usando el cursor 'c')
-        c.execute("SELECT id FROM Evidencias WHERE Hash = %s LIMIT 1", (file_hash,))
-        archivo_duplicado = c.fetchone()
-        
-        # --- NUEVA LÓGICA DE RESPUESTA PARA DUPLICADOS ---
-        if archivo_duplicado:
-            conn.close()
-            if temp_dir: shutil.rmtree(temp_dir)
-            # Retornamos un mensaje específico de duplicado
-            return JSONResponse({
-                "status": "alerta", 
-                "mensaje": "⚠️ ARCHIVO DUPLICADO: Esta evidencia ya existe en el sistema y no se procesará de nuevo."
-            })
 
-        # 4. Si NO es duplicado, procedemos a subir a la nube
-        path = garantizar_limite_storage(path, limite_mb=1000)
-        tamanio_kb = os.path.getsize(path) / 1024
+        # 4. Subida física a la nube (solo si pasó los filtros anteriores)
+        path_procesado = garantizar_limite_storage(path)
+        tamanio_kb = os.path.getsize(path_procesado) / 1024
         url_final = f"/local/{archivo.filename}"
-        
         if s3_client:
             try:
                 nube = f"evidencias/{int(ahora_ecuador().timestamp())}_{archivo.filename}"
-                s3_client.upload_file(path, BUCKET_NAME, nube, ExtraArgs={'ACL':'public-read'})
+                s3_client.upload_file(path_procesado, BUCKET_NAME, nube, ExtraArgs={'ACL':'public-read'})
                 url_final = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nube}"
             except: pass
 
-        # 5. Asignación a estudiantes detectados
+        # 5. ASIGNACIÓN DETALLADA Y REPORTE (Lo que pediste)
         asignados_nuevos = []
+        ya_tenian = []
+        
         if cedulas_detectadas:
             for ced in cedulas_detectadas:
                 c.execute("SELECT Nombre, Apellido, Tipo FROM Usuarios WHERE CI=%s", (ced,))
                 u = c.fetchone()
+                
                 if u and (u.get('Tipo') or u.get('tipo')) == 1:
-                    nombre = f"{u.get('Nombre') or u.get('nombre')} {u.get('Apellido') or u.get('apellido')}"
-                    c.execute("""
-                        INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente) 
-                        VALUES (%s, %s, %s, 1, %s, %s, 1)
-                    """, (ced, url_final, file_hash, tipo_archivo, tamanio_kb))
-                    asignados_nuevos.append(nombre)
+                    nombre_completo = f"{u.get('Nombre') or u.get('nombre')} {u.get('Apellido') or u.get('apellido')}"
+                    
+                    # Verificar si este estudiante específico ya tiene este archivo
+                    c.execute("SELECT id FROM Evidencias WHERE CI_Estudiante = %s AND Hash = %s", (ced, file_hash))
+                    if c.fetchone():
+                        ya_tenian.append(nombre_completo)
+                    else:
+                        c.execute("""
+                            INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente) 
+                            VALUES (%s, %s, %s, 1, %s, %s, 1)
+                        """, (ced, url_final, file_hash, tipo_archivo, tamanio_kb))
+                        asignados_nuevos.append(nombre_completo)
 
+            # Construcción del mensaje inteligente
+            partes_mensaje = []
             if asignados_nuevos:
-                msg, status = f"✅ Asignado a: {', '.join(asignados_nuevos)}.", "exito"
-            else:
-                msg, status = "⚠️ No se identificaron estudiantes en la imagen.", "alerta"
+                partes_mensaje.append(f"✅ Asignado a: {', '.join(asignados_nuevos)}.")
+            if ya_tenian:
+                partes_mensaje.append(f"ℹ️ {', '.join(ya_tenian)} ya contaban con esta evidencia.")
+            
+            msg = " ".join(partes_mensaje)
+            status = "exito" if asignados_nuevos else "alerta"
         else:
-            # Nadie detectado -> Guardar como Pendiente
+            # Nadie detectado -> Carpeta Pendientes
             c.execute("""
                 INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente) 
                 VALUES ('PENDIENTE', %s, %s, 1, %s, %s, 0)
             """, (url_final, file_hash, tipo_archivo, tamanio_kb))
-            msg, status = "⚠️ No se identificó alumno. Guardado como pendiente.", "alerta"
+            msg, status = "⚠️ No se identificó a nadie. Guardado en 'Pendientes'.", "alerta"
 
         conn.commit()
         conn.close()
+        if temp_dir: shutil.rmtree(temp_dir)
+        return JSONResponse({"status": status, "mensaje": msg})
 
     except Exception as e:
         if temp_dir: shutil.rmtree(temp_dir)
         print(f"❌ Error IA: {e}")
-        return JSONResponse({"status": "error", "mensaje": str(e)})
+        return JSONResponse({"status": "error", "mensaje": f"Error procesando {archivo.filename}: {str(e)}"})
     
 @app.post("/subir_manual")
 async def subir_manual(
