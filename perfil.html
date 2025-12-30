@@ -820,12 +820,33 @@
         <div class="modal-card">
             <button onclick="cerrarModal('modalContactHub')" style="position:absolute; top:15px; right:15px; border:none; background:none; font-size:1.5rem; cursor:pointer; color:var(--text-sec);">&times;</button>
             <h3 style="color:var(--primary); margin-bottom:20px; font-size:1.4rem;"><i class="fas fa-headset"></i> Centro de Ayuda</h3>
-            <p style="color:var(--text-sec); font-size:0.9rem; margin-bottom:20px;">Selecciona el motivo de tu consulta:</p>
-            <div class="hub-grid">
-                <button class="hub-btn" onclick="cambiarModal('modalContactHub', 'modalUpload')"><i class="fas fa-cloud-upload-alt"></i> <h4>Subir</h4></button>
-                <button class="hub-btn" onclick="cambiarModal('modalContactHub', 'modalReport')"><i class="fas fa-bug"></i> <h4>Error</h4></button>
-                <button class="hub-btn" onclick="cambiarModal('modalContactHub', 'modalProblem')"><i class="fas fa-user-shield"></i> <h4>Cuenta</h4></button>
+            <p style="color:var(--text-sec); font-size:0.9rem; margin-bottom:20px;">¿Cómo podemos ayudarte hoy?</p>
+            
+            <div class="hub-grid" style="grid-template-columns: 1fr 1fr;">
+                <button class="hub-btn" onclick="cambiarModal('modalContactHub', 'modalUpload')">
+                    <i class="fas fa-cloud-upload-alt"></i> 
+                    <h4>Subir Evidencia</h4>
+                </button>
+                <button class="hub-btn" onclick="cambiarModal('modalContactHub', 'modalSoporte')">
+                    <i class="fas fa-envelope-open-text"></i> 
+                    <h4>Contactar / Error</h4>
+                </button>
             </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalSoporte">
+        <div class="modal-card">
+            <h3 style="color:var(--info);">Mensaje al Admin</h3>
+            <p style="font-size:0.85rem; color:#666; margin-bottom:15px;">Reporta errores, problemas con tu cuenta o haz una consulta general.</p>
+            <form onsubmit="enviarSolicitud(event, 'SOPORTE')">
+                <div class="form-group">
+                    <label>Tu Mensaje:</label>
+                    <textarea id="descSoporte" class="form-control" rows="5" placeholder="Escribe aquí tu problema o consulta..." required></textarea>
+                </div>
+                <button type="submit" class="btn-submit" style="background:var(--info);">Enviar Mensaje</button>
+                <button type="button" class="btn-submit" onclick="cambiarModal('modalSoporte', 'modalContactHub')" style="background:transparent; color:#666; border:1px solid #ddd;">Volver</button>
+            </form>
         </div>
     </div>
 
@@ -1344,32 +1365,32 @@
                     endpoint = "/solicitar_subida";
                 } else { throw new Error("Selecciona un archivo"); }
             } 
-            else if (tipo === 'ERROR' || tipo === 'PROBLEMA') {
-    const desc = tipo === 'ERROR' ? document.getElementById('descError').value : document.getElementById('descProblem').value;
-    
-    // ✅ CORRECCIÓN: Enviamos el email real para que el servidor acepte la petición
-    // Si no hay email guardado, enviamos uno genérico para que no falle el validador
-    const emailUser = localStorage.getItem('usuario_email') || 'sin_correo@sistema.com';
-    formData.append('email', emailUser);
-    
-    formData.append('mensaje', `${tipo}: ${desc}`);
-    endpoint = "/solicitar_recuperacion"; 
-}
+            else if (tipo === 'SOPORTE') {
+                // UNIFICADO: Mensajes, errores y problemas de cuenta
+                const desc = document.getElementById('descSoporte').value;
+                const emailUser = localStorage.getItem('usuario_email') || 'sin_correo@sistema.com';
+                
+                formData.append('email', emailUser);
+                formData.append('mensaje', desc);
+                formData.append('tipo', 'SOPORTE_GENERAL'); // ✅ ETIQUETA CORRECTA PARA EL ADMIN
+                
+                endpoint = "/solicitar_recuperacion"; 
+            }
 
             const res = await fetch(`${API_URL}${endpoint}`, { method: 'POST', body: formData });
             const data = await res.json();
 
             if (data.status === "ok" || data.mensaje) {
-                alert("✅ Solicitud enviada correctamente.");
+                alert("✅ Mensaje enviado. El administrador te responderá pronto.");
                 if(tipo === 'SUBIDA') cerrarModal('modalUpload');
-                else cerrarModal('modalContactHub');
+                else cerrarModal('modalSoporte');
             } else {
                 alert("❌ Error: " + (data.mensaje || "No se pudo enviar"));
             }
 
         } catch (error) {
             console.error(error);
-            alert("❌ Ocurrió un error.");
+            alert("❌ Ocurrió un error de conexión.");
         } finally {
             btn.innerText = originalText;
             btn.disabled = false;

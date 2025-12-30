@@ -1632,42 +1632,43 @@ def obtener_solicitudes(limit: int = 100):
 async def solicitar_recuperacion(
     background_tasks: BackgroundTasks,
     cedula: str = Form(...),
-    email: Optional[str] = Form(None), # Ahora es opcional para evitar el 422
-    mensaje: Optional[str] = Form(None)
+    email: Optional[str] = Form(None),
+    mensaje: Optional[str] = Form(None),
+    tipo: str = Form("RECUPERACION_CONTRASENA") # ✅ AHORA ACEPTA EL TIPO DINÁMICO
 ):
     conn = None
     try:
         conn = get_db_connection()
         c = conn.cursor(cursor_factory=RealDictCursor)
         
-        # 1. Buscar al usuario para obtener su nombre y su email si no se envió
+        # 1. Buscar al usuario
         c.execute("SELECT Nombre, Apellido, Email FROM Usuarios WHERE CI=%s", (cedula.strip(),))
         user = c.fetchone()
         
         if not user:
             return JSONResponse({"status": "error", "mensaje": "La cédula no está registrada."})
             
-        # Si no viene email en el formulario, usamos el de la base de datos
+        # Rescatar email si falta
         email_final = email if email else user.get('email') or user.get('Email') or "Sin correo"
         nombre_completo = f"{user.get('nombre') or user.get('Nombre')} {user.get('apellido') or user.get('Apellido')}"
         
-        detalle = f"Solicitud de recuperación/contacto. "
+        detalle = f"{tipo.replace('_', ' ')}. "
         if mensaje: detalle += f"Mensaje: {mensaje}"
         
-        # 2. Insertar en la tabla de Solicitudes
+        # 2. Insertar con el TIPO CORRECTO (Ya no todo es recuperación)
         c.execute("""
             INSERT INTO Solicitudes (Tipo, CI_Solicitante, Email, Detalle, Estado, Fecha)
-            VALUES ('RECUPERACION_CONTRASENA', %s, %s, %s, 'PENDIENTE', %s)
-        """, (cedula.strip(), email_final, detalle, ahora_ecuador()))
+            VALUES (%s, %s, %s, %s, 'PENDIENTE', %s)
+        """, (tipo, cedula.strip(), email_final, detalle, ahora_ecuador()))
         
         conn.commit()
 
         # 3. Notificación al Admin
-        asunto_admin = "🚨 Nueva solicitud recibida"
-        cuerpo_admin = f"Usuario: {nombre_completo} (CI: {cedula}). Contacto: {email_final}. Detalle: {mensaje}"
+        asunto_admin = f"🚨 Nuevo mensaje de {tipo}"
+        cuerpo_admin = f"Usuario: {nombre_completo} ({cedula}).\nTipo: {tipo}\nMensaje: {mensaje}"
         background_tasks.add_task(enviar_correo_real, "karlos.ayala.lopez.1234@gmail.com", asunto_admin, cuerpo_admin)
         
-        return JSONResponse({"status": "ok", "mensaje": "Solicitud enviada correctamente."})
+        return JSONResponse({"status": "ok", "mensaje": "Mensaje enviado correctamente."})
     except Exception as e:
         return JSONResponse({"status": "error", "mensaje": str(e)})
     finally:
