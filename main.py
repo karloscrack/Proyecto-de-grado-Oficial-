@@ -1123,66 +1123,59 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
                 cap.release()
         
         # 3. Verificar si el archivo ya existe (Usando el cursor 'c')
-        c.execute("SELECT Url_Archivo, Tamanio_KB FROM Evidencias WHERE Hash = %s LIMIT 1", (file_hash,))
-        archivo_existente = c.fetchone()
+        c.execute("SELECT id FROM Evidencias WHERE Hash = %s LIMIT 1", (file_hash,))
+        archivo_duplicado = c.fetchone()
         
-        url_final = ""
-        tamanio_kb = 0
-        
-        if archivo_existente:
-            url_final = archivo_existente.get('Url_Archivo') or archivo_existente.get('url_archivo')
-            tamanio_kb = archivo_existente.get('Tamanio_KB') or archivo_existente.get('tamanio_kb')
-        else:
-            path = garantizar_limite_storage(path, limite_mb=1000)
-            tamanio_kb = os.path.getsize(path) / 1024
-            url_final = f"/local/{archivo.filename}"
-            if s3_client:
-                try:
-                    nube = f"evidencias/{int(ahora_ecuador().timestamp())}_{archivo.filename}"
-                    s3_client.upload_file(path, BUCKET_NAME, nube, ExtraArgs={'ACL':'public-read'})
-                    url_final = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nube}"
-                except: pass
+        # --- NUEVA LÓGICA DE RESPUESTA PARA DUPLICADOS ---
+        if archivo_duplicado:
+            conn.close()
+            if temp_dir: shutil.rmtree(temp_dir)
+            # Retornamos un mensaje específico de duplicado
+            return JSONResponse({
+                "status": "alerta", 
+                "mensaje": "⚠️ ARCHIVO DUPLICADO: Esta evidencia ya existe en el sistema y no se procesará de nuevo."
+            })
 
-        # 4. Asignación (Usando el cursor 'c')
-        asignados_nuevos = []
-        ya_lo_tenian = []
+        # 4. Si NO es duplicado, procedemos a subir a la nube
+        path = garantizar_limite_storage(path, limite_mb=1000)
+        tamanio_kb = os.path.getsize(path) / 1024
+        url_final = f"/local/{archivo.filename}"
         
+        if s3_client:
+            try:
+                nube = f"evidencias/{int(ahora_ecuador().timestamp())}_{archivo.filename}"
+                s3_client.upload_file(path, BUCKET_NAME, nube, ExtraArgs={'ACL':'public-read'})
+                url_final = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nube}"
+            except: pass
+
+        # 5. Asignación a estudiantes detectados
+        asignados_nuevos = []
         if cedulas_detectadas:
             for ced in cedulas_detectadas:
                 c.execute("SELECT Nombre, Apellido, Tipo FROM Usuarios WHERE CI=%s", (ced,))
                 u = c.fetchone()
-                
                 if u and (u.get('Tipo') or u.get('tipo')) == 1:
                     nombre = f"{u.get('Nombre') or u.get('nombre')} {u.get('Apellido') or u.get('apellido')}"
-                    
-                    c.execute("SELECT id FROM Evidencias WHERE CI_Estudiante = %s AND Hash = %s", (ced, file_hash))
-                    if c.fetchone():
-                        ya_lo_tenian.append(nombre)
-                    else:
-                        c.execute("""
-                            INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente) 
-                            VALUES (%s, %s, %s, 1, %s, %s, 1)
-                        """, (ced, url_final, file_hash, tipo_archivo, tamanio_kb))
-                        asignados_nuevos.append(nombre)
+                    c.execute("""
+                        INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente) 
+                        VALUES (%s, %s, %s, 1, %s, %s, 1)
+                    """, (ced, url_final, file_hash, tipo_archivo, tamanio_kb))
+                    asignados_nuevos.append(nombre)
 
             if asignados_nuevos:
                 msg, status = f"✅ Asignado a: {', '.join(asignados_nuevos)}.", "exito"
             else:
-                msg, status = "⚠️ No se encontraron nuevos estudiantes.", "alerta"
+                msg, status = "⚠️ No se identificaron estudiantes en la imagen.", "alerta"
         else:
-            # Nadie detectado -> Pendiente (Usando el cursor 'c')
-            c.execute("SELECT id FROM Evidencias WHERE Hash = %s", (file_hash,))
-            if not c.fetchone():
-                c.execute("""
-                    INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente) 
-                    VALUES ('PENDIENTE', %s, %s, 1, %s, %s, 0)
-                """, (url_final, file_hash, tipo_archivo, tamanio_kb))
+            # Nadie detectado -> Guardar como Pendiente
+            c.execute("""
+                INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente) 
+                VALUES ('PENDIENTE', %s, %s, 1, %s, %s, 0)
+            """, (url_final, file_hash, tipo_archivo, tamanio_kb))
             msg, status = "⚠️ No se identificó alumno. Guardado como pendiente.", "alerta"
 
         conn.commit()
         conn.close()
-        if temp_dir: shutil.rmtree(temp_dir)
-        return JSONResponse({"status": status, "mensaje": msg})
 
     except Exception as e:
         if temp_dir: shutil.rmtree(temp_dir)
