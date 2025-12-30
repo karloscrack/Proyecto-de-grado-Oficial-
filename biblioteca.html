@@ -1109,7 +1109,34 @@
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
         e.preventDefault(); 
         
-    // Dentro de document.getElementById('loginForm').addEventListener...
+        // Elementos de la interfaz
+        const errorBox = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+        const btn = document.getElementById('loginBtn');
+        const originalText = btn.innerHTML;
+        
+        // Estado de carga
+        errorBox.style.display = 'none';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+        btn.disabled = true;
+
+        const datos = new FormData(this);
+        
+        // Limpieza de datos
+        const cedula = datos.get('cedula').trim();
+        const contrasena = datos.get('contrasena').trim();
+        
+        if (!cedula || !contrasena) {
+            errorText.innerHTML = 'La cédula y contraseña son requeridas';
+            errorBox.style.display = 'block';
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            return;
+        }
+
+        console.log('🔍 Enviando login a:', API_URL + '/iniciar_sesion');
+
+        // Dentro de document.getElementById('loginForm').addEventListener...
     try {
         const res = await fetch(`${API_URL}/iniciar_sesion`, { 
             method: "POST", 
@@ -1169,78 +1196,6 @@
         btn.innerHTML = originalText;
         btn.disabled = false;
     }
-
-        // Elementos de la interfaz
-        const errorBox = document.getElementById('errorMessage');
-        const errorText = document.getElementById('errorText');
-        const btn = document.getElementById('loginBtn');
-        const originalText = btn.innerHTML;
-        
-        // Estado de carga
-        errorBox.style.display = 'none';
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
-        btn.disabled = true;
-
-        const datos = new FormData(this);
-        
-        // Limpieza de datos
-        const cedula = datos.get('cedula').trim();
-        const contrasena = datos.get('contrasena').trim();
-        
-        if (!cedula || !contrasena) {
-            errorText.innerHTML = 'La cédula y contraseña son requeridas';
-            errorBox.style.display = 'block';
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-            return;
-        }
-
-        console.log('🔍 Enviando login a:', API_URL + '/iniciar_sesion');
-
-        try {
-            const res = await fetch(`${API_URL}/iniciar_sesion`, { 
-                method: "POST", 
-                body: datos 
-            });
-            
-            const data = await res.json();
-            console.log('📥 Respuesta del backend:', data);
-
-            if (data.autenticado) {
-                // ✅ GUARDADO SEGURO EN LOCALSTORAGE
-                // Guardamos todo como String para evitar confusión de tipos
-                localStorage.setItem('usuario_id', data.datos.id);
-                localStorage.setItem('usuario_cedula', data.datos.cedula);
-                localStorage.setItem('usuario_nombre', data.datos.nombre);
-                localStorage.setItem('usuario_apellido', data.datos.apellido);
-                localStorage.setItem('usuario_foto', data.datos.url_foto || '');
-                localStorage.setItem('usuario_email', data.datos.email || '');
-                localStorage.setItem('tutorial_visto', data.datos.tutorial_visto);
-                
-                // CLAVE DEL ÉXITO: Guardamos el tipo explícitamente
-                const tipoUsuario = Number(data.datos.tipo);
-                localStorage.setItem('usuario_tipo', tipoUsuario); 
-
-                // Redirección Inteligente
-                if (tipoUsuario === 0) {
-                    console.log("👮 Es Admin (Tipo 0) -> Redirigiendo...");
-                    window.location.href = 'perfiladmin.html';
-                } else {
-                    console.log("🎓 Es Estudiante (Tipo 1) -> Redirigiendo...");
-                    window.location.href = 'perfil.html';
-                }
-            } else {
-                errorText.innerHTML = data.mensaje || 'Credenciales incorrectas';
-                errorBox.style.display = 'block';
-            }
-        } catch (error) {
-            console.error('❌ Error en login:', error);
-            errorText.innerHTML = 'Error de conexión con el servidor.';
-            errorBox.style.display = 'block';
-        } finally {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        }
     });
 
     // --- LÓGICA DE RECUPERACIÓN ---
