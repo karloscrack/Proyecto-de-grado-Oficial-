@@ -1170,28 +1170,31 @@
                     window.location.href = 'perfil.html';
                 }
             } else {
-                // 1. Mostrar el mensaje de error
+                // 1. PRIMERO: Preparamos el terreno (Mensaje y Caja)
                 errorText.innerHTML = data.mensaje || 'Credenciales incorrectas.';
                 errorBox.style.display = 'block'; 
                 
-                // 2. Animación "Shake" (Vibración) MEJORADA
-                const card = document.querySelector('.login-card');
-                
-                // A) Quitamos la clase por si acaso ya estaba (reset)
-                card.classList.remove('shake-animation');
-                
-                // B) TRUCO MÁGICO: Forzamos al navegador a "leer" el cambio (Reflow)
-                // Esto permite reiniciar la animación si le das clic varias veces seguidas
-                void card.offsetWidth; 
-                
-                // C) Agregamos la clase para que empiece a moverse
-                card.classList.add('shake-animation');
-                
-                // D) Detectamos AUTOMÁTICAMENTE cuando termina, en lugar de adivinar el tiempo
-                card.addEventListener('animationend', () => {
+                // 2. SEGUNDO: Esperamos un instante (10ms) para que el navegador dibuje los cambios
+                // Esto evita el "parpadeo" o sensación de recarga
+                setTimeout(() => {
+                    const card = document.querySelector('.login-card');
+                    
+                    // A) Limpieza (por si acaso)
                     card.classList.remove('shake-animation');
-                }, { once: true }); // 'once: true' borra el detector para no acumular basura
+                    
+                    // B) Truco de Reflow (Reinicio forzado)
+                    void card.offsetWidth; 
+                    
+                    // C) ¡Ahora sí, tiembla!
+                    card.classList.add('shake-animation');
+                    
+                    // D) Limpieza automática al terminar
+                    card.addEventListener('animationend', () => {
+                        card.classList.remove('shake-animation');
+                    }, { once: true });
+                }, 10);
             }
+            
         } catch (error) {
             // --- ERROR DE CONEXIÓN ---
             console.error('❌ Error en login:', error);
