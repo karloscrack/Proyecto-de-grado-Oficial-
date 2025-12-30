@@ -1630,42 +1630,43 @@ def obtener_solicitudes(limit: int = 100):
 
 @app.post("/solicitar_recuperacion")
 async def solicitar_recuperacion(
-    background_tasks: BackgroundTasks, # Debe ser el primer parámetro
+    background_tasks: BackgroundTasks,
     cedula: str = Form(...),
-    email: str = Form(...),
+    email: Optional[str] = Form(None), # Ahora es opcional para evitar el 422
     mensaje: Optional[str] = Form(None)
 ):
-    """
-    Registra la solicitud y avisa al administrador.
-    No quita funciones, solo asegura que los datos lleguen correctamente.
-    """
     conn = None
     try:
         conn = get_db_connection()
         c = conn.cursor(cursor_factory=RealDictCursor)
         
-        # Verificar usuario
-        c.execute("SELECT Nombre, Apellido FROM Usuarios WHERE CI=%s", (cedula.strip(),))
+        # 1. Buscar al usuario para obtener su nombre y su email si no se envió
+        c.execute("SELECT Nombre, Apellido, Email FROM Usuarios WHERE CI=%s", (cedula.strip(),))
         user = c.fetchone()
         
         if not user:
-            return JSONResponse({"status": "error", "mensaje": "La cédula no existe."})
+            return JSONResponse({"status": "error", "mensaje": "La cédula no está registrada."})
             
-        detalle = f"Recuperación. Contacto: {email}. " + (mensaje if mensaje else "")
+        # Si no viene email en el formulario, usamos el de la base de datos
+        email_final = email if email else user.get('email') or user.get('Email') or "Sin correo"
+        nombre_completo = f"{user.get('nombre') or user.get('Nombre')} {user.get('apellido') or user.get('Apellido')}"
         
-        # Insertar solicitud
+        detalle = f"Solicitud de recuperación/contacto. "
+        if mensaje: detalle += f"Mensaje: {mensaje}"
+        
+        # 2. Insertar en la tabla de Solicitudes
         c.execute("""
             INSERT INTO Solicitudes (Tipo, CI_Solicitante, Email, Detalle, Estado, Fecha)
             VALUES ('RECUPERACION_CONTRASENA', %s, %s, %s, 'PENDIENTE', %s)
-        """, (cedula.strip(), email, detalle, ahora_ecuador()))
+        """, (cedula.strip(), email_final, detalle, ahora_ecuador()))
         
         conn.commit()
 
-        # Notificación para ti (Admin)
-        asunto = "🚨 Nueva solicitud de acceso"
-        cuerpo = f"Usuario: {user['nombre']} {user['apellido']} (CI: {cedula}). Contacto: {email}"
-        background_tasks.add_task(enviar_correo_real, "karlos.ayala.lopez.1234@gmail.com", asunto, cuerpo)
-
+        # 3. Notificación al Admin
+        asunto_admin = "🚨 Nueva solicitud recibida"
+        cuerpo_admin = f"Usuario: {nombre_completo} (CI: {cedula}). Contacto: {email_final}. Detalle: {mensaje}"
+        background_tasks.add_task(enviar_correo_real, "karlos.ayala.lopez.1234@gmail.com", asunto_admin, cuerpo_admin)
+        
         return JSONResponse({"status": "ok", "mensaje": "Solicitud enviada correctamente."})
     except Exception as e:
         return JSONResponse({"status": "error", "mensaje": str(e)})
@@ -1705,25 +1706,52 @@ async def solicitar_subida(cedula: str = Form(...), archivo: UploadFile = File(.
         return JSONResponse({"status": "error", "mensaje": str(e)})
 
 @app.post("/reportar_evidencia")
-async def reportar_evidencia(cedula: str = Form(...), id_evidencia: int = Form(...), motivo: str = Form(...)):
-    """El estudiante reporta 'No soy yo'"""
+async def reportar_evidencia(
+    background_tasks: BackgroundTasks, # Necesario para enviar el correo
+    cedula: str = Form(...),
+    id_evidencia: int = Form(...),
+    motivo: str = Form(...)
+):
+    conn = None
     try:
         conn = get_db_connection()
+        c = conn.cursor(cursor_factory=RealDictCursor)
         
-        # Obtener URL para mostrarla al admin
-        ev = conn.execute("SELECT Url_Archivo FROM Evidencias WHERE id=%s", (id_evidencia,)).fetchone()
-        url = ev['Url_Archivo'] if ev else ""
+        # 1. Obtener datos del estudiante para el correo
+        c.execute("SELECT Nombre, Apellido, Email FROM Usuarios WHERE CI = %s", (cedula.strip(),))
+        user = c.fetchone()
+        nombre_est = f"{user['nombre']} {user['apellido']}" if user else cedula
+        email_est = user['email'] if user else "Sin correo"
         
-        conn.execute("""
-            INSERT INTO Solicitudes (Tipo, CI_Solicitante, Detalle, Id_Evidencia, Evidencia_Reportada_Url, Estado, Fecha)
+        # 2. Insertar la solicitud en la base de datos
+        detalle = f"Reporte de evidencia ID {id_evidencia}. Motivo: {motivo}"
+        
+        c.execute("""
+            INSERT INTO Solicitudes (Tipo, CI_Solicitante, Email, Detalle, Id_Evidencia, Estado, Fecha)
             VALUES ('REPORTE_EVIDENCIA', %s, %s, %s, %s, 'PENDIENTE', %s)
-        """, (cedula, motivo, id_evidencia, url, ahora_ecuador()))
+        """, (cedula, email_est, detalle, id_evidencia, ahora_ecuador()))
         
         conn.commit()
-        conn.close()
-        return JSONResponse({"status": "ok", "mensaje": "Reporte enviado."})
+        
+        # 3. ENVIAR CORREO AL ADMIN (Lo que faltaba)
+        asunto = "🚨 Reporte de Evidencia Incorrecta"
+        cuerpo = f"""
+        <h2>Reporte de Estudiante</h2>
+        <p><strong>Estudiante:</strong> {nombre_est} ({cedula})</p>
+        <p><strong>Evidencia Reportada (ID):</strong> {id_evidencia}</p>
+        <p><strong>Motivo:</strong> {motivo}</p>
+        <hr>
+        <p>Por favor revisa el panel de administración para eliminar la evidencia si es necesario.</p>
+        """
+        background_tasks.add_task(enviar_correo_real, "karlos.ayala.lopez.1234@gmail.com", asunto, cuerpo, True)
+        
+        return JSONResponse({"status": "ok", "mensaje": "Reporte enviado al administrador."})
+
     except Exception as e:
+        print(f"Error reporte: {e}")
         return JSONResponse({"status": "error", "mensaje": str(e)})
+    finally:
+        if conn: conn.close()
 
 @app.get("/obtener_solicitudes_por_cedula")
 async def obtener_solicitudes_por_cedula(cedula: str):

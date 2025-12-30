@@ -973,25 +973,38 @@
 }
 
         function actualizarUI(datos) {
-    // 🛡️ Buscamos la foto en cualquier formato (minúsculas o mayúsculas)
-    const fotoUrl = datos.url_foto || datos.Url_Foto || datos.Foto || 'Img/default-user.png';
+    // 🛡️ LECTURA BLINDADA DE DATOS
+    const fotoUrl = datos.url_foto || datos.Url_Foto || datos.Foto || 'Img/Logo_pestaña.png';
     const nombre = datos.nombre || datos.Nombre || 'Estudiante';
     const apellido = datos.apellido || datos.Apellido || '';
+    
+    // Aquí estaba el error del "Verificando...":
+    const cedula = datos.ci || datos.CI || datos.cedula || localStorage.getItem('usuario_cedula') || 'No disponible';
 
-    // Actualizar foto y textos
+    // Actualizar elementos
     const imgPerfil = document.getElementById('profilePhoto');
-    if(imgPerfil) imgPerfil.src = fotoUrl;
+    if(imgPerfil) {
+        imgPerfil.src = fotoUrl;
+        // Si falla la carga, poner logo por defecto
+        imgPerfil.onerror = function() { this.src = 'Img/Logo_pestaña.png'; };
+    }
     
     document.getElementById('userNameDisplay').textContent = `${nombre} ${apellido}`;
     
-    // 🖼️ Cargar la galería de fotos/videos
+    // Actualizamos el texto de la cédula correctamente
+    const cedulaDisplay = document.getElementById('userCedulaDisplay');
+    if (cedulaDisplay) {
+        cedulaDisplay.textContent = `C.I: ${cedula}`;
+    }
+    
+    // Cargar galería
     if (datos.galeria) {
         appState.galeria = datos.galeria.map(item => ({
             id: item.id || item.ID,
-            url: item.url_archivo || item.Url_Archivo,
-            tipo: item.tipo_archivo || item.Tipo_Archivo
+            url: item.url_archivo || item.Url_Archivo || item.url,
+            tipo: item.tipo_archivo || item.Tipo_Archivo || 'documento'
         }));
-        filtrarGaleria('todo'); // Esto dibuja las fotos en pantalla
+        filtrarGaleria('todo');
     }
 }
 
@@ -1004,24 +1017,37 @@
         const res = await fetch(`${API_URL}/obtener_solicitudes_por_cedula?cedula=${cedula}`);
         const data = await res.json();
         
-        // 1. LÓGICA DEL NÚMERO ROJO: Contamos las que ya tienen respuesta
-        const respondidas = data.filter(sol => (sol.Estado || sol.estado).toUpperCase() !== 'PENDIENTE');
+        // --- 1. FILTRADO INTELIGENTE (Mayúsculas/Minúsculas) ---
+        const respondidas = data.filter(sol => {
+            // Leemos el estado protegiendo contra nulos y mayúsculas/minúsculas
+            const est = (sol.estado || sol.Estado || 'PENDIENTE').toUpperCase();
+            return est !== 'PENDIENTE';
+        });
         
         if (respondidas.length > 0) {
             badge.style.display = 'flex';
-            badge.textContent = respondidas.length; // Muestra el número rojo
+            badge.textContent = respondidas.length;
         } else {
             badge.style.display = 'none';
         }
 
-        // 2. MOSTRAR EL HISTORIAL COMPLETO EN LA CAMPANA
         if (data.length === 0) {
             list.innerHTML = '<div style="padding:15px; text-align:center; color:#888;">No tienes peticiones registradas</div>';
             return;
         }
 
         list.innerHTML = data.map(sol => {
-            const estado = (sol.Estado || sol.estado).toUpperCase();
+            // --- 2. LECTURA SEGURA DE VARIABLES ---
+            // Usamos || para leer ambas versiones (Postgres vs SQLite)
+            const rawTipo = sol.tipo || sol.Tipo || 'Solicitud';
+            const tipo = rawTipo.replace(/_/g, ' '); // Aquí fallaba antes
+            
+            const rawEstado = sol.estado || sol.Estado || 'PENDIENTE';
+            const estado = rawEstado.toUpperCase();
+            
+            const respuesta = sol.respuesta || sol.Respuesta;
+            const fecha = sol.fecha || sol.Fecha;
+
             const color = estado === 'PENDIENTE' ? '#f9a825' : (estado === 'APROBADA' ? '#2E8B57' : '#d32f2f');
             const icono = estado === 'PENDIENTE' ? 'fa-clock' : 'fa-reply';
             
@@ -1029,13 +1055,13 @@
                 <div class="noti-item ${estado !== 'PENDIENTE' ? 'unread' : ''}" style="border-left: 4px solid ${color};">
                     <i class="fas ${icono}" style="color:${color}; margin-top:5px;"></i>
                     <div style="flex:1;">
-                        <div style="font-weight:600; font-size:0.85rem;">${sol.Tipo.replace(/_/g, ' ')}</div>
+                        <div style="font-weight:600; font-size:0.85rem;">${tipo}</div>
                         <div style="font-size:0.75rem; color:${color}; font-weight:700;">${estado}</div>
-                        ${sol.Respuesta || sol.respuesta ? 
+                        ${respuesta ? 
                             `<div style="font-size:0.8rem; margin-top:5px; color:var(--text-main); background:rgba(0,0,0,0.03); padding:5px; border-radius:5px;">
-                                <strong>Admin:</strong> "${sol.Respuesta || sol.respuesta}"
+                                <strong>Admin:</strong> "${respuesta}"
                              </div>` : ''}
-                        <div style="font-size:0.65rem; color:#999; margin-top:5px;">${new Date(sol.Fecha || sol.fecha).toLocaleDateString()}</div>
+                        <div style="font-size:0.65rem; color:#999; margin-top:5px;">${new Date(fecha).toLocaleDateString()}</div>
                     </div>
                 </div>
             `;
