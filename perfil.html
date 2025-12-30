@@ -753,9 +753,6 @@
                 <button class="menu-btn" onclick="cerrarSesion()" style="color:var(--error); font-weight:700;">
                     <i class="fas fa-power-off"></i> Cerrar Sesión
                 </button>
-                <button onclick="abrirHistorial()" class="btn-menu-item">
-                    <i class="fas fa-history"></i> Historial de Solicitudes
-                </button>
             </li>
         </ul>
     </div>
@@ -999,24 +996,55 @@
 }
 
         async function cargarNotificacionesEstudiante(cedula) {
-            try {
-                // Cargar solicitudes del estudiante para ver respuestas
-                const resSolicitudes = await fetch(`${API_URL}/obtener_solicitudes_por_cedula?cedula=${cedula}`);
-                if (resSolicitudes.ok) {
-                    const solicitudes = await resSolicitudes.json();
-                    appState.solicitudesEstudiante = solicitudes;
-                    
-                    // Generar notificaciones a partir de las solicitudes
-                    generarNotificacionesDesdeSolicitudes(solicitudes);
-                } else {
-                    // Si no hay endpoint específico, generamos notificaciones básicas
-                    generarNotificacionesBasicas();
-                }
-            } catch (error) {
-                console.error("Error cargando solicitudes:", error);
-                generarNotificacionesBasicas();
-            }
+    const list = document.getElementById('notisList');
+    const badge = document.getElementById('notisBadge');
+    if(!list) return;
+
+    try {
+        const res = await fetch(`${API_URL}/obtener_solicitudes_por_cedula?cedula=${cedula}`);
+        const data = await res.json();
+        
+        // 1. LÓGICA DEL NÚMERO ROJO: Contamos las que ya tienen respuesta
+        const respondidas = data.filter(sol => (sol.Estado || sol.estado).toUpperCase() !== 'PENDIENTE');
+        
+        if (respondidas.length > 0) {
+            badge.style.display = 'flex';
+            badge.textContent = respondidas.length; // Muestra el número rojo
+        } else {
+            badge.style.display = 'none';
         }
+
+        // 2. MOSTRAR EL HISTORIAL COMPLETO EN LA CAMPANA
+        if (data.length === 0) {
+            list.innerHTML = '<div style="padding:15px; text-align:center; color:#888;">No tienes peticiones registradas</div>';
+            return;
+        }
+
+        list.innerHTML = data.map(sol => {
+            const estado = (sol.Estado || sol.estado).toUpperCase();
+            const color = estado === 'PENDIENTE' ? '#f9a825' : (estado === 'APROBADA' ? '#2E8B57' : '#d32f2f');
+            const icono = estado === 'PENDIENTE' ? 'fa-clock' : 'fa-reply';
+            
+            return `
+                <div class="noti-item ${estado !== 'PENDIENTE' ? 'unread' : ''}" style="border-left: 4px solid ${color};">
+                    <i class="fas ${icono}" style="color:${color}; margin-top:5px;"></i>
+                    <div style="flex:1;">
+                        <div style="font-weight:600; font-size:0.85rem;">${sol.Tipo.replace(/_/g, ' ')}</div>
+                        <div style="font-size:0.75rem; color:${color}; font-weight:700;">${estado}</div>
+                        ${sol.Respuesta || sol.respuesta ? 
+                            `<div style="font-size:0.8rem; margin-top:5px; color:var(--text-main); background:rgba(0,0,0,0.03); padding:5px; border-radius:5px;">
+                                <strong>Admin:</strong> "${sol.Respuesta || sol.respuesta}"
+                             </div>` : ''}
+                        <div style="font-size:0.65rem; color:#999; margin-top:5px;">${new Date(sol.Fecha || sol.fecha).toLocaleDateString()}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (e) { 
+        console.error("Error notis:", e);
+        list.innerHTML = '<div style="padding:15px; color:red;">Error al cargar historial</div>';
+    }
+}
 
         function generarNotificacionesDesdeSolicitudes(solicitudes) {
             appState.notificaciones = [];
@@ -1291,11 +1319,16 @@
                 } else { throw new Error("Selecciona un archivo"); }
             } 
             else if (tipo === 'ERROR' || tipo === 'PROBLEMA') {
-                const desc = tipo === 'ERROR' ? document.getElementById('descError').value : document.getElementById('descProblem').value;
-                formData.append('email', ""); // Email opcional (admin responderá al del perfil)
-                formData.append('mensaje', `${tipo}: ${desc}`);
-                endpoint = "/solicitar_recuperacion"; // Usamos este endpoint como genérico para mensajes
-            }
+    const desc = tipo === 'ERROR' ? document.getElementById('descError').value : document.getElementById('descProblem').value;
+    
+    // ✅ CORRECCIÓN: Enviamos el email real para que el servidor acepte la petición
+    // Si no hay email guardado, enviamos uno genérico para que no falle el validador
+    const emailUser = localStorage.getItem('usuario_email') || 'sin_correo@sistema.com';
+    formData.append('email', emailUser);
+    
+    formData.append('mensaje', `${tipo}: ${desc}`);
+    endpoint = "/solicitar_recuperacion"; 
+}
 
             const res = await fetch(`${API_URL}${endpoint}`, { method: 'POST', body: formData });
             const data = await res.json();
