@@ -574,15 +574,28 @@ def calcular_estadisticas_reales() -> dict:
 app = FastAPI(title="Sistema Educativo Despertar", version="7.0")
 
 @app.on_event("startup")
-async def al_iniciar_sistema():
-    """Este código se ejecuta AUTOMÁTICAMENTE cuando Railway enciende el servidor"""
-    print("⚡ EVENTO DE INICIO DETECTADO: Ejecutando protocolos de mantenimiento...")
+async def startup_event():
+    """
+    V8.0 - INICIO LIMPIO (Karlos Edition)
+    No restaura nada antiguo, solo prepara la base de datos para lo nuevo.
+    """
+    print("\n" + "="*50)
+    print("🚀 INICIANDO SERVIDOR - MODO PRODUCCIÓN LIMPIO")
+    print("="*50)
     
-    # 1. Ejecutar limpieza de duplicados (Calcula hashes faltantes y borra copias)
-    # Ejecutamos en un hilo aparte para no bloquear el arranque si son muchos archivos
-    import threading
-    hilo_limpieza = threading.Thread(target=limpieza_duplicados_startup)
-    hilo_limpieza.start()
+    try:
+        # 1. Crear tablas si no existen (Indispensable)
+        init_db()
+        print("✅ Base de datos conectada y estructura verificada.")
+
+        # 2. Protocolo de mantenimiento silenciado
+        # Se eliminó la búsqueda de URLs y archivos antiguos para evitar restauraciones.
+        
+        print("✅ Servidor listo. No se restauraron evidencias antiguas.")
+        print("="*50 + "\n")
+
+    except Exception as e:
+        print(f"❌ Error crítico en el inicio: {e}")
 
 # Configuración CORS
 app.add_middleware(
