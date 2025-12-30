@@ -785,7 +785,7 @@
     <!-- HEADER IDÉNTICO AL PERFIL ESTUDIANTE -->
     <header class="main-header">
         <div class="logo-container">
-            <a href="index.html">
+            <a href="perfiladmin.html">
                 <img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
             </a>
         </div>
@@ -2882,68 +2882,6 @@ async function eliminarEvidenciaActual() {
     }
 
     // ==========================================
-    // 9. FUNCIONES AUXILIARES RESTANTES
-    // ==========================================
-    async function ejecutarMantenimiento(tipo) {
-        let titulo, texto, icono;
-        
-        // Configuramos los mensajes según el botón presionado
-        if (tipo === 'duplicados') {
-            titulo = '¿Analizar y Borrar Duplicados?';
-            texto = 'El sistema buscará archivos idénticos (mismo contenido) y borrará las copias sobrantes para ahorrar espacio.';
-            icono = 'question';
-        } else if (tipo === 'cache') {
-            titulo = '¿Limpiar Caché y Compactar?';
-            texto = 'Se ejecutará VACUUM para reducir el tamaño de la base de datos y acelerar las consultas.';
-            icono = 'info';
-        } else if (tipo === 'huerfanos') {
-            titulo = '¿Limpiar Archivos Fantasma?';
-            texto = 'Se eliminarán de la lista los archivos que aparecen en el sistema pero NO existen físicamente en la nube.';
-            icono = 'warning';
-        }
-
-        // Confirmación
-        const confirmacion = await Swal.fire({
-            title: titulo,
-            text: texto,
-            icon: icono,
-            showCancelButton: true,
-            confirmButtonColor: '#6A0DAD',
-            confirmButtonText: 'Sí, ejecutar',
-            cancelButtonText: 'Cancelar'
-        });
-        
-        if (!confirmacion.isConfirmed) return;
-
-        try {
-            // Mostramos cargando
-            Swal.fire({
-                title: 'Procesando...',
-                html: 'Analizando sistema, por favor espera...',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-            
-            // --- CORRECCIÓN: ENVIAMOS EL TIPO EN LA URL ---
-            const respuesta = await fetch(`${API_URL}/optimizar_sistema?tipo=${tipo}`, { method: 'POST' });
-            const resultado = await respuesta.json();
-            
-            if (resultado.status === 'ok') {
-                // Mensaje de éxito con los datos precisos
-                Swal.fire('Mantenimiento Exitoso', resultado.mensaje, 'success');
-                
-                // Recargar estadísticas para ver el ahorro de espacio
-                setTimeout(() => actualizarDatosDashboard(), 2000);
-            } else {
-                Swal.fire('Error', 'Hubo un problema: ' + resultado.error, 'error');
-            }
-        } catch (error) {
-            console.error(error);
-            Swal.fire('Error', 'Error de conexión con el servidor', 'error');
-        }
-    }
-
-    // ==========================================
     // 10. FUNCIONES DE SUBIDA DE ARCHIVOS
     // ==========================================
     function mostrarSugerencias(texto) {
@@ -3506,6 +3444,70 @@ function configurarDragAndDrop() {
         if (typeof handleUploadIA === 'function') handleUploadIA({ files: dt.files, value: '' });
     }, false);
 }
+
+// ==========================================
+    // FUNCIONES DE MANTENIMIENTO (GLOBALES)
+    // ==========================================
+    
+    // Función maestra que conecta con el backend
+    async function ejecutarMantenimiento(tipo) {
+        let titulo, texto, icono;
+        
+        if (tipo === 'duplicados') {
+            titulo = '¿Analizar y Borrar Duplicados?';
+            texto = 'El sistema buscará archivos idénticos y borrará las copias sobrantes.';
+            icono = 'question';
+        } else if (tipo === 'cache') {
+            titulo = '¿Limpiar Caché y Compactar?';
+            texto = 'Se ejecutará VACUUM para optimizar la base de datos.';
+            icono = 'info';
+        } else if (tipo === 'huerfanos') {
+            titulo = '¿Limpiar Archivos Fantasma?';
+            texto = 'Se eliminarán registros de archivos que no existen en la nube.';
+            icono = 'warning';
+        }
+
+        const confirmacion = await Swal.fire({
+            title: titulo,
+            text: texto,
+            icon: icono,
+            showCancelButton: true,
+            confirmButtonColor: '#6A0DAD',
+            confirmButtonText: 'Sí, ejecutar',
+            cancelButtonText: 'Cancelar'
+        });
+        
+        if (!confirmacion.isConfirmed) return;
+
+        try {
+            Swal.fire({
+                title: 'Procesando...',
+                text: 'Analizando sistema...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+            
+            // Enviamos el tipo en la URL
+            const respuesta = await fetch(`${API_URL}/optimizar_sistema?tipo=${tipo}`, { method: 'POST' });
+            const resultado = await respuesta.json();
+            
+            if (respuesta.ok && resultado.status === 'ok') {
+                Swal.fire('Éxito', resultado.mensaje, 'success');
+                setTimeout(() => actualizarDatosDashboard(), 2000);
+            } else {
+                throw new Error(resultado.error || 'Error desconocido');
+            }
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Error', 'No se pudo completar: ' + error.message, 'error');
+        }
+    }
+
+    // --- ESTAS SON LAS QUE TE FALTABAN ---
+    // Deben estar aquí para que los botones las encuentren
+    function analizarDuplicados() { ejecutarMantenimiento('duplicados'); }
+    function limpiarCache() { ejecutarMantenimiento('cache'); }
+    function limpiarHuerfanos() { ejecutarMantenimiento('huerfanos'); }
 
     </script>
 </body>

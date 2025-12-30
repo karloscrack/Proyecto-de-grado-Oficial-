@@ -1422,7 +1422,7 @@ import os
 @app.post("/optimizar_sistema")
 async def optimizar_sistema(tipo: str = "full"):
     """
-    V5.0 - Mantenimiento Total: Duplicados, Caché, Huérfanos y Reasignación.
+    V5.5 - Mantenimiento Blindado (Soporta mayúsculas/minúsculas en BD)
     """
     try:
         conn = get_db_connection()
@@ -1431,7 +1431,7 @@ async def optimizar_sistema(tipo: str = "full"):
         mensaje_resultado = []
         
         # ==========================================
-        # 1. ANALIZAR DUPLICADOS (Si se pide o es Full)
+        # 1. ANALIZAR DUPLICADOS
         # ==========================================
         if tipo == "duplicados" or tipo == "full":
             print("🧹 [1/4] Buscando duplicados...")
@@ -1445,19 +1445,28 @@ async def optimizar_sistema(tipo: str = "full"):
             espacio_kb = 0
             
             for g in grupos:
-                c.execute("SELECT id, Url_Archivo, Tamanio_KB FROM Evidencias WHERE Hash = %s ORDER BY id ASC", (g['Hash'],))
+                # 🛡️ CORRECCIÓN: Usamos .get() para leer 'Hash' o 'hash'
+                hash_val = g.get('Hash') or g.get('hash')
+                
+                c.execute("SELECT id, Url_Archivo, Tamanio_KB FROM Evidencias WHERE Hash = %s ORDER BY id ASC", (hash_val,))
                 copias = c.fetchall()
+                
                 # Dejar el original (index 0), borrar el resto
                 for copia in copias[1:]:
+                    copia_id = copia.get('id')
+                    copia_url = copia.get('Url_Archivo') or copia.get('url_archivo')
+                    copia_kb = copia.get('Tamanio_KB') or copia.get('tamanio_kb') or 0
+                    
                     # Borrar de nube si es archivo diferente
-                    if s3_client and BUCKET_NAME in copia['Url_Archivo']:
+                    if s3_client and BUCKET_NAME in copia_url:
                         try:
-                            key = copia['Url_Archivo'].split(f"/file/{BUCKET_NAME}/")[1]
+                            key = copia_url.split(f"/file/{BUCKET_NAME}/")[1]
                             s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
                         except: pass
-                    c.execute("DELETE FROM Evidencias WHERE id = %s", (copia['id'],))
+                    
+                    c.execute("DELETE FROM Evidencias WHERE id = %s", (copia_id,))
                     elim_dups += 1
-                    espacio_kb += (copia['Tamanio_KB'] or 0)
+                    espacio_kb += copia_kb
             
             if elim_dups > 0:
                 mensaje_resultado.append(f"Eliminados {elim_dups} duplicados ({round(espacio_kb/1024, 2)} MB recuperados).")
@@ -1465,7 +1474,7 @@ async def optimizar_sistema(tipo: str = "full"):
                 mensaje_resultado.append("No se encontraron duplicados.")
 
         # ==========================================
-        # 2. LIMPIAR HUÉRFANOS (Si se pide o es Full)
+        # 2. LIMPIAR HUÉRFANOS
         # ==========================================
         if tipo == "huerfanos" or tipo == "full":
             print("👻 [2/4] Buscando archivos fantasma...")
@@ -1474,7 +1483,9 @@ async def optimizar_sistema(tipo: str = "full"):
             elim_huerfanos = 0
             
             for ev in todas:
-                url = ev['Url_Archivo']
+                url = ev.get('Url_Archivo') or ev.get('url_archivo')
+                ev_id = ev.get('id')
+                
                 existe = True
                 if url and "backblazeb2.com" in url and s3_client:
                     try:
@@ -1485,7 +1496,7 @@ async def optimizar_sistema(tipo: str = "full"):
                     existe = False
                 
                 if not existe:
-                    c.execute("DELETE FROM Evidencias WHERE id = %s", (ev['id'],))
+                    c.execute("DELETE FROM Evidencias WHERE id = %s", (ev_id,))
                     elim_huerfanos += 1
             
             if elim_huerfanos > 0:
@@ -1496,24 +1507,24 @@ async def optimizar_sistema(tipo: str = "full"):
         # ==========================================
         # 3. AUTO-REASIGNACIÓN (SOLO EN MODO FULL)
         # ==========================================
-        # Esta es la función que recuperaba tus archivos por nombre. 
-        # Solo se ejecuta en el botón naranja grande ("Optimizar"), no en los pequeños.
         if tipo == "full":
             print("🔄 [3/4] Auto-reasignando evidencias perdidas...")
             c.execute("SELECT CI FROM Usuarios")
-            cedulas = [u['CI'] for u in c.fetchall()]
+            cedulas = [u.get('CI') or u.get('ci') for u in c.fetchall()]
             
             c.execute("SELECT id, Url_Archivo, CI_Estudiante FROM Evidencias")
             evidencias = c.fetchall()
             reasignadas = 0
             
             for ev in evidencias:
-                url = ev['Url_Archivo']
-                # Buscar cédula en el nombre del archivo
+                url = ev.get('Url_Archivo') or ev.get('url_archivo')
+                ev_id = ev.get('id')
+                ev_ci = ev.get('CI_Estudiante') or ev.get('ci_estudiante')
+                
                 for ci in cedulas:
                     if ci in url and len(ci) >= 10:
-                        if ev['CI_Estudiante'] != ci:
-                            c.execute("UPDATE Evidencias SET CI_Estudiante = %s WHERE id = %s", (ci, ev['id']))
+                        if ev_ci != ci:
+                            c.execute("UPDATE Evidencias SET CI_Estudiante = %s WHERE id = %s", (ci, ev_id))
                             reasignadas += 1
                         break
             
@@ -1521,27 +1532,27 @@ async def optimizar_sistema(tipo: str = "full"):
                 mensaje_resultado.append(f"Reasignadas {reasignadas} evidencias a sus dueños correctos.")
 
         # ==========================================
-        # 4. LIMPIAR CACHÉ (Si se pide o es Full)
+        # 4. LIMPIAR CACHÉ
         # ==========================================
         if tipo == "cache" or tipo == "full":
             print("🚀 [4/4] Compactando base de datos...")
             conn.commit()
             conn.autocommit = True
             with conn.cursor() as c_vac:
-                c_vac.execute("VACUUM") # Optimización de PostgreSQL
+                c_vac.execute("VACUUM")
                 c_vac.execute("ANALYZE")
             if tipo == "cache":
                 mensaje_resultado.append("Base de datos compactada y optimizada.")
 
         conn.close()
         
-        # Respuesta final combinada
-        texto_final = " ".join(mensaje_resultado) if mensaje_resultado else "Mantenimiento completado. Todo parece estar en orden."
+        texto_final = " ".join(mensaje_resultado) if mensaje_resultado else "Mantenimiento completado. Todo en orden."
         return JSONResponse({"status": "ok", "mensaje": texto_final})
 
     except Exception as e:
         print(f"❌ Error en mantenimiento: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
+        
 # =========================================================================
 # 10. ENDPOINTS DE ESTADÍSTICAS Y REPORTES
 # =========================================================================
