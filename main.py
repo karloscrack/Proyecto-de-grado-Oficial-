@@ -1663,6 +1663,7 @@ def obtener_solicitudes(limit: int = 100):
 
 @app.post("/solicitar_recuperacion")
 async def solicitar_recuperacion(
+    background_tasks: BackgroundTasks, # Necesario para procesar el aviso al admin sin esperas
     cedula: str = Form(...),
     email: str = Form(...),
     mensaje: Optional[str] = Form(None)
@@ -1670,8 +1671,12 @@ async def solicitar_recuperacion(
     """El estudiante pide recuperar contraseña desde login"""
     try:
         conn = get_db_connection()
+        c = conn.cursor(cursor_factory=RealDictCursor) # <--- Cambio necesario para PostgreSQL
+        
         # Verificar si el usuario existe
-        user = conn.execute("SELECT Nombre, Apellido FROM Usuarios WHERE CI=%s", (cedula,)).fetchone()
+        c.execute("SELECT Nombre, Apellido FROM Usuarios WHERE CI=%s", (cedula.strip(),))
+        user = c.fetchone()
+        
         if not user:
             conn.close()
             return JSONResponse({"status": "error", "mensaje": "La cédula no está registrada."})
@@ -1679,15 +1684,25 @@ async def solicitar_recuperacion(
         detalle = f"Solicitud de recuperación. Correo contacto: {email}. "
         if mensaje: detalle += f"Mensaje: {mensaje}"
         
-        conn.execute("""
+        # Insertar la solicitud usando el cursor
+        c.execute("""
             INSERT INTO Solicitudes (Tipo, CI_Solicitante, Email, Detalle, Estado, Fecha)
             VALUES ('RECUPERACION_CONTRASENA', %s, %s, %s, 'PENDIENTE', %s)
-        """, (cedula, email, detalle, ahora_ecuador()))
+        """, (cedula.strip(), email, detalle, ahora_ecuador()))
         
         conn.commit()
+
+        # --- AVISO INMEDIATO AL ADMIN (KARLOS) ---
+        # Enviamos una notificación para que sepas que hay una nueva petición
+        asunto_admin = "🚨 Nueva solicitud de recuperación de acceso"
+        cuerpo_admin = f"El usuario {user['nombre']} {user['apellido']} (CI: {cedula}) solicita recuperar su clave. Contacto: {email}"
+        background_tasks.add_task(enviar_correo_real, "karlos.ayala.lopez.1234@gmail.com", asunto_admin, cuerpo_admin)
+
         conn.close()
         return JSONResponse({"status": "ok", "mensaje": "Solicitud enviada al administrador."})
+        
     except Exception as e:
+        print(f"❌ Error en recuperación: {e}")
         return JSONResponse({"status": "error", "mensaje": str(e)})
 
 @app.post("/solicitar_subida")
