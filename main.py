@@ -1261,7 +1261,12 @@ async def crear_backup():
     """Genera un archivo SQL con los datos REALES de Supabase"""
     try:
         conn = get_db_connection()
-        c = conn.cursor() # Usamos cursor normal (RealDictCursor a veces complica el orden en backups)
+        
+        # 🔥 ESTA ES LA LÍNEA MÁGICA QUE FALTABA
+        # Desactivamos el "Modo Diccionario" para que nos de los valores reales (tuplas)
+        conn.cursor_factory = None 
+        
+        c = conn.cursor()
         
         # Buffer en memoria
         output = io.StringIO()
@@ -1276,31 +1281,30 @@ async def crear_backup():
                 c.execute(f"SELECT * FROM {tabla}")
                 filas = c.fetchall()
                 
-                # 2. Obtener nombres de columnas exactos
-                columnas = [desc[0] for desc in c.description]
-                cols_str = ", ".join(columnas)
-                
-                output.write(f"\n-- DATA TABLE: {tabla} --\n")
-                
-                for fila in filas:
-                    vals = []
-                    # fila es una tupla o lista, así que iteramos directamente sus valores
-                    # NOTA: Al quitar RealDictCursor solo para esta función, garantizamos el orden
-                    for val in fila: 
-                        if val is None:
-                            vals.append("NULL")
-                        elif isinstance(val, (int, float)):
-                            vals.append(str(val))
-                        elif isinstance(val, bool):
-                            vals.append("TRUE" if val else "FALSE")
-                        else:
-                            # Escapar comillas simples para que no rompa el SQL
-                            clean_val = str(val).replace("'", "''")
-                            vals.append(f"'{clean_val}'")
+                # 2. Obtener nombres de columnas
+                if c.description:
+                    columnas = [desc[0] for desc in c.description]
+                    cols_str = ", ".join(columnas)
                     
-                    vals_str = ", ".join(vals)
-                    output.write(f"INSERT INTO {tabla} ({cols_str}) VALUES ({vals_str});\n")
+                    output.write(f"\n-- DATA TABLE: {tabla} --\n")
                     
+                    for fila in filas:
+                        vals = []
+                        # Ahora 'fila' es una lista de valores reales ('Juan', 'Perez'...), no de llaves.
+                        for val in fila: 
+                            if val is None:
+                                vals.append("NULL")
+                            elif isinstance(val, (int, float)):
+                                vals.append(str(val))
+                            elif isinstance(val, bool):
+                                vals.append("TRUE" if val else "FALSE")
+                            else:
+                                # Escapar comillas simples para SQL
+                                clean_val = str(val).replace("'", "''")
+                                vals.append(f"'{clean_val}'")
+                        
+                        vals_str = ", ".join(vals)
+                        output.write(f"INSERT INTO {tabla} ({cols_str}) VALUES ({vals_str});\n")
             except Exception as e_tab:
                 output.write(f"-- Error exportando tabla {tabla}: {e_tab} --\n")
 
