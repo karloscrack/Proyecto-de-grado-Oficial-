@@ -249,25 +249,28 @@ init_db_completa()
 
 def registrar_auditoria(accion: str, detalle: str, usuario: str = "Sistema", ip: str = ""):
     """
-    Registra una acción en la tabla de auditoría OBLIGANDO la fecha de Ecuador.
+    Registra una acción OBLIGANDO la hora de Ecuador como TEXTO PLANO.
+    Esto evita que la base de datos la convierta a UTC.
     """
     conn = None
     try:
-        # 1. Obtener la hora exacta de Ecuador desde Python
-        fecha_ecuador = ahora_ecuador()
+        # 1. Obtener la hora exacta de Ecuador
+        fecha_obj = ahora_ecuador()
         
-        # 2. Establecer conexión
+        # 2. TRUCO DE ORO: Convertirla a texto simple AQUI en Python
+        # Así la base de datos guarda "2025-01-01 10:00" tal cual, sin sumar 5 horas.
+        fecha_str = fecha_obj.strftime("%Y-%m-%d %H:%M:%S")
+        
         conn = get_db_connection()
         if conn:
             c = conn.cursor()
-            # 3. Insertar pasando la fecha explícita (sobrescribe el default de la BD)
             c.execute("""
                 INSERT INTO Auditoria (Accion, Detalle, Usuario, IP, Fecha) 
                 VALUES (%s, %s, %s, %s, %s)
-            """, (accion, detalle, usuario, ip, fecha_ecuador))
+            """, (accion, detalle, usuario, ip, fecha_str)) # <--- Enviamos el texto, no el objeto
             
             conn.commit()
-            print(f"📝 LOG REGISTRADO: {accion} - {detalle}")
+            print(f"📝 LOG REGISTRADO (EC): {accion} - {detalle}")
     except Exception as e:
         print(f"❌ Error en auditoria: {e}")
     finally:
