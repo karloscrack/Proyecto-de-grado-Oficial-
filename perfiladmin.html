@@ -2346,42 +2346,60 @@ async function enviarGestion(id, accion) {
     const mensajeInput = document.getElementById('mensajeAdmin');
     const mensaje = mensajeInput.value.trim();
     
+    // 1. Validación: Que no envíe respuestas vacías
     if(!mensaje) {
         Swal.fire('¡Atención!', 'Debes escribir una respuesta.', 'warning');
         return;
     }
 
-    // OBTENER TU NOMBRE REAL DEL LOGIN
+    // 2. OBTENER TU NOMBRE REAL (Lo nuevo)
     const nombreAdmin = localStorage.getItem('usuario_nombre') || 'Administrador';
 
-    const btn = event.target.closest('button');
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...'; 
-    btn.disabled = true;
+    // 3. UI: Efecto de carga en el botón
+    // Usamos 'event' global para detectar qué botón se presionó
+    const btn = event ? event.target.closest('button') : null;
+    let originalText = '';
+    
+    if (btn) {
+        originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...'; 
+        btn.disabled = true;
+    }
 
     const fd = new FormData();
     fd.append('id_solicitud', id);
     fd.append('accion', accion === 'aprobar' ? 'APROBADA' : 'RECHAZADA');
     fd.append('mensaje', mensaje);
-    fd.append('id_admin', nombreAdmin); // <--- AQUÍ ENVIAMOS TU NOMBRE
+    fd.append('id_admin', nombreAdmin); // <--- AQUÍ VA TU NOMBRE REAL
 
     try {
         const res = await fetch(`${API_URL}/gestionar_solicitud`, { method: 'POST', body: fd });
         const data = await res.json();
 
         if (data.status === 'ok') {
+            // 4. Éxito: Notificar y actualizar todo
             Swal.fire('Éxito', data.mensaje, 'success');
+            
+            // Cerrar el modal
             document.getElementById('modalResponderSolicitud').classList.remove('active');
-            cargarSolicitudes(); 
-            cargarSolicitudesPendientes();
-            actualizarDatosDashboard();
+            
+            // Recargar las listas para que desaparezca la solicitud procesada
+            if (typeof cargarSolicitudes === 'function') cargarSolicitudes(); 
+            if (typeof cargarSolicitudesPendientes === 'function') cargarSolicitudesPendientes();
+            if (typeof actualizarDatosDashboard === 'function') actualizarDatosDashboard();
+            
         } else {
             Swal.fire('Error', data.mensaje, 'error');
         }
     } catch (e) {
-        Swal.fire('Error', 'Error de conexión', 'error');
+        console.error(e);
+        Swal.fire('Error', 'Error de conexión con el servidor', 'error');
     } finally {
-        if(btn) { btn.innerHTML = originalText; btn.disabled = false; }
+        // 5. Restaurar el botón pase lo que pase
+        if(btn) { 
+            btn.innerHTML = originalText; 
+            btn.disabled = false; 
+        }
     }
 }
 

@@ -1844,7 +1844,7 @@ async def gestionar_solicitud(
     id_solicitud: int = Form(...),
     accion: str = Form(...), # 'APROBADA' o 'RECHAZADA'
     mensaje: str = Form(...),
-    id_admin: str = Form("Administrador")
+    id_admin: str = Form("Administrador") # Recibe el nombre real (ej: "Karlos Ayala")
 ):
     conn = None
     try:
@@ -1858,23 +1858,23 @@ async def gestionar_solicitud(
         if not sol:
             return JSONResponse({"status": "error", "mensaje": "Solicitud no encontrada"})
 
+        # Extraemos datos clave para la lógica automática
         tipo = sol['tipo']
         id_evidencia = sol.get('id_evidencia')
         email_usuario = sol.get('email')
 
+        # ---------------------------------------------------------
         # 2. EJECUTAR ACCIONES AUTOMÁTICAS SEGÚN EL TIPO
+        # ---------------------------------------------------------
 
         # --- CASO A: REPORTE "NO SOY YO" ---
         if tipo == 'REPORTE_EVIDENCIA':
             if accion == 'APROBADA':
-                # Si el admin aprueba el reporte, BORRAMOS la evidencia o la ocultamos
+                # Si el admin aprueba el reporte, BORRAMOS la evidencia
                 if id_evidencia:
-                    # Opción A: Borrar definitivamente
                     c.execute("DELETE FROM Evidencias WHERE id = %s", (id_evidencia,))
-                    # Opción B (Más segura): Ocultar
-                    # c.execute("UPDATE Evidencias SET Estado = 0 WHERE id = %s", (id_evidencia,))
             else:
-                # Si rechaza el reporte, la evidencia se queda tal cual.
+                # Si rechaza el reporte, la evidencia se mantiene
                 pass
 
         # --- CASO B: SUBIR EVIDENCIA ---
@@ -1884,14 +1884,14 @@ async def gestionar_solicitud(
                 if id_evidencia:
                     c.execute("UPDATE Evidencias SET Estado = 1 WHERE id = %s", (id_evidencia,))
             else:
-                # Si rechaza, BORRAMOS el archivo pendiente para no ocupar espacio
+                # Si rechaza, BORRAMOS el archivo pendiente para liberar espacio
                 if id_evidencia:
                     c.execute("DELETE FROM Evidencias WHERE id = %s", (id_evidencia,))
 
         # --- CASO C: RECUPERACIÓN DE CONTRASEÑA ---
         elif tipo == 'RECUPERACION_CONTRASENA':
             if accion == 'APROBADA':
-                # Enviamos el correo AUTOMÁTICAMENTE con la contraseña que escribió el admin
+                # Enviamos el correo AUTOMÁTICAMENTE
                 asunto = "🔐 Recuperación de Acceso - U.E. Despertar"
                 cuerpo = f"""
                 <h3>Hola, hemos procesado tu solicitud.</h3>
@@ -1901,10 +1901,14 @@ async def gestionar_solicitud(
                 <hr>
                 <p>Intenta ingresar nuevamente en la biblioteca.</p>
                 """
+                # Validación de seguridad para el email
                 if email_usuario and '@' in email_usuario:
                     background_tasks.add_task(enviar_correo_real, email_usuario, asunto, cuerpo)
 
-        # 3. ACTUALIZAR LA SOLICITUD (Para el historial)
+        # ---------------------------------------------------------
+        # 3. ACTUALIZAR LA SOLICITUD (HISTORIAL COMPLETO)
+        # ---------------------------------------------------------
+        # Aquí guardamos el estado, la respuesta, QUIÉN lo hizo y CUÁNDO
         c.execute("""
             UPDATE Solicitudes 
             SET Estado = %s, Respuesta = %s, Id_Admin = %s, Fecha_Resolucion = %s
@@ -1916,6 +1920,8 @@ async def gestionar_solicitud(
 
     except Exception as e:
         if conn: conn.rollback()
+        # Imprimimos el error en los logs para depuración
+        print(f"Error en gestionar_solicitud: {e}") 
         return JSONResponse({"status": "error", "mensaje": str(e)})
     finally:
         if conn: conn.close()
