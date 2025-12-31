@@ -2924,33 +2924,43 @@ async function eliminarEvidenciaActual() {
     }
 
     function renderizarLogs() {
-    const tbody = document.getElementById('logsTableBody');
-    if (!tbody) return;
-    
-    tbody.innerHTML = logs.map(log => {
-        // Soporte para minúsculas (Postgres) y mayúsculas
-        const fechaRaw = log.fecha || log.Fecha; // Lee 'fecha' si viene de Postgres o 'Fecha' si es antiguo
-        const accion = log.accion || log.Accion || 'Sin acción';
-        const detalle = log.detalle || log.Detalle || 'Sin detalle';
-        const usuario = log.usuario || log.Usuario || 'Sistema';
+        const tbody = document.getElementById('logsTableBody');
+        if (!tbody) return;
         
-        const fechaFormateada = formatearFecha(fechaRaw);
-        const colorAccion = obtenerColorAccion(accion);
-        
-        return `
-            <tr>
-                <td>${fechaFormateada}</td>
-                <td>
-                    <span style="font-weight:600; color:${colorAccion}">
-                        ${accion}
-                    </span>
-                </td>
-                <td>${detalle}</td>
-                <td>${usuario}</td>
-            </tr>
-        `;
-    }).join('');
-}
+        tbody.innerHTML = logs.map(log => {
+            // Compatibilidad de nombres
+            const fechaRaw = log.fecha || log.Fecha;
+            const accion = log.accion || log.Accion || 'Sin acción';
+            const detalle = log.detalle || log.Detalle || 'Sin detalle';
+            const usuario = log.usuario || log.Usuario || 'Sistema';
+            
+            // Formateo elegante
+            let fechaFormateada = "---";
+            if(fechaRaw) {
+                const fechaObj = new Date(fechaRaw);
+                // Forzamos formato local completo
+                fechaFormateada = fechaObj.toLocaleString('es-EC', {
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit', hour12: true
+                });
+            }
+
+            // Colores para que sea fácil de leer
+            let color = '#333';
+            if(accion.includes('ERROR') || accion.includes('ELIMIN')) color = '#d32f2f'; // Rojo
+            else if(accion.includes('INICIO')) color = '#0288d1'; // Azul
+            else if(accion.includes('REGISTRO') || accion.includes('SUBIDA')) color = '#2E8B57'; // Verde
+            
+            return `
+                <tr>
+                    <td style="font-size:0.85rem; white-space:nowrap;">${fechaFormateada}</td>
+                    <td><strong style="color:${color}">${accion}</strong></td>
+                    <td style="font-size:0.9rem;">${detalle}</td>
+                    <td><span class="badge-user">${usuario}</span></td>
+                </tr>
+            `;
+        }).join('');
+    }
 
     function obtenerColorAccion(accion) {
         if (!accion) return 'var(--text-main)';

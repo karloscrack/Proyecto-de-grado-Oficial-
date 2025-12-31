@@ -249,33 +249,29 @@ init_db_completa()
 
 def registrar_auditoria(accion: str, detalle: str, usuario: str = "Sistema", ip: str = ""):
     """
-    Registra una acción en la tabla de auditoría con fecha de Ecuador.
-    Versión optimizada para PostgreSQL (Supabase).
+    Registra una acción en la tabla de auditoría OBLIGANDO la fecha de Ecuador.
     """
     conn = None
     try:
-        # 1. Obtener la hora exacta de Ecuador
+        # 1. Obtener la hora exacta de Ecuador desde Python
         fecha_ecuador = ahora_ecuador()
         
         # 2. Establecer conexión
         conn = get_db_connection()
         if conn:
             c = conn.cursor()
-            
-            # 3. Ejecutar la inserción (Usando los nombres de columna de tu init_db_completa)
+            # 3. Insertar pasando la fecha explícita (sobrescribe el default de la BD)
             c.execute("""
                 INSERT INTO Auditoria (Accion, Detalle, Usuario, IP, Fecha) 
                 VALUES (%s, %s, %s, %s, %s)
             """, (accion, detalle, usuario, ip, fecha_ecuador))
             
             conn.commit()
-            logging.info(f"✅ AUDITORIA REGISTRADA: {accion} - {detalle}")
+            print(f"📝 LOG REGISTRADO: {accion} - {detalle}")
     except Exception as e:
-        logging.error(f"❌ Error en auditoria: {e}")
+        print(f"❌ Error en auditoria: {e}")
     finally:
-        # 🛡️ FUNCIÓN CRÍTICA: Cerramos la conexión siempre para evitar errores de "too many clients"
-        if conn:
-            conn.close()
+        if conn: conn.close()
 
 def enviar_correo_real(destinatario: str, asunto: str, mensaje: str, html: bool = False) -> bool:
     import requests # Asegúrate de poner 'requests' en tu requirements.txt
@@ -694,18 +690,21 @@ async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
         pass_db = u.get('password') or u.get('Password') if u else None
         
         if u and pass_db == contrasena.strip():
-            # Creamos un diccionario con los nombres EXACTOS que busca biblioteca.html
+            # --- AGREGAR ESTE BLOQUE ---
+            nombre_completo = f"{u.get('Nombre') or u.get('nombre')} {u.get('Apellido') or u.get('apellido')}"
+            rol_texto = "Administrador" if (u.get('Tipo') or u.get('tipo')) == 0 else "Estudiante"
+            
+            # Registramos quién entró
+            registrar_auditoria(
+                "INICIO_SESION", 
+                f"Ingreso exitoso a la plataforma ({rol_texto})", 
+                nombre_completo
+            )
+            # ---------------------------
+
             datos_para_front = {
-                "id": u.get('id') or u.get('ID'),
-                "cedula": u.get('ci') or u.get('CI'),
-                "nombre": u.get('nombre') or u.get('Nombre'),
-                "apellido": u.get('apellido') or u.get('Apellido'),
-                "url_foto": u.get('url_foto') or u.get('Url_Foto') or "",
-                "email": u.get('email') or u.get('Email') or "",
-                "tipo": u.get('tipo') or u.get('Tipo'),
-                "tutorial_visto": u.get('tutorial_visto') or u.get('Tutorial_Visto') or 0
+                # ... (el resto de tu código de datos_para_front sigue igual) ...
             }
-            # jsonable_encoder arregla el error de las fechas (datetime)
             return JSONResponse({"autenticado": True, "datos": jsonable_encoder(datos_para_front)})
         
         return JSONResponse({"autenticado": False, "mensaje": "Cédula o contraseña incorrectos."})
@@ -861,16 +860,13 @@ async def registrar_usuario(
         # Limpiar archivos temporales
         shutil.rmtree(temp_dir)
         
-        # Registrar auditoría
-        registrar_auditoria("REGISTRO_USUARIO", f"Usuario {cedula} registrado")
-        
-        return JSONResponse(content={
-            "mensaje": "Usuario registrado exitosamente",
-            "url_foto": url_foto,
-            "cedula": cedula,
-            "fecha_registro": fecha_registro.isoformat()
-        })
-        
+        tipo_txt = "Administrador" if int(tipo_usuario) == 0 else "Estudiante"
+        registrar_auditoria(
+            "REGISTRO_USUARIO", 
+            f"El Admin creó al usuario: {nombre} {apellido} (CI: {cedula}) como {tipo_txt}",
+            "Administrador"
+        )
+
     except Exception as e:
         print(f"❌ Error en registrar_usuario: {e}")
         return JSONResponse(content={"error": str(e)})
@@ -1150,9 +1146,23 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
             else:
                 msg, status = "⚠️ El archivo ya se encuentra en la bandeja de 'Pendientes'.", "alerta"
 
+            if asignados_nuevos:
+                registrar_auditoria(
+                    "SUBIDA_IA_AUTO", 
+                    f"IA asignó '{archivo.filename}' a: {', '.join(asignados_nuevos)}", 
+                    "Sistema IA"
+                )
+            elif status == "alerta":
+                 registrar_auditoria(
+                    "SUBIDA_IA_PENDIENTE", 
+                    f"Archivo '{archivo.filename}' enviado a Pendientes (Sin rostro/Duplicado)", 
+                    "Sistema IA"
+                )
+
         conn.commit()
         conn.close()
         if temp_dir: shutil.rmtree(temp_dir)
+        
         return JSONResponse({"status": status, "mensaje": msg})
 
     except Exception as e:
@@ -1213,8 +1223,12 @@ async def subir_manual(
                 count += 1
         
         conn.commit()
-        registrar_auditoria("Subida Manual", f"Archivo {archivo.filename} asignado a {count} estudiantes")
-        
+        registrar_auditoria(
+            "SUBIDA_MANUAL", 
+            f"El Admin subió el archivo '{archivo.filename}' y lo asignó a {count} estudiantes.", 
+            "Administrador"
+        )
+
         return JSONResponse({"status": "ok", "mensaje": f"✅ Éxito: Archivo asignado a {count} estudiantes."})
 
     except Exception as e:
@@ -1945,6 +1959,13 @@ async def gestionar_solicitud(
             WHERE ID = %s
         """, (accion, mensaje, id_admin, ahora_ecuador(), id_solicitud))
         
+        tipo_sol = sol.get('tipo') or sol.get('Tipo')
+        registrar_auditoria(
+            "GESTION_SOLICITUD", 
+            f"Admin {accion} la solicitud de {tipo_sol} con respuesta: '{mensaje}'", 
+            id_admin # Aquí usamos el nombre real del admin que arreglamos antes
+        )
+
         conn.commit()
         return JSONResponse({"status": "ok", "mensaje": "Acción ejecutada correctamente."})
 
@@ -1963,18 +1984,24 @@ async def gestionar_solicitud(
 def obtener_logs():
     try:
         conn = get_db_connection()
-        c = conn.cursor()
-        c.execute("SELECT * FROM Auditoria ORDER BY Fecha DESC LIMIT 100")
+        c = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # ✅ AUMENTAMOS EL LÍMITE A 5000 (Suficiente para meses de historial)
+        # Si pones sin límite (quitas el LIMIT), podría ponerse lento si tienes 1 millón de registros.
+        # 5000 es un buen equilibrio.
+        c.execute("SELECT * FROM Auditoria ORDER BY Fecha DESC LIMIT 5000")
+        
         logs = c.fetchall()
         conn.close()
         
-        # ✅ CORRECCIÓN MÁGICA
+        # Convertir a JSON seguro
         logs_serializables = json.loads(json.dumps(logs, default=str))
         
         return JSONResponse(logs_serializables)
     except Exception as e:
         print(f"Error logs: {e}")
         return JSONResponse([])
+    
 # =========================================================================
 # 13. ENDPOINTS EXISTENTES MANTENIDOS
 # =========================================================================
@@ -2200,14 +2227,32 @@ class PasswordRequest(BaseModel):
 
 @app.post("/cambiar_contrasena")
 async def cambiar_contrasena(datos: PasswordRequest):
+    conn = None
     try:
         conn = get_db_connection()
-        conn.execute("UPDATE Usuarios SET Password = %s WHERE CI = %s", (datos.nueva_contrasena, datos.cedula))
+        c = conn.cursor(cursor_factory=RealDictCursor) # Necesitamos leer datos
+        
+        # 1. Obtener nombre del usuario antes de cambiar la clave (para el log)
+        c.execute("SELECT Nombre, Apellido FROM Usuarios WHERE CI = %s", (datos.cedula,))
+        u = c.fetchone()
+        nombre_usuario = f"{u['nombre']} {u['apellido']}" if u else datos.cedula
+
+        # 2. Ejecutar el cambio
+        c.execute("UPDATE Usuarios SET Password = %s WHERE CI = %s", (datos.nueva_contrasena, datos.cedula))
         conn.commit()
-        conn.close()
+        
+        # 3. ✅ LOG DETALLADO
+        registrar_auditoria(
+            "CAMBIO_PASSWORD", 
+            f"El Admin cambió la contraseña del usuario: {nombre_usuario} (CI: {datos.cedula})", 
+            "Administrador"
+        )
+        
         return JSONResponse({"mensaje": "Contraseña actualizada correctamente"})
     except Exception as e:
         return JSONResponse({"error": str(e)})
+    finally:
+        if conn: conn.close()
     
 @app.post("/descargar_evidencias_zip")
 async def descargar_evidencias_zip(ids: str = Form(...)):
