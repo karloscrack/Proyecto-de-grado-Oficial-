@@ -1488,7 +1488,7 @@ def estadisticas_almacenamiento():
         conn = get_db_connection()
         c = conn.cursor(cursor_factory=RealDictCursor)
         
-        # 1. Contar Usuarios Activos (Estudiantes)
+        # 1. Contar Usuarios (Ignorando al admin tipo 0)
         c.execute("SELECT COUNT(*) FROM Usuarios WHERE Tipo != 0")
         usuarios_activos = c.fetchone()['count']
         
@@ -1496,33 +1496,28 @@ def estadisticas_almacenamiento():
         c.execute("SELECT COUNT(*) FROM Evidencias")
         total_evidencias = c.fetchone()['count']
         
-        # 3. 🔥 NUEVO: Contar Solicitudes Pendientes (Directo de la BD)
-        c.execute("SELECT COUNT(*) FROM Solicitudes WHERE Estado = 'PENDIENTE'")
+        # 3. 🔥 SOLICITUDES PENDIENTES (CORREGIDO)
+        # Usamos UPPER() para que 'Pendiente', 'pendiente' y 'PENDIENTE' cuenten igual.
+        c.execute("SELECT COUNT(*) FROM Solicitudes WHERE UPPER(Estado) = 'PENDIENTE'")
         solicitudes_pendientes = c.fetchone()['count']
 
-        # 4. Calcular Almacenamiento (Usando el sistema de archivos para precisión)
-        total_size = 0
-        ruta_base = "evidencias" # O la carpeta que uses
-        if os.path.exists(ruta_base):
-            for dirpath, dirnames, filenames in os.walk(ruta_base):
-                for f in filenames:
-                    fp = os.path.join(dirpath, f)
-                    if os.path.exists(fp):
-                        total_size += os.path.getsize(fp)
+        # 4. 🔥 ALMACENAMIENTO (CORREGIDO - USANDO BASE DE DATOS)
+        # Sumamos la columna Tamanio_KB. Si es null, devuelve 0.
+        c.execute("SELECT COALESCE(SUM(Tamanio_KB), 0) as total_kb FROM Evidencias")
+        total_kb = c.fetchone()['total_kb']
         
-        gb_usados = total_size / (1024 * 1024 * 1024)
+        # Convertimos KB a GB (1 GB = 1024*1024 KB)
+        gb_usados = float(total_kb) / (1024 * 1024)
         
-        # 5. Calcular Costos (Ejemplo AWS + Almacenamiento)
-        costo_storage = gb_usados * 0.023 # Precio aprox S3 por GB
-        costo_ia = total_evidencias * 0.001 # Precio aprox por análisis
-        
-        conn.close()
+        # 5. Costos Estimados
+        costo_storage = gb_usados * 0.023
+        costo_ia = total_evidencias * 0.001
         
         return JSONResponse({
             "usuarios_activos": usuarios_activos,
             "total_evidencias": total_evidencias,
-            "solicitudes_pendientes": solicitudes_pendientes, # <--- DATO CLAVE
-            "almacenamiento_gb": gb_usados,
+            "solicitudes_pendientes": solicitudes_pendientes, # Dato exacto
+            "almacenamiento_gb": gb_usados,                   # Dato exacto
             "costo_estimado_usd": {
                 "storage": costo_storage,
                 "rekognition": costo_ia,
@@ -1533,6 +1528,8 @@ def estadisticas_almacenamiento():
     except Exception as e:
         print(f"Error estadisticas: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
+    finally:
+        if conn: conn.close()
 
 @app.get("/datos_graficos_dashboard")
 async def datos_graficos_dashboard():

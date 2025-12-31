@@ -1523,12 +1523,20 @@
 
     async function actualizarDatosDashboard() {
     try {
-        // 1. OBTENER DATOS DEL SERVIDOR
         const res = await fetch(`${API_URL}/estadisticas_almacenamiento`);
-        
         if (!res.ok) throw new Error("Error del servidor");
 
         const stats = await res.json();
+
+        const valSolicitudes = document.getElementById('valSolicitudes');
+        if (valSolicitudes) {
+            // Si el servidor no mandó el dato (versión vieja de main.py), ponemos 0 para no romper
+            const pendientes = stats.solicitudes_pendientes !== undefined ? stats.solicitudes_pendientes : 0;
+            valSolicitudes.textContent = stats.solicitudes_pendientes || 0;
+            
+            // Si tienes animación para este también:
+            // if (typeof actualizarContador === 'function') actualizarContador('valSolicitudes', pendientes);
+        }
         
         // 2. ACTUALIZAR CONTADORES BÁSICOS (Con tu animación original)
         // Verificamos si existe tu función de animación para usarla
@@ -1537,28 +1545,13 @@
             actualizarContador('statFiles', stats.total_evidencias || 0);
         } else {
             // Fallback por si acaso
-            if(document.getElementById('statUsers')) document.getElementById('statUsers').textContent = stats.usuarios_activos || 0;
-            if(document.getElementById('statFiles')) document.getElementById('statFiles').textContent = stats.total_evidencias || 0;
-        }
-
-        // 3. 🔥 SOLICITUDES PENDIENTES (La corrección definitiva)
-        // Usamos el dato directo del servidor (stats.solicitudes_pendientes)
-        // Ya no filtramos el array localmente, así es 100% exacto.
-        const valSolicitudes = document.getElementById('valSolicitudes') || document.getElementById('statRequests');
-        if (valSolicitudes) {
-            // Si el servidor no mandó el dato (versión vieja de main.py), ponemos 0 para no romper
-            const pendientes = stats.solicitudes_pendientes !== undefined ? stats.solicitudes_pendientes : 0;
-            valSolicitudes.textContent = pendientes;
-            
-            // Si tienes animación para este también:
-            // if (typeof actualizarContador === 'function') actualizarContador('valSolicitudes', pendientes);
+            if(document.getElementById('valUsuarios')) document.getElementById('valUsuarios').textContent = stats.usuarios_activos || 0;
+            if(document.getElementById('valEvidencias')) document.getElementById('valEvidencias').textContent = stats.total_evidencias || 0;
         }
 
         // 4. ALMACENAMIENTO (Tu código original intacto)
         const gb = stats.almacenamiento_gb || 0;
-        if(document.getElementById('statSize')) document.getElementById('statSize').textContent = gb.toFixed(2) + ' GB';
-        if(document.getElementById('realSizeDisplay')) document.getElementById('realSizeDisplay').textContent = gb.toFixed(2) + ' GB';
-        
+        if(document.getElementById('statSize')) document.getElementById('statSize').textContent = gb.toFixed(4) + ' GB'; // 4 decimales por si es muy poco        
         // 5. COSTOS Y BARRAS (Tu código original intacto)
         const costoMensual = (gb * 0.005).toFixed(3);
         const costoAnual = (gb * 0.005 * 12).toFixed(3);
