@@ -1537,7 +1537,7 @@
             // Si tienes animación para este también:
             // if (typeof actualizarContador === 'function') actualizarContador('valSolicitudes', pendientes);
         }
-        
+
         // 2. ACTUALIZAR CONTADORES BÁSICOS (Con tu animación original)
         // Verificamos si existe tu función de animación para usarla
         if (typeof actualizarContador === 'function') {
@@ -1551,7 +1551,10 @@
 
         // 4. ALMACENAMIENTO (Tu código original intacto)
         const gb = stats.almacenamiento_gb || 0;
-        if(document.getElementById('statSize')) document.getElementById('statSize').textContent = gb.toFixed(4) + ' GB'; // 4 decimales por si es muy poco        
+
+        if(document.getElementById('statSize')) document.getElementById('statSize').textContent = gb.toFixed(2) + ' GB';
+        if(document.getElementById('realSizeDisplay')) document.getElementById('realSizeDisplay').textContent = gb.toFixed(2) + ' GB';
+
         // 5. COSTOS Y BARRAS (Tu código original intacto)
         const costoMensual = (gb * 0.005).toFixed(3);
         const costoAnual = (gb * 0.005 * 12).toFixed(3);
