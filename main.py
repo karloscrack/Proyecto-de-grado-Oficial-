@@ -686,25 +686,34 @@ async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
         c.execute("SELECT * FROM Usuarios WHERE CI = %s", (cedula.strip(),))
         u = c.fetchone()
         
-        # Obtenemos la contraseña sin importar si la columna es 'Password' o 'password'
+        # Obtenemos la contraseña (compatible con Password o password)
         pass_db = u.get('password') or u.get('Password') if u else None
         
         if u and pass_db == contrasena.strip():
-            # --- AGREGAR ESTE BLOQUE ---
+            # 1. Definir variables para el LOG
             nombre_completo = f"{u.get('Nombre') or u.get('nombre')} {u.get('Apellido') or u.get('apellido')}"
-            rol_texto = "Administrador" if (u.get('Tipo') or u.get('tipo')) == 0 else "Estudiante"
+            rol_num = u.get('Tipo') if u.get('Tipo') is not None else u.get('tipo')
+            rol_texto = "Administrador" if rol_num == 0 else "Estudiante"
             
-            # Registramos quién entró
+            # 2. Registrar quién entró (AUDITORÍA)
             registrar_auditoria(
                 "INICIO_SESION", 
                 f"Ingreso exitoso a la plataforma ({rol_texto})", 
                 nombre_completo
             )
-            # ---------------------------
-
+            
+            # 3. Datos vitales para el Frontend (AQUÍ ESTABA EL ERROR ANTES)
             datos_para_front = {
-                # ... (el resto de tu código de datos_para_front sigue igual) ...
+                "id": u.get('id') or u.get('ID'),
+                "cedula": u.get('ci') or u.get('CI'),
+                "nombre": u.get('nombre') or u.get('Nombre'),
+                "apellido": u.get('apellido') or u.get('Apellido'),
+                "url_foto": u.get('url_foto') or u.get('Url_Foto') or u.get('Foto') or u.get('foto') or "",
+                "email": u.get('email') or u.get('Email') or "",
+                "tipo": rol_num,
+                "tutorial_visto": u.get('tutorial_visto') or u.get('TutorialVisto') or 0
             }
+            
             return JSONResponse({"autenticado": True, "datos": jsonable_encoder(datos_para_front)})
         
         return JSONResponse({"autenticado": False, "mensaje": "Cédula o contraseña incorrectos."})
