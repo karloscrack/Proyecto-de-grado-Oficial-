@@ -1331,47 +1331,38 @@ async def crear_backup():
 @app.get("/descargar_multimedia_zip")
 async def descargar_multimedia_zip():
     """
-    Descarga evidencias S3 en un ZIP usando RASTREO INTELIGENTE.
-    Escanea el bucket real para encontrar los archivos donde sea que estén.
+    Descarga evidencias S3 en un ZIP.
+    V3.0 - FINAL: Sin reportes de texto y con nombres de archivo corregidos 
+    para evitar errores de 'archivo dañado' en Windows/Word.
     """
     try:
-        from urllib.parse import unquote # Importar aquí para asegurar
+        from urllib.parse import unquote
+        import re # Importante para limpiar los nombres
 
         if not s3_client or not BUCKET_NAME:
             return JSONResponse({"error": "S3 no configurado"}, status_code=500)
 
         # 1. ESPIAR EL BUCKET (Mapa de Realidad)
-        # Averiguamos qué archivos existen FÍSICAMENTE en la nube
-        mapa_nube = {} # Clave: NombreArchivo -> Valor: RutaCompleta (Key)
-        log_diagnostico = []
-        log_diagnostico.append(f"INICIO: {ahora_ecuador()}")
-        
+        mapa_nube = {} 
         try:
-            print("🕵️ Escaneando bucket real...")
+            print("🕵️ Escaneando bucket real para descarga limpia...")
             paginator = s3_client.get_paginator('list_objects_v2')
-            total_nube = 0
             for page in paginator.paginate(Bucket=BUCKET_NAME):
                 if 'Contents' in page:
                     for obj in page['Contents']:
                         full_key = obj['Key']
                         # Guardamos el nombre limpio para buscarlo después
-                        # Ej: evidencias/foto1.jpg -> Clave: foto1.jpg
                         nombre_limpio = full_key.split('/')[-1]
                         mapa_nube[nombre_limpio] = full_key
-                        total_nube += 1
-            
-            log_diagnostico.append(f"ARCHIVOS EN NUBE ENCONTRADOS: {total_nube}")
-            print(f"✅ Mapa de nube creado con {total_nube} archivos.")
-
         except Exception as e_scan:
             return JSONResponse({"error": f"Error escaneando bucket: {str(e_scan)}"}, status_code=500)
 
         # 2. OBTENER DATOS DE LA BD
         conn = get_db_connection()
         conn.cursor_factory = None 
-        c = conn.cursor() # Cursor simple para velocidad
+        c = conn.cursor()
         
-        # Leemos directo con RealDict para facilitar
+        # Truco para leer rápido y luego cerrar
         conn.close()
         conn = get_db_connection()
         c = conn.cursor(cursor_factory=RealDictCursor)
@@ -1382,9 +1373,8 @@ async def descargar_multimedia_zip():
         if not evidencias:
             return JSONResponse({"error": "Tabla Evidencias vacía"}, status_code=404)
 
-        # 3. EMPAREJAR Y DESCARGAR
+        # 3. EMPAREJAR Y DESCARGAR (SIN LOGS DE TEXTO)
         zip_buffer = io.BytesIO()
-        archivos_guardados = 0
 
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
             
@@ -1394,43 +1384,33 @@ async def descargar_multimedia_zip():
                 
                 if not url: continue
 
-                # Extraemos solo el nombre del archivo de la URL de la base de datos
-                # Ej: https://.../evidencias/foto_perrito.jpg -> foto_perrito.jpg
+                # Nombre original de la BD
                 nombre_buscado = url.split('/')[-1]
-                nombre_buscado = unquote(nombre_buscado) # Quitar %20 por espacios
+                nombre_buscado = unquote(nombre_buscado)
                 
                 # BUSCAMOS EN EL MAPA REAL
                 real_key = mapa_nube.get(nombre_buscado)
                 
                 if real_key:
                     try:
-                        # Descargar usando la RUTA REAL encontrada
+                        # Descargar desde la nube
                         file_obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=real_key)
                         file_content = file_obj['Body'].read()
                         
+                        # --- SANITIZACIÓN DE NOMBRE (SOLUCIÓN AL DOCX CORRUPTO) ---
+                        # 1. Quitamos espacios y paréntesis que rompen los ZIPs a veces
+                        nombre_seguro = re.sub(r'[^\w\.-]', '_', nombre_buscado)
+                        
+                        # 2. Construimos el nombre final dentro del ZIP
+                        # Quedará algo como: evidencia_123_Proyecto_Grado_Oficial.docx
+                        nombre_zip = f"evidencia_{id_ev}_{nombre_seguro}"
+                        
                         # Guardar en ZIP
-                        zip_file.writestr(f"evidencia_{id_ev}_{nombre_buscado}", file_content)
-                        archivos_guardados += 1
-                        log_diagnostico.append(f"[ID {id_ev}] OK: Encontrado en '{real_key}'")
+                        zip_file.writestr(nombre_zip, file_content)
+                        
                     except Exception as e:
-                        log_diagnostico.append(f"[ID {id_ev}] ERROR DESCARGA: {str(e)}")
-                else:
-                    # Si no está en el mapa, es que no existe en el bucket
-                    log_diagnostico.append(f"[ID {id_ev}] PERDIDO: '{nombre_buscado}' no existe en el bucket.")
-
-            # Reporte final
-            log_diagnostico.append("-" * 20)
-            log_diagnostico.append(f"TOTAL BD: {len(evidencias)}")
-            log_diagnostico.append(f"TOTAL RECUPERADOS: {archivos_guardados}")
-            
-            # Si no encontró nada, listamos los primeros 10 archivos que SÍ hay en la nube para dar pistas
-            if archivos_guardados == 0 and mapa_nube:
-                log_diagnostico.append("\n--- EJEMPLOS DE LO QUE SÍ HAY EN EL BUCKET ---")
-                ejemplos = list(mapa_nube.values())[:10]
-                for ej in ejemplos:
-                    log_diagnostico.append(f"EXISTE: {ej}")
-
-            zip_file.writestr("_REPORTE_RASTREO.txt", "\n".join(log_diagnostico))
+                        print(f"⚠️ Error silencioso descargando {id_ev}: {e}")
+                        # Ya no agregamos archivos .txt con errores al ZIP, solo lo saltamos.
 
         zip_buffer.seek(0)
         fecha_str = ahora_ecuador().strftime("%Y%m%d_%H%M")
@@ -1438,7 +1418,7 @@ async def descargar_multimedia_zip():
         return StreamingResponse(
             zip_buffer, 
             media_type="application/zip", 
-            headers={"Content-Disposition": f"attachment; filename=multimedia_smart_{fecha_str}.zip"}
+            headers={"Content-Disposition": f"attachment; filename=multimedia_limpio_{fecha_str}.zip"}
         )
 
     except Exception as e:
