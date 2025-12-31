@@ -1608,36 +1608,35 @@ async def datos_graficos_dashboard():
 # 11. ENDPOINTS DE SOLICITUDES Y GESTIÓN
 # =========================================================================
 @app.get("/obtener_solicitudes")
-async def obtener_solicitudes(limit: int = 50):
-    """
-    Obtiene las solicitudes más recientes CON DATOS DE LA EVIDENCIA (JOIN)
-    para poder previsualizarlas en el panel de admin.
-    """
-    conn = None
+def obtener_solicitudes(limit: int = 100):
     try:
         conn = get_db_connection()
+        # 1. RESTAURADO: RealDictCursor es OBLIGATORIO para que el Frontend entienda los datos
         c = conn.cursor(cursor_factory=RealDictCursor)
         
-        # ✅ EL CAMBIO CLAVE: Hacemos JOIN con la tabla Evidencias
-        # Así obtenemos Url_Archivo y Tipo_Archivo directamente
+        # 2. RESTAURADO: El LEFT JOIN es vital para ver las fotos/videos en el Admin
         query = """
             SELECT 
-                s.id, s.tipo, s.ci_solicitante, s.email, s.detalle, s.estado, s.fecha, s.respuesta, s.id_admin, s.id_evidencia,
-                e.Url_Archivo, e.Tipo_Archivo
+                s.*, 
+                e.Url_Archivo, 
+                e.Tipo_Archivo
             FROM Solicitudes s
             LEFT JOIN Evidencias e ON s.Id_Evidencia = e.id
-            ORDER BY s.Fecha DESC
+            ORDER BY s.Fecha DESC 
             LIMIT %s
         """
         c.execute(query, (limit,))
-        rows = c.fetchall()
+        solicitudes = c.fetchall()
+        conn.close()
         
-        return JSONResponse(jsonable_encoder(rows))
+        # ✅ TU CORRECCIÓN MÁGICA (Funciona perfecto, la dejamos)
+        sol_serializables = json.loads(json.dumps(solicitudes, default=str))
+        
+        return JSONResponse(sol_serializables)
+        
     except Exception as e:
-        print(f"Error obteniendo solicitudes: {e}")
-        return JSONResponse([])
-    finally:
-        if conn: conn.close()
+        print(f"❌ Error obteniendo solicitudes: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
     
 # =========================================================================
 # 1. ENDPOINTS DE SOLICITUDES (LADO ESTUDIANTE) - ¡ESTO ES LO QUE TE FALTA!
