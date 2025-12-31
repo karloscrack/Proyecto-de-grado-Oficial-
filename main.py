@@ -678,42 +678,53 @@ async def health_check():
 # 6. ENDPOINTS DE AUTENTICACIÓN
 # =========================================================================
 
+class TemaRequest(BaseModel):
+    cedula: str
+    tema: int # 0 = Claro, 1 = Oscuro
+
+@app.post("/actualizar_tema")
+async def actualizar_tema(datos: TemaRequest):
+    """Guarda si el usuario prefiere modo oscuro o claro"""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("UPDATE Usuarios SET Tema = %s WHERE CI = %s", (datos.tema, datos.cedula))
+        conn.commit()
+        conn.close()
+        return {"status": "ok", "mensaje": "Tema actualizado"}
+    except Exception as e:
+        return {"status": "error", "mensaje": str(e)}
+
 @app.post("/iniciar_sesion")
 async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
-    """Maneja el inicio de sesión asegurando nombres de columnas compatibles con el Frontend"""
+    """Inicio de sesión corregido que incluye el TEMA del usuario"""
     conn = None
     try:
         conn = get_db_connection()
         c = conn.cursor(cursor_factory=RealDictCursor)
-        # Buscamos al usuario por cédula
         c.execute("SELECT * FROM Usuarios WHERE CI = %s", (cedula.strip(),))
         u = c.fetchone()
         
-        # Obtenemos la contraseña (compatible con Password o password)
         pass_db = u.get('password') or u.get('Password') if u else None
         
         if u and pass_db == contrasena.strip():
-            # 1. Definir variables para el LOG
+            # Log de auditoría
             nombre_completo = f"{u.get('Nombre') or u.get('nombre')} {u.get('Apellido') or u.get('apellido')}"
             rol_num = u.get('Tipo') if u.get('Tipo') is not None else u.get('tipo')
             rol_texto = "Administrador" if rol_num == 0 else "Estudiante"
             
-            # 2. Registrar quién entró (AUDITORÍA)
-            registrar_auditoria(
-                "INICIO_SESION", 
-                f"Ingreso exitoso a la plataforma ({rol_texto})", 
-                nombre_completo
-            )
+            registrar_auditoria("INICIO_SESION", f"Ingreso exitoso ({rol_texto})", nombre_completo)
             
-            # 3. Datos vitales para el Frontend (AQUÍ ESTABA EL ERROR ANTES)
+            # Datos para la página web
             datos_para_front = {
                 "id": u.get('id') or u.get('ID'),
                 "cedula": u.get('ci') or u.get('CI'),
                 "nombre": u.get('nombre') or u.get('Nombre'),
                 "apellido": u.get('apellido') or u.get('Apellido'),
-                "url_foto": u.get('url_foto') or u.get('Url_Foto') or u.get('Foto') or u.get('foto') or "",
+                "url_foto": u.get('url_foto') or u.get('Url_Foto') or "",
                 "email": u.get('email') or u.get('Email') or "",
                 "tipo": rol_num,
+                "tema": u.get('Tema') or u.get('tema') or 0, # <--- ¡AQUÍ VA EL TEMA!
                 "tutorial_visto": u.get('tutorial_visto') or u.get('TutorialVisto') or 0
             }
             
@@ -721,7 +732,7 @@ async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
         
         return JSONResponse({"autenticado": False, "mensaje": "Cédula o contraseña incorrectos."})
     except Exception as e:
-        print(f"❌ Error en iniciar_sesion: {e}")
+        print(f"❌ Error login: {e}")
         return JSONResponse({"autenticado": False, "mensaje": str(e)})
     finally:
         if conn: conn.close()
@@ -2848,11 +2859,12 @@ async def actualizar_tabla_usuarios():
         conn = get_db_connection()
         c = conn.cursor()
         
-        # Agregamos las columnas que faltan si no existen
+        # Agregamos TEMA a la lista de columnas nuevas
         comandos = [
             "ALTER TABLE Usuarios ADD COLUMN IF NOT EXISTS Email TEXT;",
             "ALTER TABLE Usuarios ADD COLUMN IF NOT EXISTS Telefono TEXT;",
-            "ALTER TABLE Usuarios ADD COLUMN IF NOT EXISTS Fecha_Registro TIMESTAMP DEFAULT NOW();"
+            "ALTER TABLE Usuarios ADD COLUMN IF NOT EXISTS Fecha_Registro TIMESTAMP DEFAULT NOW();",
+            "ALTER TABLE Usuarios ADD COLUMN IF NOT EXISTS Tema INTEGER DEFAULT 0;" # <--- ESTO ES LO NUEVO
         ]
         
         for cmd in comandos:
@@ -2860,7 +2872,7 @@ async def actualizar_tabla_usuarios():
             
         conn.commit()
         conn.close()
-        return {"mensaje": "✅ Base de datos actualizada: Se agregaron Email, Teléfono y Fecha."}
+        return {"mensaje": "✅ Base de datos actualizada: Se agregó columna Tema."}
     except Exception as e:
         return {"error": str(e)}
 

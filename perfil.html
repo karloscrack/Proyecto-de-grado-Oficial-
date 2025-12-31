@@ -938,7 +938,23 @@
     
     if (!usuarioLogueado) {
         window.location.href = 'biblioteca.html';
-    }
+            let temaInicial = 'light';
+            
+            // 1. Si la Base de Datos dice "Oscuro" (1), usamos oscuro
+            if (usuarioLogueado.tema === 1) {
+                temaInicial = 'dark';
+            } 
+            // 2. Si no hay dato en BD, miramos si el navegador lo tenía guardado
+            else if (localStorage.getItem('theme') === 'dark') {
+                temaInicial = 'dark';
+            }
+            
+            // Aplicar el tema
+            document.body.setAttribute('data-theme', temaInicial);
+            const iconTheme = document.querySelector('#themeToggle i');
+            if(iconTheme) iconTheme.className = temaInicial === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        }
+    
 
         // Variables para Swipe y Long Press
         let pressTimer, isPressing = false;
@@ -996,6 +1012,26 @@
         function actualizarUI(datos) {
     // 🛡️ LECTURA BLINDADA DE DATOS
     const fotoUrl = datos.url_foto || datos.Url_Foto || datos.Foto || 'Img/Logo_pestaña.png';
+    const temaBD = datos.tema || datos.Tema; // 1=Oscuro, 0=Claro
+        const temaLocal = localStorage.getItem('global_theme');
+        let usarOscuro = false;
+
+        // Si la BD dice Oscuro (1), ganan la BD. Si no, miramos el navegador.
+        if (temaBD === 1) {
+            usarOscuro = true;
+        } else if (temaLocal === 'dark') {
+            usarOscuro = true;
+        }
+
+        // Aplicar el tema decidido
+        const iconTheme = document.querySelector('#themeBtn i');
+        if (usarOscuro) {
+            document.body.classList.add('dark-mode');
+            if(iconTheme) iconTheme.className = 'fas fa-sun';
+        } else {
+            document.body.classList.remove('dark-mode');
+            if(iconTheme) iconTheme.className = 'fas fa-moon';
+        }
     const nombre = datos.nombre || datos.Nombre || 'Estudiante';
     const apellido = datos.apellido || datos.Apellido || '';
     
@@ -1651,10 +1687,32 @@ function marcarTodasLeidas() {
         // 6. FUNCIONES BASE (TEMA, MODALES)
         // =========================================================================
 
-        function toggleTheme() {
+        async function toggleTheme() {
+            // 1. Cambiar visualmente (Rápido)
             document.body.classList.toggle('dark-mode');
-            localStorage.setItem('global_theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
-            initTheme();
+            const esOscuro = document.body.classList.contains('dark-mode');
+            const nuevoTema = esOscuro ? 'dark' : 'light';
+            
+            // 2. Actualizar icono del sol/luna
+            const icon = document.querySelector('#themeBtn i');
+            if(icon) icon.className = esOscuro ? 'fas fa-sun' : 'fas fa-moon';
+            
+            // 3. Guardar en el navegador (por si acaso)
+            localStorage.setItem('global_theme', nuevoTema);
+
+            // 4. GUARDAR EN LA NUBE (Base de Datos)
+            const cedula = localStorage.getItem('usuario_cedula');
+            if(cedula) {
+                try {
+                    // 1 = Oscuro, 0 = Claro
+                    const temaNum = esOscuro ? 1 : 0;
+                    await fetch(`${API_URL}/actualizar_tema`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ cedula: cedula, tema: temaNum })
+                    });
+                } catch (e) { console.error("Error guardando tema:", e); }
+            }
         }
         function initTheme() {
             const saved = localStorage.getItem('global_theme');

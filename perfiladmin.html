@@ -1781,17 +1781,34 @@
         }
     }
 
-    function toggleTheme() {
-        const iconoTema = document.querySelector('#themeBtn i');
+    async function toggleTheme() {
+        const body = document.body;
+        const currentTheme = body.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        const icon = document.querySelector('#themeToggle i');
         
-        if (document.body.classList.contains('dark-mode')) {
-            document.body.classList.remove('dark-mode');
-            localStorage.setItem('tema', 'claro');
-            iconoTema.className = 'fas fa-moon';
-        } else {
-            document.body.classList.add('dark-mode');
-            localStorage.setItem('tema', 'oscuro');
-            iconoTema.className = 'fas fa-sun';
+        // 1. Cambiar visualmente (Rápido)
+        body.setAttribute('data-theme', newTheme);
+        if (icon) icon.className = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        localStorage.setItem('theme', newTheme);
+
+        // 2. Guardar en la Nube (Base de Datos)
+        if(usuarioLogueado && usuarioLogueado.cedula) {
+            // Actualizamos la memoria del navegador
+            usuarioLogueado.tema = newTheme === 'dark' ? 1 : 0;
+            sessionStorage.setItem('usuario', JSON.stringify(usuarioLogueado));
+            
+            // Enviamos al servidor (Backend)
+            try {
+                await fetch(`${API_URL}/actualizar_tema`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        cedula: usuarioLogueado.cedula, 
+                        tema: usuarioLogueado.tema 
+                    })
+                });
+            } catch (e) { console.error("Error guardando tema:", e); }
         }
     }
 
@@ -2921,31 +2938,17 @@ async function eliminarEvidenciaActual() {
     // ==========================================
     async function cargarLogs() {
         try {
-            // TRUCO ANTI-CACHÉ: Agregamos ?t=tiempo_actual a la URL
-            // Esto obliga al navegador a pedir datos frescos SIEMPRE.
+            
             const tiempo = new Date().getTime();
-            const respuesta = await fetch(`${API_URL}/obtener_logs?t=${tiempo}`);
-            
+            const respuesta = await fetch(`${API_URL}/obtener_logs?t=${tiempo}`);            
             if (!respuesta.ok) throw new Error("Error al obtener logs");
-
-            logs = await respuesta.json(); // Actualizamos la variable global 'logs'
-            renderizarLogs(); // Dibujamos la tabla
-            
-            // Opcional: Actualizar contador si tienes uno
-            // console.log("Logs actualizados: " + logs.length);
-            
+            logs = await respuesta.json();
+            renderizarLogs();            
         } catch (error) {
-            console.error('Error silencioso cargando logs:', error);
-            // No mostramos alerta para no interrumpir al usuario cada 5 segundos
+            console.error('Error cargando logs:', error);
         }
-    }
-
-    // ==========================================
-    // 2. AGREGA ESTO AL FINAL DE TU SCRIPT O EN initDashboard()
-    // ==========================================
-    
-    // Esto hace que la tabla se actualice sola cada 5 segundos
     setInterval(cargarLogs, 5000);
+    }
 
     function renderizarLogs() {
         const tbody = document.getElementById('logsTableBody');
