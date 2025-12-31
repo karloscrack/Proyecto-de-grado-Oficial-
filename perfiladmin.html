@@ -1676,10 +1676,10 @@
         }
     }
 
-    function actualizarNotificaciones(pendientes) {
-    const list = document.getElementById('notisList');
-    const badge = document.getElementById('notisBadge');
-    
+    function actualizarNotificaciones(todasLasSolicitudes) {
+    const pendientes = todasLasSolicitudes.filter(s => 
+        (s.Estado || s.estado || '').toUpperCase() === 'PENDIENTE'
+    );
     // Validación de seguridad: si la lista no existe en el HTML, no hacemos nada
     if (!list || !badge) return;
 
@@ -2203,102 +2203,166 @@
     // 12. GESTIÓN DE SOLICITUDES (CON VISOR DE FOTOS Y EMAIL)
     // ==========================================
     
-    function procesarSolicitudDesdeCard(tipo, solicitudId) {
-        const solicitud = solicitudes.find(s => s.id == solicitudId);
-        if (!solicitud) return;
+    // Variable global para guardar la solicitud actual
+let solicitudActualId = null;
 
-        const usuario = usuarios.find(u => u.cedula === solicitud.CI_Solicitante);
-        const nombreUsuario = usuario ? `${usuario.nombre} ${usuario.apellido}` : solicitud.CI_Solicitante;
-        
-        let contenido = `
-            <div style="text-align:left;">
-                <h3 style="color:var(--primary); margin-bottom:10px;">
-                    <i class="fas fa-tasks"></i> Gestionar Solicitud
-                </h3>
-                <div style="background:var(--bg-input); padding:10px; border-radius:8px; margin-bottom:15px; font-size:0.9rem;">
-                    <p><strong>Usuario:</strong> ${nombreUsuario}</p>
-                    <p><strong>Tipo:</strong> ${tipo.replace(/_/g, ' ')}</p>
-                    <p><strong>Mensaje del usuario:</strong> "${solicitud.Detalle || 'Sin detalles'}"</p>
-                </div>
-        `;
+function procesarSolicitudDesdeCard(tipoRaw, solicitudId) {
+    // 1. Buscamos la solicitud asegurando compatibilidad de ID
+    const solicitud = solicitudes.find(s => (s.id || s.ID) == solicitudId);
+    if (!solicitud) return;
 
-        // --- INTERFAZ DINÁMICA (SIN TEXTO POR DEFECTO PARA OBLIGAR A ESCRIBIR) ---
+    solicitudActualId = solicitudId;
 
-        if (tipo === 'REPORTE_EVIDENCIA') {
-            contenido += `
-                <div style="text-align:center; margin-bottom:15px; border:2px solid var(--error); padding:10px; border-radius:8px;">
-                    <p style="color:var(--error); font-weight:bold;">Reporte: "No soy yo"</p>
-                    <img src="${solicitud.Evidencia_Reportada_Url}" style="max-width:100%; max-height:200px; border-radius:5px;">
-                </div>
-                <div class="form-group">
-                    <label style="color:var(--error); font-weight:bold;">Respuesta Obligatoria:</label>
-                    <textarea id="mensajeAdmin" class="form-control" rows="3" placeholder="Explica por qué aceptas borrar la foto o por qué rechazas el reporte..."></textarea>
-                </div>
-                <div style="display:flex; gap:10px;">
-                    <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'aprobar')" style="background:var(--error); flex:1;">
-                        <i class="fas fa-trash"></i> Aceptar (Borrar)
-                    </button>
-                    <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'rechazar')" style="background:var(--secondary); flex:1;">
-                        <i class="fas fa-times"></i> Rechazar
-                    </button>
-                </div>
-            `;
-        } 
-        else if (tipo === 'SUBIR_EVIDENCIA') {
-            contenido += `
-                <div style="text-align:center; margin-bottom:15px; border:2px solid var(--info); padding:10px; border-radius:8px;">
-                    <p style="color:var(--info); font-weight:bold;">Propuesta de Evidencia</p>
-                    <img src="${solicitud.Evidencia_Reportada_Url}" style="max-width:100%; max-height:200px; border-radius:5px;">
-                </div>
-                <div class="form-group">
-                    <label style="color:var(--info); font-weight:bold;">Respuesta Obligatoria:</label>
-                    <textarea id="mensajeAdmin" class="form-control" rows="2" placeholder="Escribe un comentario para el estudiante..."></textarea>
-                </div>
-                <div style="display:flex; gap:10px;">
-                    <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'aprobar')" style="background:var(--secondary); flex:1;">
-                        <i class="fas fa-check"></i> Aceptar (Publicar)
-                    </button>
-                    <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'rechazar')" style="background:var(--error); flex:1;">
-                        <i class="fas fa-times"></i> Rechazar
-                    </button>
-                </div>
-            `;
-        }
-        else if (tipo === 'RECUPERACION_CONTRASENA') {
-    contenido += `
-        <div style="background:#e3f2fd; padding:10px; border-radius:8px; margin-bottom:15px;">
-            <p><strong>Instrucción:</strong> El correo se enviará automáticamente con un diseño profesional.</p>
-        </div>
-        <div class="form-group">
-            <label style="color:var(--primary); font-weight:bold;">SOLO ESCRIBE LA CONTRASEÑA (Asegúrate que sea la funcional):</label>
-            <textarea id="mensajeAdmin" class="form-control" rows="2" placeholder="Ejemplo: Clave12345 (No escribas nada más, solo la clave)"></textarea>
-        </div>
-        <div style="display:flex; gap:10px;">
-            <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'aprobar')" style="background:var(--secondary); flex:1;">
-                <i class="fas fa-paper-plane"></i> Enviar Contraseña
-            </button>
-            <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'rechazar')" style="background:var(--error); flex:1;">
-                <i class="fas fa-ban"></i> Denegar
-            </button>
-        </div>
+    // 2. Mapeo seguro de datos (Postgres devuelve minúsculas)
+    const ciSolicitante = solicitud.ci_solicitante || solicitud.CI_Solicitante;
+    const detalle = solicitud.detalle || solicitud.Detalle || 'Sin detalles';
+    const evidenciaUrl = solicitud.evidencia_reportada_url || solicitud.Evidencia_Reportada_Url;
+    
+    // 3. Buscar nombre del usuario (Corrección del "undefined")
+    // Usamos (u.cedula || u.CI) para que coincida con lo que venga de la BD
+    const usuario = usuarios.find(u => (u.cedula || u.CI) == ciSolicitante);
+    const nombreUsuario = usuario ? `${usuario.nombre || usuario.Nombre} ${usuario.apellido || usuario.Apellido}` : ciSolicitante;
+
+    // Limpiamos el tipo (ej: SOPORTE_GENERAL -> Soporte General)
+    const tipoLimpio = (tipoRaw || '').replace(/_/g, ' ');
+
+    // 4. Construcción del HTML (DISEÑO ORIGINAL CONSERVADO)
+    let contenido = `
+        <div style="text-align:left;">
+            <h3 style="color:var(--primary); margin-bottom:10px;">
+                <i class="fas fa-tasks"></i> Gestionar Solicitud
+            </h3>
+            <div style="background:var(--bg-input); padding:10px; border-radius:8px; margin-bottom:15px; font-size:0.9rem;">
+                <p><strong>Usuario:</strong> ${nombreUsuario}</p>
+                <p><strong>Tipo:</strong> ${tipoLimpio}</p>
+                <p><strong>Mensaje del usuario:</strong> "${detalle}"</p>
+            </div>
     `;
-}
-        else { 
-            contenido += `
-                <div class="form-group">
-                    <label style="font-weight:bold;">Respuesta / Solución:</label>
-                    <textarea id="mensajeAdmin" class="form-control" rows="4" placeholder="Escribe tu respuesta aquí..."></textarea>
-                </div>
-                <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'aprobar')" style="width:100%;">
-                    <i class="fas fa-paper-plane"></i> Enviar Respuesta
-                </button>
-            `;
-        }
 
-        contenido += `</div>`;
-        document.getElementById('modalSolicitudContenido').innerHTML = contenido;
-        document.getElementById('modalResponderSolicitud').classList.add('active');
+    // --- LÓGICA VISUAL SEGÚN TIPO ---
+    
+    if (tipoRaw === 'REPORTE_EVIDENCIA') {
+        contenido += `
+            <div style="text-align:center; margin-bottom:15px; border:2px solid var(--error); padding:10px; border-radius:8px;">
+                <p style="color:var(--error); font-weight:bold;">Reporte: "No soy yo"</p>
+                <img src="${evidenciaUrl}" style="max-width:100%; max-height:200px; border-radius:5px;">
+            </div>
+            <div class="form-group">
+                <label style="color:var(--error); font-weight:bold;">Respuesta Obligatoria:</label>
+                <textarea id="mensajeAdmin" class="form-control" rows="3" placeholder="Explica por qué aceptas borrar la foto o por qué rechazas el reporte..."></textarea>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'aprobar')" style="background:var(--error); flex:1;">
+                    <i class="fas fa-trash"></i> Aceptar (Borrar)
+                </button>
+                <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'rechazar')" style="background:var(--secondary); flex:1;">
+                    <i class="fas fa-times"></i> Rechazar
+                </button>
+            </div>
+        `;
+    } 
+    else if (tipoRaw === 'SUBIR_EVIDENCIA') {
+        contenido += `
+            <div style="text-align:center; margin-bottom:15px; border:2px solid var(--info); padding:10px; border-radius:8px;">
+                <p style="color:var(--info); font-weight:bold;">Propuesta de Evidencia</p>
+                <img src="${evidenciaUrl}" style="max-width:100%; max-height:200px; border-radius:5px;">
+            </div>
+            <div class="form-group">
+                <label style="color:var(--info); font-weight:bold;">Respuesta Obligatoria:</label>
+                <textarea id="mensajeAdmin" class="form-control" rows="2" placeholder="Escribe un comentario para el estudiante..."></textarea>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'aprobar')" style="background:var(--secondary); flex:1;">
+                    <i class="fas fa-check"></i> Aceptar (Publicar)
+                </button>
+                <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'rechazar')" style="background:var(--error); flex:1;">
+                    <i class="fas fa-times"></i> Rechazar
+                </button>
+            </div>
+        `;
     }
+    else if (tipoRaw === 'RECUPERACION_CONTRASENA') {
+        contenido += `
+            <div style="background:#e3f2fd; padding:10px; border-radius:8px; margin-bottom:15px;">
+                <p><strong>Instrucción:</strong> El correo se enviará automáticamente con un diseño profesional.</p>
+            </div>
+            <div class="form-group">
+                <label style="color:var(--primary); font-weight:bold;">SOLO ESCRIBE LA CONTRASEÑA (Asegúrate que sea la funcional):</label>
+                <textarea id="mensajeAdmin" class="form-control" rows="2" placeholder="Ejemplo: Clave12345 (No escribas nada más, solo la clave)"></textarea>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'aprobar')" style="background:var(--secondary); flex:1;">
+                    <i class="fas fa-paper-plane"></i> Enviar Contraseña
+                </button>
+                <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'rechazar')" style="background:var(--error); flex:1;">
+                    <i class="fas fa-ban"></i> Denegar
+                </button>
+            </div>
+        `;
+    }
+    else { 
+        // CASO PARA SOPORTE GENERAL Y OTROS
+        contenido += `
+            <div class="form-group">
+                <label style="font-weight:bold;">Respuesta / Solución:</label>
+                <textarea id="mensajeAdmin" class="form-control" rows="4" placeholder="Escribe tu respuesta aquí..."></textarea>
+            </div>
+            <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'aprobar')" style="width:100%;">
+                <i class="fas fa-paper-plane"></i> Enviar Respuesta
+            </button>
+        `;
+    }
+
+    contenido += `</div>`;
+    
+    // Inyectamos el contenido y mostramos el modal
+    document.getElementById('modalSolicitudContenido').innerHTML = contenido;
+    document.getElementById('modalResponderSolicitud').classList.add('active');
+}
+
+// --- FUNCIÓN DE ENVÍO CORREGIDA (PARA QUE SALGA TU NOMBRE) ---
+async function enviarGestion(id, accion) {
+    const mensajeInput = document.getElementById('mensajeAdmin');
+    const mensaje = mensajeInput.value.trim();
+    
+    if(!mensaje) {
+        Swal.fire('¡Atención!', 'Debes escribir una respuesta.', 'warning');
+        return;
+    }
+
+    // OBTENER TU NOMBRE REAL DEL LOGIN
+    const nombreAdmin = localStorage.getItem('usuario_nombre') || 'Administrador';
+
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...'; 
+    btn.disabled = true;
+
+    const fd = new FormData();
+    fd.append('id_solicitud', id);
+    fd.append('accion', accion === 'aprobar' ? 'APROBADA' : 'RECHAZADA');
+    fd.append('mensaje', mensaje);
+    fd.append('id_admin', nombreAdmin); // <--- AQUÍ ENVIAMOS TU NOMBRE
+
+    try {
+        const res = await fetch(`${API_URL}/gestionar_solicitud`, { method: 'POST', body: fd });
+        const data = await res.json();
+
+        if (data.status === 'ok') {
+            Swal.fire('Éxito', data.mensaje, 'success');
+            document.getElementById('modalResponderSolicitud').classList.remove('active');
+            cargarSolicitudes(); 
+            cargarSolicitudesPendientes();
+            actualizarDatosDashboard();
+        } else {
+            Swal.fire('Error', data.mensaje, 'error');
+        }
+    } catch (e) {
+        Swal.fire('Error', 'Error de conexión', 'error');
+    } finally {
+        if(btn) { btn.innerHTML = originalText; btn.disabled = false; }
+    }
+}
 
     async function enviarGestion(id, accion) {
         const mensajeInput = document.getElementById('mensajeAdmin');
@@ -2357,9 +2421,8 @@
     const id = document.getElementById('solicitudIdRespuesta').value;
     const tipo = document.getElementById('tipoRespuesta').value;
     const mensaje = document.getElementById('respuestaAdmin').value.trim();
-    
-    // 🛡️ Obtener el nombre real del administrador desde la sesión
     const nombreAdminLogueado = localStorage.getItem('usuario_nombre') || 'Administrador';
+    
 
     // 2. Validación de mensaje obligatorio (Evita respuestas vacías)
     if (!mensaje) {
@@ -2374,10 +2437,10 @@
 
     // 3. Preparar los datos para el envío
     const formData = new FormData();
-    formData.append('id_solicitud', id);
+    formData.append('id_solicitud', document.getElementById('solicitudIdRespuesta').value);
     formData.append('accion', accion === 'aceptar' ? 'aprobar' : 'rechazar');
     formData.append('mensaje', mensaje);
-    formData.append('id_admin', nombreAdminLogueado); // Se envía el nombre real
+    formData.append('id_admin', miNombre);
 
     try {
         // Mostrar estado de carga en el botón

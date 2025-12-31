@@ -1038,34 +1038,36 @@
         const res = await fetch(`${API_URL}/obtener_solicitudes_por_cedula?cedula=${cedula}`);
         const data = await res.json();
         
-        // --- 1. FILTRADO INTELIGENTE (Mayúsculas/Minúsculas) ---
-        const respondidas = data.filter(sol => {
-            // Leemos el estado protegiendo contra nulos y mayúsculas/minúsculas
-            const est = (sol.estado || sol.Estado || 'PENDIENTE').toUpperCase();
-            return est !== 'PENDIENTE';
+        // --- MEMORIA PERSISTENTE ---
+        // Recuperamos los IDs que el usuario ya marcó como leídos en este navegador
+        const leidasLocal = JSON.parse(localStorage.getItem(`notis_leidas_${cedula}`)) || [];
+
+        // 1. FILTRADO PARA EL NÚMERO ROJO
+        // Solo contamos las que NO son pendiente Y cuyo ID NO está en la lista de leídas
+        const nuevas = data.filter(sol => {
+            const estado = (sol.estado || sol.Estado || 'PENDIENTE').toUpperCase();
+            const id = sol.id || sol.ID;
+            return estado !== 'PENDIENTE' && !leidasLocal.includes(id);
         });
         
-        if (respondidas.length > 0) {
+        if (nuevas.length > 0) {
             badge.style.display = 'flex';
-            badge.textContent = respondidas.length;
+            badge.textContent = nuevas.length;
         } else {
             badge.style.display = 'none';
         }
 
+        // 2. MOSTRAR EL HISTORIAL COMPLETO (Incluidas las leídas)
         if (data.length === 0) {
             list.innerHTML = '<div style="padding:15px; text-align:center; color:#888;">No tienes peticiones registradas</div>';
             return;
         }
 
         list.innerHTML = data.map(sol => {
-            // --- 2. LECTURA SEGURA DE VARIABLES ---
-            // Usamos || para leer ambas versiones (Postgres vs SQLite)
             const rawTipo = sol.tipo || sol.Tipo || 'Solicitud';
-            const tipo = rawTipo.replace(/_/g, ' '); // Aquí fallaba antes
-            
+            const tipo = rawTipo.replace(/_/g, ' ');
             const rawEstado = sol.estado || sol.Estado || 'PENDIENTE';
             const estado = rawEstado.toUpperCase();
-            
             const respuesta = sol.respuesta || sol.Respuesta;
             const fecha = sol.fecha || sol.Fecha;
 
@@ -1087,10 +1089,31 @@
                 </div>
             `;
         }).join('');
+        
+        // Guardamos las solicitudes en memoria para usar al marcar leídas
+        appState.solicitudesCache = data;
+
     } catch (e) { 
         console.error("Error notis:", e);
-        list.innerHTML = '<div style="padding:15px; color:red;">Error al cargar historial</div>';
     }
+}
+
+// NUEVA FUNCIÓN PARA MARCAR LEÍDAS Y RECORDARLO
+function marcarTodasLeidas() {
+    const cedula = localStorage.getItem('usuario_cedula');
+    
+    // Si no se han cargado solicitudes, no hacemos nada
+    if (!appState.solicitudesCache) return;
+
+    // 1. Obtenemos todos los IDs de las solicitudes actuales
+    const idsParaMarcar = appState.solicitudesCache.map(s => s.id || s.ID);
+    
+    // 2. Guardamos estos IDs en la memoria del navegador como "leídos"
+    localStorage.setItem(`notis_leidas_${cedula}`, JSON.stringify(idsParaMarcar));
+    
+    // 3. Ocultamos el badge rojo visualmente al instante
+    const badge = document.getElementById('notisBadge');
+    if(badge) badge.style.display = 'none';
 }
 
         function generarNotificacionesDesdeSolicitudes(solicitudes) {
@@ -1290,14 +1313,6 @@
 
         function toggleNotificaciones() { 
             document.getElementById('notisDropdown').classList.toggle('active'); 
-        }
-        
-        function marcarTodasLeidas() {
-            appState.notificaciones.forEach(n => n.leida = true);
-            renderNotificaciones();
-            
-            // Ocultar el badge después de marcar todas como leídas
-            document.getElementById('notisBadge').style.display = 'none';
         }
 
         // =========================================================================

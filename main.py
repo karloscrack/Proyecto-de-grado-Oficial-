@@ -1634,7 +1634,7 @@ async def solicitar_recuperacion(
     cedula: str = Form(...),
     email: Optional[str] = Form(None),
     mensaje: Optional[str] = Form(None),
-    tipo: str = Form("RECUPERACION_CONTRASENA") # ✅ AHORA ACEPTA EL TIPO DINÁMICO
+    tipo: str = Form("RECUPERACION_CONTRASENA")
 ):
     conn = None
     try:
@@ -1648,14 +1648,13 @@ async def solicitar_recuperacion(
         if not user:
             return JSONResponse({"status": "error", "mensaje": "La cédula no está registrada."})
             
-        # Rescatar email si falta
         email_final = email if email else user.get('email') or user.get('Email') or "Sin correo"
         nombre_completo = f"{user.get('nombre') or user.get('Nombre')} {user.get('apellido') or user.get('Apellido')}"
         
         detalle = f"{tipo.replace('_', ' ')}. "
         if mensaje: detalle += f"Mensaje: {mensaje}"
         
-        # 2. Insertar con el TIPO CORRECTO (Ya no todo es recuperación)
+        # 2. Guardar en Base de Datos
         c.execute("""
             INSERT INTO Solicitudes (Tipo, CI_Solicitante, Email, Detalle, Estado, Fecha)
             VALUES (%s, %s, %s, %s, 'PENDIENTE', %s)
@@ -1663,12 +1662,20 @@ async def solicitar_recuperacion(
         
         conn.commit()
 
-        # 3. Notificación al Admin
+        # 3. LÓGICA DE CORREOS (CORREGIDA)
+        # A) Al ADMIN siempre le avisamos que llegó algo
         asunto_admin = f"🚨 Nuevo mensaje de {tipo}"
         cuerpo_admin = f"Usuario: {nombre_completo} ({cedula}).\nTipo: {tipo}\nMensaje: {mensaje}"
         background_tasks.add_task(enviar_correo_real, "karlos.ayala.lopez.1234@gmail.com", asunto_admin, cuerpo_admin)
         
-        return JSONResponse({"status": "ok", "mensaje": "Mensaje enviado correctamente."})
+        # B) Al ESTUDIANTE solo le enviamos correo si es RECUPERACIÓN (confirmación)
+        # Si es SOPORTE, no le enviamos nada para no saturarlo (es interno)
+        if tipo == 'RECUPERACION_CONTRASENA':
+             asunto_user = "Solicitud Recibida - U.E. Despertar"
+             cuerpo_user = f"Hola {nombre_completo}, hemos recibido tu solicitud de recuperación. Te contactaremos pronto."
+             background_tasks.add_task(enviar_correo_real, email_final, asunto_user, cuerpo_user)
+        
+        return JSONResponse({"status": "ok", "mensaje": "Solicitud enviada correctamente."})
     except Exception as e:
         return JSONResponse({"status": "error", "mensaje": str(e)})
     finally:
