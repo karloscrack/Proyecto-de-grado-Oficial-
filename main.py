@@ -1482,55 +1482,57 @@ async def optimizar_sistema(tipo: str = "full"):
 # =========================================================================
 
 @app.get("/estadisticas_almacenamiento")
-async def estadisticas_almacenamiento():
-    """Versión OPTIMIZADA: Carga instantánea usando conteo rápido"""
+def estadisticas_almacenamiento():
+    conn = None
     try:
         conn = get_db_connection()
         c = conn.cursor(cursor_factory=RealDictCursor)
         
-        # 1. Usuarios Activos (Rápido)
-        c.execute("SELECT COUNT(*) as total FROM Usuarios WHERE Tipo = 1 AND Activo = 1")
-        usuarios_activos = c.fetchone()['total']
+        # 1. Contar Usuarios Activos (Estudiantes)
+        c.execute("SELECT COUNT(*) FROM Usuarios WHERE Tipo != 0")
+        usuarios_activos = c.fetchone()['count']
         
-        # 2. Total Evidencias (Rápido)
-        c.execute("SELECT COUNT(*) as total FROM Evidencias")
-        total_evidencias = c.fetchone()['total']
+        # 2. Contar Evidencias Totales
+        c.execute("SELECT COUNT(*) FROM Evidencias")
+        total_evidencias = c.fetchone()['count']
         
-        # 3. Solicitudes Pendientes (Rápido)
-        c.execute("SELECT COUNT(*) as total FROM Solicitudes WHERE Estado = 'PENDIENTE'")
-        solicitudes_pendientes = c.fetchone()['total']
+        # 3. 🔥 NUEVO: Contar Solicitudes Pendientes (Directo de la BD)
+        c.execute("SELECT COUNT(*) FROM Solicitudes WHERE Estado = 'PENDIENTE'")
+        solicitudes_pendientes = c.fetchone()['count']
+
+        # 4. Calcular Almacenamiento (Usando el sistema de archivos para precisión)
+        total_size = 0
+        ruta_base = "evidencias" # O la carpeta que uses
+        if os.path.exists(ruta_base):
+            for dirpath, dirnames, filenames in os.walk(ruta_base):
+                for f in filenames:
+                    fp = os.path.join(dirpath, f)
+                    if os.path.exists(fp):
+                        total_size += os.path.getsize(fp)
         
-        # 4. Almacenamiento (Estimación Estadística para velocidad)
-        # Usamos 3.5 MB promedio por archivo para no leer disco/nube uno por uno
-        tamanho_promedio_mb = 3.5
-        total_mb = total_evidencias * tamanho_promedio_mb
-        total_gb = round(total_mb / 1024, 4)
+        gb_usados = total_size / (1024 * 1024 * 1024)
         
-        # 5. Costos (Cálculo matemático simple)
-        costo_ia = (total_evidencias / 1000) * 1.0
-        costo_storage = (total_gb) * 0.005
-        costo_total = round(costo_ia + costo_storage, 2)
+        # 5. Calcular Costos (Ejemplo AWS + Almacenamiento)
+        costo_storage = gb_usados * 0.023 # Precio aprox S3 por GB
+        costo_ia = total_evidencias * 0.001 # Precio aprox por análisis
         
         conn.close()
         
-        # Respuesta con la estructura EXACTA que espera tu frontend
-        return JSONResponse(content={
+        return JSONResponse({
             "usuarios_activos": usuarios_activos,
             "total_evidencias": total_evidencias,
-            "almacenamiento_mb": round(total_mb, 2),
-            "almacenamiento_gb": total_gb,
-            "solicitudes_pendientes": solicitudes_pendientes,
+            "solicitudes_pendientes": solicitudes_pendientes, # <--- DATO CLAVE
+            "almacenamiento_gb": gb_usados,
             "costo_estimado_usd": {
-                "rekognition": round(costo_ia, 2),
-                "almacenamiento": round(costo_storage, 4),
-                "total": costo_total
-            },
-            "nota": "Modo Turbo (Estimado)"
+                "storage": costo_storage,
+                "rekognition": costo_ia,
+                "total": costo_storage + costo_ia
+            }
         })
         
     except Exception as e:
-        print(f"❌ Error dashboard: {e}")
-        return JSONResponse(content={"error": str(e)})
+        print(f"Error estadisticas: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.get("/datos_graficos_dashboard")
 async def datos_graficos_dashboard():
