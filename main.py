@@ -1682,36 +1682,71 @@ async def solicitar_recuperacion(
         if conn: conn.close()
 
 @app.post("/solicitar_subida")
-async def solicitar_subida(cedula: str = Form(...), archivo: UploadFile = File(...)):
-    """El estudiante sube un archivo para aprobación del admin"""
+async def solicitar_subida(
+    cedula: str = Form(...),
+    archivo: UploadFile = File(...)
+):
+    """
+    Sube el archivo pero lo deja OCULTO (Estado 0) y crea una solicitud
+    para que el admin lo revise.
+    """
+    conn = None
+    temp_dir = None
     try:
-        # 1. Guardar temporalmente para subir a la nube
+        # 1. Guardar archivo físico
         temp_dir = tempfile.mkdtemp()
         path = os.path.join(temp_dir, archivo.filename)
-        with open(path, "wb") as f: shutil.copyfileobj(archivo.file, f)
-        
-        url_archivo = f"/local/{archivo.filename}"
-        if s3_client:
-            try:
-                # Nombre temporal (propuesta)
-                nombre_nube = f"evidencias/propuesta_{int(ahora_ecuador().timestamp())}_{archivo.filename}"
-                s3_client.upload_file(path, BUCKET_NAME, nombre_nube, ExtraArgs={'ACL': 'public-read'})
-                url_archivo = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nombre_nube}"
-            except: pass
-        
-        shutil.rmtree(temp_dir)
-        
+        with open(path, "wb") as f:
+            shutil.copyfileobj(archivo.file, f)
+            
+        file_hash = calcular_hash(path)
         conn = get_db_connection()
-        conn.execute("""
-            INSERT INTO Solicitudes (Tipo, CI_Solicitante, Detalle, Evidencia_Reportada_Url, Estado, Fecha)
-            VALUES ('SUBIR_EVIDENCIA', %s, 'El estudiante desea agregar esta evidencia.', %s, 'PENDIENTE', %s)
-        """, (cedula, url_archivo, ahora_ecuador()))
+        c = conn.cursor(cursor_factory=RealDictCursor)
+
+        # 2. Subir a la Nube (S3/Backblaze)
+        path_procesado = garantizar_limite_storage(path)
+        tamanio_kb = os.path.getsize(path_procesado) / 1024
         
+        # Nombre único
+        nombre_nube = f"evidencias/pendiente_{int(ahora_ecuador().timestamp())}_{archivo.filename}"
+        url_final = f"/local/{archivo.filename}" # Fallback local
+        
+        if s3_client:
+            s3_client.upload_file(path_procesado, BUCKET_NAME, nombre_nube, ExtraArgs={'ACL': 'public-read'})
+            url_final = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nombre_nube}"
+
+        # 3. Insertar Evidencia en BD con ESTADO = 0 (Oculta/Pendiente)
+        # Tipo: Determinamos si es imagen o video
+        ext = os.path.splitext(archivo.filename)[1].lower()
+        tipo_archivo = "video" if ext in ['.mp4', '.mov', '.avi'] else "imagen"
+
+        c.execute("""
+            INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
+            VALUES (%s, %s, %s, 0, %s, %s, 0) RETURNING id
+        """, (cedula, url_final, file_hash, tipo_archivo, tamanio_kb))
+        
+        id_evidencia = c.fetchone()['id']
+
+        # 4. Crear la Solicitud para el Admin
+        # Obtenemos nombre para el correo
+        c.execute("SELECT Nombre, Apellido, Email FROM Usuarios WHERE CI=%s", (cedula,))
+        user = c.fetchone()
+        email = user['email'] if user else 'Sin correo'
+        
+        c.execute("""
+            INSERT INTO Solicitudes (Tipo, CI_Solicitante, Email, Detalle, Id_Evidencia, Estado, Fecha)
+            VALUES ('SUBIR_EVIDENCIA', %s, %s, 'Estudiante solicita subir este archivo.', %s, 'PENDIENTE', %s)
+        """, (cedula, email, id_evidencia, ahora_ecuador()))
+
         conn.commit()
-        conn.close()
-        return JSONResponse({"status": "ok", "mensaje": "Archivo enviado a revisión."})
+        return JSONResponse({"status": "ok", "mensaje": "Archivo enviado a revisión del administrador."})
+
     except Exception as e:
+        if conn: conn.rollback()
         return JSONResponse({"status": "error", "mensaje": str(e)})
+    finally:
+        if conn: conn.close()
+        if temp_dir and os.path.exists(temp_dir): shutil.rmtree(temp_dir)
 
 @app.post("/reportar_evidencia")
 async def reportar_evidencia(
@@ -1793,107 +1828,80 @@ async def obtener_solicitudes_por_cedula(cedula: str):
 async def gestionar_solicitud(
     background_tasks: BackgroundTasks,
     id_solicitud: int = Form(...),
-    accion: str = Form(...), 
-    mensaje: str = Form(...), 
-    id_admin: str = Form("Admin")
+    accion: str = Form(...), # 'APROBADA' o 'RECHAZADA'
+    mensaje: str = Form(...),
+    id_admin: str = Form("Administrador")
 ):
     conn = None
     try:
         conn = get_db_connection()
-        c = conn.cursor(cursor_factory=RealDictCursor) # <--- INDISPENSABLE para PostgreSQL
+        c = conn.cursor(cursor_factory=RealDictCursor)
         
-        # 🛡️ 1. BLOQUEO DE SEGURIDAD (MULTI-ADMIN)
-        c.execute("SELECT Estado, Resuelto_Por FROM Solicitudes WHERE id = %s", (id_solicitud,))
-        actual = c.fetchone()
-        
-        if not actual:
-            return JSONResponse({"status": "error", "mensaje": "La solicitud ya no existe."})
-        
-        # Si el estado ya no es PENDIENTE, detenemos todo para no duplicar correos o acciones
-        est_actual = (actual.get('estado') or actual.get('Estado') or 'PENDIENTE').upper()
-        if est_actual != 'PENDIENTE':
-            quien = actual.get('resuelto_por') or actual.get('Resuelto_Por') or "otro admin"
-            return JSONResponse({
-                "status": "error", 
-                "mensaje": f"⚠️ Esta solicitud ya fue resuelta por: {quien}."
-            })
-
-        # 2. OBTENER DATOS DEL ESTUDIANTE Y SOLICITUD
-        c.execute("""
-            SELECT s.*, u.Nombre, u.Apellido, u.Email as UserEmail
-            FROM Solicitudes s
-            LEFT JOIN Usuarios u ON s.CI_Solicitante = u.CI
-            WHERE s.id = %s
-        """, (id_solicitud,))
+        # 1. Obtener datos de la solicitud
+        c.execute("SELECT * FROM Solicitudes WHERE ID = %s", (id_solicitud,))
         sol = c.fetchone()
         
-        accion_norm = "APROBADA" if accion.lower() in ['aprobar', 'aceptar', 'aprobada'] else "RECHAZADA"
-        fecha_resolucion = ahora_ecuador()
-        tipo = sol.get('tipo') or sol.get('Tipo')
-        ci_sol = sol.get('ci_solicitante') or sol.get('CI_Solicitante')
-        email_destino = sol.get('email') or sol.get('Email') or sol.get('UserEmail')
-        nombre_usuario = f"{sol.get('nombre') or sol.get('Nombre')} {sol.get('apellido') or sol.get('Apellido')}"
-        
-        cuerpo_correo = ""
-        es_html = False
+        if not sol:
+            return JSONResponse({"status": "error", "mensaje": "Solicitud no encontrada"})
 
-        # 3. LÓGICA DE ACCIONES (SIN QUITAR NADA)
+        tipo = sol['tipo']
+        id_evidencia = sol.get('id_evidencia')
+        email_usuario = sol.get('email')
+
+        # 2. EJECUTAR ACCIONES AUTOMÁTICAS SEGÚN EL TIPO
+
+        # --- CASO A: REPORTE "NO SOY YO" ---
         if tipo == 'REPORTE_EVIDENCIA':
-            id_ev = sol.get('id_evidencia') or sol.get('Id_Evidencia')
-            if accion_norm == 'APROBADA':
-                c.execute("DELETE FROM Evidencias WHERE id=%s", (id_ev,))
-                cuerpo_correo = f"Hola {nombre_usuario},\n\nTu reporte ha sido ACEPTADO. La evidencia ha sido eliminada.\n\nAdmin: {mensaje}"
+            if accion == 'APROBADA':
+                # Si el admin aprueba el reporte, BORRAMOS la evidencia o la ocultamos
+                if id_evidencia:
+                    # Opción A: Borrar definitivamente
+                    c.execute("DELETE FROM Evidencias WHERE id = %s", (id_evidencia,))
+                    # Opción B (Más segura): Ocultar
+                    # c.execute("UPDATE Evidencias SET Estado = 0 WHERE id = %s", (id_evidencia,))
             else:
-                cuerpo_correo = f"Hola {nombre_usuario},\n\nTu reporte fue revisado pero la evidencia se mantendrá.\n\nMotivo: {mensaje}"
+                # Si rechaza el reporte, la evidencia se queda tal cual.
+                pass
 
+        # --- CASO B: SUBIR EVIDENCIA ---
         elif tipo == 'SUBIR_EVIDENCIA':
-            url_arch = sol.get('evidencia_reportada_url') or sol.get('Evidencia_Reportada_Url')
-            if accion_norm == 'APROBADA':
-                c.execute("""
-                    INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
-                    VALUES (%s, %s, 'MANUAL_APROBADO', 1, 'documento', 0, 0)
-                """, (ci_sol, url_arch))
-                cuerpo_correo = f"Hola {nombre_usuario},\n\nTu solicitud de subida fue APROBADA.\n\nAdmin: {mensaje}"
+            if accion == 'APROBADA':
+                # Si admin acepta, PUBLICAMOS la evidencia (Estado 1)
+                if id_evidencia:
+                    c.execute("UPDATE Evidencias SET Estado = 1 WHERE id = %s", (id_evidencia,))
             else:
-                cuerpo_correo = f"Hola {nombre_usuario},\n\nTu solicitud de subida fue RECHAZADA.\n\nMotivo: {mensaje}"
+                # Si rechaza, BORRAMOS el archivo pendiente para no ocupar espacio
+                if id_evidencia:
+                    c.execute("DELETE FROM Evidencias WHERE id = %s", (id_evidencia,))
 
+        # --- CASO C: RECUPERACIÓN DE CONTRASEÑA ---
         elif tipo == 'RECUPERACION_CONTRASENA':
-            es_html = True
-            asunto = "🔐 Tu nueva clave de acceso - U.E. Despertar"
-            cuerpo_correo = f"""
-            <div style="font-family: sans-serif; text-align: center; border: 1px solid #ddd; padding: 30px; border-radius: 15px; max-width: 500px; margin: auto;">
-                <h2 style="color: #333;">Hola {nombre_usuario},</h2>
-                <p style="font-size: 1.1em; color: #555;">Tu nueva contraseña es:</p>
-                <div style="background-color: #f9f9f9; padding: 25px; margin: 25px 0; border: 2px dashed #000; display: inline-block; border-radius: 10px;">
-                    <span style="font-size: 2.5em; font-weight: bold; color: #000;">{mensaje}</span>
-                </div>
-                <p style="color: #888; font-size: 0.8em;">Soporte Técnico - U.E.P. Despertar</p>
-            </div>
-            """
-            background_tasks.add_task(enviar_correo_real, email_destino, asunto, cuerpo_correo, True)
-        
-        else:
-            cuerpo_correo = f"Hola {nombre_usuario},\n\nTu solicitud ha sido procesada: {mensaje}"
+            if accion == 'APROBADA':
+                # Enviamos el correo AUTOMÁTICAMENTE con la contraseña que escribió el admin
+                asunto = "🔐 Recuperación de Acceso - U.E. Despertar"
+                cuerpo = f"""
+                <h3>Hola, hemos procesado tu solicitud.</h3>
+                <p>El administrador ha revisado tu caso.</p>
+                <p><strong>Tu contraseña/respuesta es:</strong></p>
+                <h2 style="color:#6A0DAD;">{mensaje}</h2>
+                <hr>
+                <p>Intenta ingresar nuevamente en la biblioteca.</p>
+                """
+                if email_usuario and '@' in email_usuario:
+                    background_tasks.add_task(enviar_correo_real, email_usuario, asunto, cuerpo)
 
-        # 4. ACTUALIZAR ESTADO FINAL
+        # 3. ACTUALIZAR LA SOLICITUD (Para el historial)
         c.execute("""
             UPDATE Solicitudes 
-            SET Estado=%s, Resuelto_Por=%s, Respuesta=%s, Fecha_Resolucion=%s
-            WHERE id=%s
-        """, (accion_norm, id_admin, mensaje, fecha_resolucion, id_solicitud))
+            SET Estado = %s, Respuesta = %s, Id_Admin = %s, Fecha_Resolucion = %s
+            WHERE ID = %s
+        """, (accion, mensaje, id_admin, ahora_ecuador(), id_solicitud))
         
         conn.commit()
-
-        # 5. ENVÍO DE CORREO (Si no fue de contraseña, que ya se envió arriba)
-        if email_destino and not es_html:
-            asunto = f"Respuesta a Solicitud: {tipo.replace('_', ' ')}"
-            background_tasks.add_task(enviar_correo_real, email_destino, asunto, cuerpo_correo)
-        
-        return JSONResponse({"status": "ok", "mensaje": f"Gestionado por {id_admin}."})
+        return JSONResponse({"status": "ok", "mensaje": "Acción ejecutada y notificada correctamente."})
 
     except Exception as e:
         if conn: conn.rollback()
-        print(f"Error gestionando: {e}")
         return JSONResponse({"status": "error", "mensaje": str(e)})
     finally:
         if conn: conn.close()

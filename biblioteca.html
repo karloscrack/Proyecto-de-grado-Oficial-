@@ -986,6 +986,8 @@
             <p>Envía una solicitud al administrador. Te responderemos a tu correo de contacto.</p>
             
             <form id="formRecuperar">
+                <input type="hidden" name="tipo" value="RECUPERACION_CONTRASENA">
+
                 <div class="form-group">
                     <label style="font-size: 0.9rem; font-weight: 600;">Tu Cédula:</label>
                     <input type="text" name="cedula" class="form-control" required placeholder="Ej: 1234567890">
@@ -998,6 +1000,7 @@
                     <label style="font-size: 0.9rem; font-weight: 600;">Mensaje (Opcional):</label>
                     <textarea name="mensaje" class="form-control" placeholder="Describe brevemente tu problema..."></textarea>
                 </div>
+                
                 <button type="submit" class="btn-submit" id="btnEnviarRecup" style="margin-top: 5px;">
                     Enviar Solicitud
                 </button>
@@ -1244,22 +1247,26 @@
         const datos = new FormData(this);
 
         try {
+            // Enviamos la petición al servidor
+            const res = await fetch(`${API_URL}/solicitar_recuperacion`, { method: "POST", body: datos });
             const data = await res.json();
             
             if (data.status === 'ok') {
-                alert("✅ Solicitud enviada.\n\nEl administrador revisará tu caso y te enviará una respuesta al correo que proporcionaste.");
+                alert("✅ Solicitud enviada.\n\nEl administrador te enviará la contraseña a tu correo pronto.");
                 cerrarRecuperar();
                 this.reset();
             } else {
                 alert("❌ Error: " + data.mensaje);
             }
         } catch (error) {
+            console.error(error);
             alert("Error de conexión. Intenta más tarde.");
         } finally {
             btn.innerHTML = originalText; 
             btn.disabled = false;
         }
     });
+    
     </script>
 </body>
 </html>
