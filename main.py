@@ -1319,58 +1319,62 @@ async def crear_backup():
 
 @app.get("/descargar_multimedia_zip")
 async def descargar_multimedia_zip():
+    """Descarga todas las evidencias de la nube (S3) y las comprime en un ZIP."""
     try:
+        if not s3_client or not BUCKET_NAME:
+            return JSONResponse({"error": "Almacenamiento en nube no configurado"}, status_code=500)
+
         conn = get_db_connection()
         c = conn.cursor(cursor_factory=RealDictCursor)
         
-        # 1. Obtener TODAS las evidencias
-        c.execute("SELECT Url_Archivo FROM Evidencias")
-        resultados = c.fetchall()
+        # Obtenemos todas las evidencias
+        c.execute("SELECT * FROM Evidencias")
+        evidencias = c.fetchall()
         conn.close()
-        
-        if not resultados:
-            return JSONResponse({"error": "No hay evidencias en el sistema"}, status_code=404)
 
-        # 2. Crear ZIP en memoria
+        if not evidencias:
+            return JSONResponse({"error": "No hay evidencias para descargar"}, status_code=404)
+
+        # Crear archivo ZIP en memoria
         zip_buffer = io.BytesIO()
         
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-            for i, item in enumerate(resultados):
-                url = item['Url_Archivo']
-                # Limpiamos el nombre para el zip
-                nombre_archivo = f"backup_{i+1}_{os.path.basename(url)}"
+            for ev in evidencias:
+                # --- AQUÍ ESTABA EL ERROR ---
+                # Usamos .get() para intentar con mayúsculas O minúsculas
+                url = ev.get('Url_Archivo') or ev.get('url_archivo')
+                # ----------------------------
                 
-                # Descargar de la Nube (B2/S3)
-                if s3_client and BUCKET_NAME and ("backblazeb2.com" in url or "s3" in url):
+                if url and f"/file/{BUCKET_NAME}/" in url:
                     try:
-                        # Extraer la clave (path) del archivo en el bucket
-                        partes = url.split(f"/file/{BUCKET_NAME}/")
-                        if len(partes) > 1:
-                            file_key = partes[1]
-                            file_obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=file_key)
-                            file_content = file_obj['Body'].read()
-                            zip_file.writestr(nombre_archivo, file_content)
+                        # Extraer la clave del archivo (ej: evidencias/foto1.jpg)
+                        file_key = url.split(f"/file/{BUCKET_NAME}/")[1]
+                        
+                        # Descargar desde S3/Backblaze a memoria
+                        file_obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=file_key)
+                        file_content = file_obj['Body'].read()
+                        
+                        # Añadir al ZIP con un nombre limpio
+                        # Usamos el ID o el nombre original para evitar duplicados
+                        nombre_limpio = file_key.split('/')[-1]
+                        nombre_zip = f"evidencia_{ev['id']}_{nombre_limpio}"
+                        
+                        zip_file.writestr(nombre_zip, file_content)
+                        
                     except Exception as e:
-                        print(f"⚠️ Error backup archivo {url}: {e}")
-                        zip_file.writestr(f"ERROR_{i}.txt", f"Fallo al descargar: {url}")
-                
-                # Soporte para archivos antiguos (locales) si hubiera
-                elif os.path.exists(url):
-                    try:
-                        zip_file.write(url, nombre_archivo)
-                    except:
-                        pass
+                        print(f"⚠️ Error descargando archivo {url}: {e}")
+                        # Agregamos un archivo de texto explicando el error
+                        zip_file.writestr(f"error_log_{ev['id']}.txt", f"No se pudo descargar: {str(e)}")
 
+        # Preparar la descarga
         zip_buffer.seek(0)
-        
-        # Nombre del ZIP con fecha
-        fecha_str = datetime.datetime.now().strftime("%Y%m%d")
-        nombre_zip = f"Backup_Multimedia_Completo_{fecha_str}.zip"
+        fecha_str = ahora_ecuador().strftime("%Y%m%d_%H%M")
+        nombre_descarga = f"respaldo_multimedia_{fecha_str}.zip"
         
         return StreamingResponse(
             zip_buffer, 
-            media_type="application/zip",
-            headers={"Content-Disposition": f"attachment; filename={nombre_zip}"}
+            media_type="application/zip", 
+            headers={"Content-Disposition": f"attachment; filename={nombre_descarga}"}
         )
 
     except Exception as e:
