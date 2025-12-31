@@ -2767,6 +2767,29 @@ async def reparar_admin():
     except Exception as e:
         return JSONResponse({"error": str(e)})
 
+    # --- ENDPOINT PARA ACTUALIZAR LA TABLA USUARIOS (EJECUTAR UNA VEZ) ---
+@app.get("/actualizar_tabla_usuarios")
+async def actualizar_tabla_usuarios():
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        # Agregamos las columnas que faltan si no existen
+        comandos = [
+            "ALTER TABLE Usuarios ADD COLUMN IF NOT EXISTS Email TEXT;",
+            "ALTER TABLE Usuarios ADD COLUMN IF NOT EXISTS Telefono TEXT;",
+            "ALTER TABLE Usuarios ADD COLUMN IF NOT EXISTS Fecha_Registro TIMESTAMP DEFAULT NOW();"
+        ]
+        
+        for cmd in comandos:
+            c.execute(cmd)
+            
+        conn.commit()
+        conn.close()
+        return {"mensaje": "✅ Base de datos actualizada: Se agregaron Email, Teléfono y Fecha."}
+    except Exception as e:
+        return {"error": str(e)}
+
 if __name__ == "__main__":
     import uvicorn
     

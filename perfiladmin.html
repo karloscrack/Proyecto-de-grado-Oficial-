@@ -966,10 +966,18 @@
                                    title="10 dígitos numéricos" required maxlength="10">
                         </div>
                         <div class="form-group">
-                            <label>Contraseña * (Mínimo 6 caracteres)</label>
+                            <label>Contraseña * (Mín. 6 caracteres)</label>
                             <input type="password" name="contrasena" class="form-control" 
                                    minlength="6" required>
-                            <small style="color:var(--text-sec); font-size:0.85rem;">La contraseña debe tener al menos 6 caracteres</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Correo Electrónico (Opcional)</label>
+                            <input type="email" name="email" class="form-control" placeholder="ejemplo@correo.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Teléfono (Opcional)</label>
+                            <input type="tel" name="telefono" class="form-control" placeholder="099...">
                         </div>
                         <div class="form-group">
                             <label>Rol *</label>
