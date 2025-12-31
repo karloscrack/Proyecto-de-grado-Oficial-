@@ -1258,38 +1258,64 @@ async def subir_manual(
 
 @app.get("/crear_backup")
 async def crear_backup():
-    """Crea y descarga una copia de seguridad de la base de datos"""
+    """Genera un archivo SQL con los datos actuales de Supabase (PostgreSQL)"""
     try:
-        # Crear nombre de archivo con fecha de Ecuador
-        fecha = ahora_ecuador().strftime("%Y%m%d_%H%M%S")
-        backup_filename = f"backup_despertar_{fecha}.db"
-        backup_path = os.path.join(tempfile.gettempdir(), backup_filename)
+        conn = get_db_connection()
+        c = conn.cursor()
         
-        # Copiar base de datos
-        shutil.copy2(DB_NAME, backup_path)
+        # Buffer en memoria para escribir el SQL
+        output = io.StringIO()
+        output.write(f"-- RESPALDO SISTEMA DESPERTAR --\n")
+        output.write(f"-- FECHA: {ahora_ecuador()} --\n\n")
         
-        # Registrar auditoría
-        registrar_auditoria("CREACION_BACKUP", f"Backup creado: {backup_filename}")
+        tablas = ['Usuarios', 'Evidencias', 'Solicitudes', 'Auditoria', 'Metricas_Sistema']
         
-        # Preparar respuesta para descarga directa
-        def iterfile():
-            with open(backup_path, "rb") as f:
-                yield from f
-            
-            # Eliminar archivo temporal después de enviar
-            os.remove(backup_path)
+        for tabla in tablas:
+            try:
+                c.execute(f"SELECT * FROM {tabla}")
+                filas = c.fetchall()
+                columnas = [desc[0] for desc in c.description]
+                
+                output.write(f"\n-- DATA TABLE: {tabla} --\n")
+                
+                for fila in filas:
+                    vals = []
+                    for val in fila:
+                        if val is None:
+                            vals.append("NULL")
+                        elif isinstance(val, (int, float)):
+                            vals.append(str(val))
+                        else:
+                            # Escapar comillas simples para SQL
+                            clean_val = str(val).replace("'", "''")
+                            vals.append(f"'{clean_val}'")
+                    
+                    cols_str = ", ".join(columnas)
+                    vals_str = ", ".join(vals)
+                    output.write(f"INSERT INTO {tabla} ({cols_str}) VALUES ({vals_str});\n")
+            except Exception as e_tab:
+                output.write(f"-- Error exportando tabla {tabla}: {e_tab} --\n")
+
+        conn.close()
+        
+        # Preparar descarga
+        fecha_str = ahora_ecuador().strftime("%Y%m%d_%H%M")
+        nombre_archivo = f"backup_completo_{fecha_str}.sql"
+        
+        # Convertir a bytes para la descarga
+        mem_bytes = io.BytesIO(output.getvalue().encode('utf-8'))
+        output.close()
+        mem_bytes.seek(0)
         
         return StreamingResponse(
-            iterfile(),
-            media_type="application/x-sqlite3",
-            headers={
-                "Content-Disposition": f"attachment; filename={backup_filename}",
-                "Content-Type": "application/x-sqlite3"
-            }
+            mem_bytes,
+            media_type="application/sql",
+            headers={"Content-Disposition": f"attachment; filename={nombre_archivo}"}
         )
         
     except Exception as e:
-        return JSONResponse(content={"error": str(e)})
+        print(f"❌ Error backup SQL: {e}")
+        return JSONResponse(content={"error": str(e)}, status_code=500)
 
 @app.get("/descargar_multimedia_zip")
 async def descargar_multimedia_zip():

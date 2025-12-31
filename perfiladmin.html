@@ -3292,21 +3292,53 @@ async function eliminarEvidenciaActual() {
     // ==========================================
     // 12. FUNCIONES DE MANTENIMIENTO
     // ==========================================
-    function descargarBackup(tipo) {
+    async function descargarBackup(tipo) {
         const url = tipo === 'db' 
             ? `${API_URL}/crear_backup` 
             : `${API_URL}/descargar_multimedia_zip`;
         
-        // Crear enlace invisible para descarga
-        const enlace = document.createElement('a');
-        enlace.href = url;
-        enlace.style.display = 'none';
-        enlace.target = '_blank';
-        document.body.appendChild(enlace);
-        enlace.click();
-        document.body.removeChild(enlace);
-        
-        mostrarMensaje(`Descarga de ${tipo === 'db' ? 'base de datos' : 'multimedia'} iniciada`, 'info');
+        const textoTipo = tipo === 'db' ? 'Base de Datos' : 'Multimedia';
+
+        // 1. Mostrar alerta de carga (porque multimedia puede tardar)
+        Swal.fire({
+            title: `Generando respaldo de ${textoTipo}...`,
+            text: 'Esto puede tardar unos segundos. Por favor espera.',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        try {
+            // 2. Pedir el archivo al servidor
+            const respuesta = await fetch(url);
+
+            if (respuesta.ok) {
+                // 3. Si todo sale bien, convertimos a "Blob" (archivo) y descargamos
+                const blob = await respuesta.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                
+                // Nombre del archivo (intentamos leerlo del servidor o generamos uno)
+                const header = respuesta.headers.get('Content-Disposition');
+                const nombreArchivo = header 
+                    ? header.split('filename=')[1] 
+                    : `backup_${tipo}_${new Date().getTime()}.${tipo === 'db' ? 'sql' : 'zip'}`;
+                
+                a.download = nombreArchivo.replace(/['"]/g, ''); // Limpiar comillas
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                
+                Swal.fire('¡Descarga lista!', `El respaldo de ${textoTipo} se ha descargado.`, 'success');
+            } else {
+                // 4. Si el servidor da error, leemos el mensaje
+                const errorData = await respuesta.json();
+                throw new Error(errorData.error || 'Error desconocido del servidor');
+            }
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Error', `No se pudo descargar: ${error.message}`, 'error');
+        }
     }
 
     async function optimizarSistema() {
