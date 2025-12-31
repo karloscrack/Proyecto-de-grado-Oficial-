@@ -59,22 +59,35 @@
             --transition-speed: 0.3s;
         }
 
+        /* ==========================================================================
+           MODO OSCURO (Faltaba esto en Admin)
+           ========================================================================== */
         body.dark-mode {
-            --bg-image: url('Img/Oscuro.png');
+            --bg-image: url('Img/Oscuro.png'); /* Asegúrate de tener esta imagen o quita esta línea */
             --bg-body: #121212;
             --bg-card: #1e1e1e;
             --bg-header: rgba(30, 30, 30, 0.95);
             --bg-sidebar: #1e1e1e;
-            --bg-input: #2d2d2d;
             
             --text-main: #e8eaed;
             --text-sec: #b0b3b8;
             --text-muted: #6e7175;
+            --text-inverse: #ffffff;
             
             --border-color: #3c4043;
+            --input-bg: #2d2d2d;
             
             --shadow-soft: 0 4px 20px rgba(0,0,0,0.4);
             --shadow-hover: 0 10px 30px rgba(0,0,0,0.6);
+            --shadow-nav: 0 2px 15px rgba(0,0,0,0.5);
+            
+            --glass-bg: rgba(30, 30, 30, 0.85);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* Animación del botón de tema */
+        #themeBtn i, #themeToggle i {
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
         /* ==========================================================================
@@ -790,9 +803,9 @@
             </a>
         </div>
         <div class="header-actions">
-            <button onclick="toggleTheme()" class="btn-icon-header" id="themeBtn" title="Cambiar Tema">
-                <i class="fas fa-moon"></i>
-            </button>
+            <button class="btn-icon-header" id="themeBtn" onclick="toggleTheme()" title="Cambiar Tema">
+    <i class="fas fa-moon"></i>
+</button>
 
             <div style="position:relative;">
                 <button class="btn-icon-header" onclick="toggleNotis()" title="Notificaciones">
@@ -1829,30 +1842,42 @@
 
     async function toggleTheme() {
         const body = document.body;
-        // 1. Alternar clase en el body
-        const currentTheme = body.getAttribute('data-theme');
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        body.setAttribute('data-theme', newTheme);
         
-        // 2. Alternar icono (CORREGIDO: Busca 'themeBtn' O 'themeToggle' por si acaso)
-        let icon = document.querySelector('#themeBtn i');
-        if (!icon) icon = document.querySelector('#themeToggle i'); // Intento secundario
+        // 1. CAMBIO DE COLOR (Ahora sí funcionará porque agregamos el CSS)
+        body.classList.toggle('dark-mode'); 
+        const esOscuro = body.classList.contains('dark-mode');
+        const nuevoTema = esOscuro ? 'dark' : 'light';
         
-        if (icon) {
-            icon.className = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        // 2. ANIMACIÓN Y CAMBIO DE ICONO
+        // Buscamos el botón por cualquiera de sus nombres posibles
+        let btn = document.querySelector('#themeBtn');
+        if (!btn) btn = document.querySelector('#themeToggle');
+        
+        if (btn) {
+            const icon = btn.querySelector('i');
+            if (icon) {
+                // Efecto de rotación divertido
+                icon.style.transform = 'rotate(360deg) scale(1.2)';
+                
+                // Cambiar el dibujo (Sol / Luna)
+                setTimeout(() => {
+                    icon.className = esOscuro ? 'fas fa-sun' : 'fas fa-moon';
+                    icon.style.transform = 'rotate(0deg) scale(1)'; // Regresar a normal
+                }, 300);
+            }
         }
 
-        // 3. Guardar en navegador
-        localStorage.setItem('theme', newTheme);
+        // 3. GUARDAR EN EL NAVEGADOR
+        localStorage.setItem('theme', nuevoTema);
 
-        // 4. Guardar en Base de Datos (Si el usuario existe)
-        if(usuarioLogueado && usuarioLogueado.cedula) {
+        // 4. GUARDAR EN LA BASE DE DATOS (Si hay usuario)
+        if(typeof usuarioLogueado !== 'undefined' && usuarioLogueado && usuarioLogueado.cedula) {
             try {
-                // Actualizamos memoria local
-                usuarioLogueado.tema = newTheme === 'dark' ? 1 : 0;
+                // Actualizar memoria
+                usuarioLogueado.tema = esOscuro ? 1 : 0;
                 sessionStorage.setItem('usuario', JSON.stringify(usuarioLogueado));
                 
-                // Enviamos al servidor
+                // Enviar al servidor
                 await fetch(`${API_URL}/actualizar_tema`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1861,7 +1886,7 @@
                         tema: usuarioLogueado.tema 
                     })
                 });
-            } catch (e) { console.error("Error guardando tema:", e); }
+            } catch (e) { console.error("Error guardando tema en nube:", e); }
         }
     }
 
