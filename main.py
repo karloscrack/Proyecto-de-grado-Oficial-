@@ -1854,37 +1854,49 @@ async def gestionar_solicitud(
         email_usuario = sol.get('email') or sol.get('Email')
 
         # ---------------------------------------------------------
-        # 2. LÓGICA DE GESTIÓN (AQUÍ ESTÁ LA MAGIA)
+        # 2. LÓGICA DE GESTIÓN (BORRADO INTELIGENTE)
         # ---------------------------------------------------------
 
         # --- CASO A: REPORTE "NO SOY YO" ---
         if tipo == 'REPORTE_EVIDENCIA':
             if accion == 'APROBADA':
                 if id_evidencia:
-                    # PASO 1: Obtener la URL del archivo ANTES de borrar el registro
-                    c.execute("SELECT Url_Archivo FROM Evidencias WHERE id = %s", (id_evidencia,))
+                    # PASO 1: Obtener datos de la evidencia (URL y Hash) antes de tocar nada
+                    c.execute("SELECT Url_Archivo, Hash FROM Evidencias WHERE id = %s", (id_evidencia,))
                     ev_data = c.fetchone()
                     
-                    # PASO 2: Borrar archivo físico de la nube (S3/Backblaze)
                     if ev_data:
-                        url = ev_data.get('Url_Archivo') or ev_data.get('url_archivo')
-                        # Verificamos si tenemos conexión a S3 y si la URL es de la nube
-                        if url and s3_client and BUCKET_NAME:
-                            try:
-                                # Truco: Extraer la "Key" (nombre del archivo) de la URL
-                                # Ejemplo URL: https://.../file/mi-bucket/evidencias/foto.jpg
-                                # Key necesaria: evidencias/foto.jpg
-                                if f"/file/{BUCKET_NAME}/" in url:
-                                    file_key = url.split(f"/file/{BUCKET_NAME}/")[1]
-                                    s3_client.delete_object(Bucket=BUCKET_NAME, Key=file_key)
-                                    print(f"✅ Archivo físico eliminado: {file_key}")
-                            except Exception as e:
-                                print(f"⚠️ Error intentando borrar de S3 (No crítico): {e}")
-
-                        # PASO 3: Borrar el registro de la Base de Datos
+                        # A) DESVINCULAR: Borramos el registro específico de ESTE usuario
                         c.execute("DELETE FROM Evidencias WHERE id = %s", (id_evidencia,))
+                        print(f"✅ Evidencia {id_evidencia} eliminada del perfil del usuario (Desvinculación).")
+                        
+                        # B) VERIFICACIÓN DE SEGURIDAD (¿Alguien más la usa?)
+                        file_hash = ev_data.get('Hash') or ev_data.get('hash')
+                        url = ev_data.get('Url_Archivo') or ev_data.get('url_archivo')
+                        
+                        # Contamos cuántas veces queda ese Hash en la tabla
+                        c.execute("SELECT COUNT(*) as total FROM Evidencias WHERE Hash = %s", (file_hash,))
+                        count_res = c.fetchone()
+                        total_restantes = count_res['total'] if count_res else 0
+                        
+                        # C) LIMPIEZA DE NUBE CONDICIONAL
+                        # Solo borramos el archivo físico si el contador llega a 0 (Nadie más lo tiene)
+                        if total_restantes == 0:
+                            if url and s3_client and BUCKET_NAME and "backblazeb2.com" in url:
+                                try:
+                                    if f"/file/{BUCKET_NAME}/" in url:
+                                        file_key = url.split(f"/file/{BUCKET_NAME}/")[1]
+                                        s3_client.delete_object(Bucket=BUCKET_NAME, Key=file_key)
+                                        print(f"🗑️ Archivo físico eliminado de la nube (Ya no lo usa nadie): {file_key}")
+                                except Exception as e:
+                                    print(f"⚠️ Error intentando borrar de S3 (No crítico): {e}")
+                        else:
+                            print(f"ℹ️ Archivo físico conservado. Aún lo usan {total_restantes} estudiantes más.")
+                    else:
+                        print("⚠️ La evidencia ya no existía en la base de datos (Posiblemente ya borrada).")
+
             else:
-                # Si rechazamos el reporte, la foto se queda.
+                # Si rechazamos el reporte, no hacemos nada (la evidencia se queda)
                 pass
 
         # --- CASO B: SUBIR EVIDENCIA ---
@@ -1895,8 +1907,8 @@ async def gestionar_solicitud(
                     c.execute("UPDATE Evidencias SET Estado = 1 WHERE id = %s", (id_evidencia,))
             else:
                 # Si rechazamos, borramos el archivo pendiente para no ocupar espacio
+                # Aquí SÍ borramos físico porque está en "Pendientes" y no pertenece a nadie más aún
                 if id_evidencia:
-                    # También intentamos borrar el físico si es posible
                     c.execute("SELECT Url_Archivo FROM Evidencias WHERE id = %s", (id_evidencia,))
                     ev_data = c.fetchone()
                     if ev_data:
@@ -1909,7 +1921,7 @@ async def gestionar_solicitud(
                     
                     c.execute("DELETE FROM Evidencias WHERE id = %s", (id_evidencia,))
 
-        # --- CASO C: RECUPERACIÓN DE CONTRASEÑA (ÚNICO QUE ENVÍA CORREO) ---
+        # --- CASO C: RECUPERACIÓN DE CONTRASEÑA ---
         elif tipo == 'RECUPERACION_CONTRASENA':
             if accion == 'APROBADA':
                 asunto = "🔐 Recuperación de Acceso - U.E. Despertar"
@@ -1922,11 +1934,10 @@ async def gestionar_solicitud(
                 <p>Intenta ingresar nuevamente.</p>
                 """
                 if email_usuario and '@' in email_usuario:
-                    # ✅ ESTE SÍ ENVÍA CORREO
                     background_tasks.add_task(enviar_correo_real, email_usuario, asunto, cuerpo)
 
         # ---------------------------------------------------------
-        # 3. ACTUALIZAR HISTORIAL
+        # 3. ACTUALIZAR HISTORIAL DE LA SOLICITUD
         # ---------------------------------------------------------
         c.execute("""
             UPDATE Solicitudes 
