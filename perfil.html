@@ -933,27 +933,21 @@
             notificaciones: [],
             solicitudesEstudiante: []
         };
-
-        const usuarioLogueado = localStorage.getItem('usuario_cedula');
     
+    // 1. Verificar si hay usuario
+    const usuarioLogueado = localStorage.getItem('usuario_cedula');
     if (!usuarioLogueado) {
-        window.location.href = 'biblioteca.html';
-            let temaInicial = 'light';
-            
-            // 1. Si la Base de Datos dice "Oscuro" (1), usamos oscuro
-            if (usuarioLogueado.tema === 1) {
-                temaInicial = 'dark';
-            } 
-            // 2. Si no hay dato en BD, miramos si el navegador lo tenía guardado
-            else if (localStorage.getItem('theme') === 'dark') {
-                temaInicial = 'dark';
-            }
-            
-            // Aplicar el tema
-            document.body.setAttribute('data-theme', temaInicial);
-            const iconTheme = document.querySelector('#themeToggle i');
-            if(iconTheme) iconTheme.className = temaInicial === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
-        }
+        window.location.href = 'biblioteca.html'; // Si no hay usuario, expulsar.
+    }
+
+    // 2. Aplicar tema temporal del navegador mientras carga la base de datos
+    // (Esto evita el "pantallazo blanco" antes de que llegue el dato real)
+    const temaGuardadoNavegador = localStorage.getItem('global_theme');
+    if (temaGuardadoNavegador === 'dark') {
+        document.body.classList.add('dark-mode');
+        const icon = document.querySelector('#themeBtn i');
+        if(icon) icon.className = 'fas fa-sun';
+    }
     
 
         // Variables para Swipe y Long Press

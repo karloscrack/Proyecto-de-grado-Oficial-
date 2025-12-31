@@ -748,16 +748,31 @@ async def buscar_estudiante(cedula: str = Form(...)):
         conn = get_db_connection()
         c = conn.cursor(cursor_factory=RealDictCursor)
         
-        # 1. Buscamos los datos personales del usuario
+        # Usamos SELECT * para asegurar que traiga la columna 'Tema' nueva
         c.execute("SELECT * FROM Usuarios WHERE CI = %s", (cedula.strip(),))
-        user = c.fetchone()
+        u = c.fetchone()
         
-        if not user:
-            return JSONResponse({"status": "error", "mensaje": "Usuario no encontrado"})
+        if u:
+            # Construir respuesta asegurando que 'tema' vaya en los datos
+            datos = {
+                "id": u.get('id') or u.get('ID'),
+                "cedula": u.get('ci') or u.get('CI'),
+                "nombre": u.get('nombre') or u.get('Nombre'),
+                "apellido": u.get('apellido') or u.get('Apellido'),
+                "url_foto": u.get('url_foto') or u.get('Url_Foto') or "",
+                "email": u.get('email') or u.get('Email') or "",
+                "tipo": u.get('tipo') or u.get('Tipo'),
+                "tema": u.get('Tema') or u.get('tema') or 0, # <--- ESTO ES CRUCIAL
+                "galeria": [] # Se llenará abajo
+            }
+            
+            # Buscar evidencias (galería)
+            c.execute("SELECT * FROM Evidencias WHERE Cedula_Estudiante = %s ORDER BY Fecha_Subida DESC", (cedula.strip(),))
+            evidencias = c.fetchall()
+            if evidencias:
+                datos['galeria'] = [dict(row) for row in evidencias]
 
-        # 2. Buscamos todas sus fotos y videos (ESTO ES LO QUE TE FALTABA)
-        c.execute("SELECT * FROM Evidencias WHERE CI_Estudiante = %s ORDER BY id DESC", (cedula.strip(),))
-        evidencias = c.fetchall()
+            return JSONResponse({"status": "ok", "encontrado": True, "datos": jsonable_encoder(datos)})
         
         # 3. Empaquetamos todo (jsonable_encoder arregla el error de las fechas)
         datos_completos = jsonable_encoder(user)
