@@ -1608,21 +1608,36 @@ async def datos_graficos_dashboard():
 # 11. ENDPOINTS DE SOLICITUDES Y GESTIÓN
 # =========================================================================
 @app.get("/obtener_solicitudes")
-def obtener_solicitudes(limit: int = 100):
+async def obtener_solicitudes(limit: int = 50):
+    """
+    Obtiene las solicitudes más recientes CON DATOS DE LA EVIDENCIA (JOIN)
+    para poder previsualizarlas en el panel de admin.
+    """
+    conn = None
     try:
         conn = get_db_connection()
-        c = conn.cursor()
-        c.execute("SELECT * FROM Solicitudes ORDER BY Fecha DESC LIMIT %s", (limit,))
-        solicitudes = c.fetchall()
-        conn.close()
+        c = conn.cursor(cursor_factory=RealDictCursor)
         
-        # ✅ CORRECCIÓN MÁGICA
-        sol_serializables = json.loads(json.dumps(solicitudes, default=str))
+        # ✅ EL CAMBIO CLAVE: Hacemos JOIN con la tabla Evidencias
+        # Así obtenemos Url_Archivo y Tipo_Archivo directamente
+        query = """
+            SELECT 
+                s.id, s.tipo, s.ci_solicitante, s.email, s.detalle, s.estado, s.fecha, s.respuesta, s.id_admin, s.id_evidencia,
+                e.Url_Archivo, e.Tipo_Archivo
+            FROM Solicitudes s
+            LEFT JOIN Evidencias e ON s.Id_Evidencia = e.id
+            ORDER BY s.Fecha DESC
+            LIMIT %s
+        """
+        c.execute(query, (limit,))
+        rows = c.fetchall()
         
-        return JSONResponse(sol_serializables)
+        return JSONResponse(jsonable_encoder(rows))
     except Exception as e:
-        print(f"❌ Error obteniendo solicitudes: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
+        print(f"Error obteniendo solicitudes: {e}")
+        return JSONResponse([])
+    finally:
+        if conn: conn.close()
     
 # =========================================================================
 # 1. ENDPOINTS DE SOLICITUDES (LADO ESTUDIANTE) - ¡ESTO ES LO QUE TE FALTA!

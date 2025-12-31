@@ -2207,31 +2207,51 @@ function procesarSolicitudDesdeCard(tipoRaw, solicitudId) {
     const solicitud = solicitudes.find(s => (s.id || s.ID) == solicitudId);
     if (!solicitud) return;
 
-    // 2. Extraer datos (Seguro contra mayúsculas/minúsculas)
+    // 2. Extraer datos (Blindado contra mayúsculas/minúsculas)
     const ci = solicitud.ci_solicitante || solicitud.CI_Solicitante;
     const detalle = solicitud.detalle || solicitud.Detalle || 'Sin detalles';
-    // AQUÍ ESTÁ EL TRUCO: Necesitamos la URL de la evidencia para mostrarla
-    // El backend debe enviar esto. Si la lista 'solicitudes' no tiene la URL, 
-    // asumiremos que la evidencia existe y trataremos de buscarla si viene en el objeto.
-    // Nota: Asegúrate de que tu SELECT en main.py haga un JOIN o traiga la URL si es posible,
-    // pero por ahora usaremos lo que hay.
     
-    // TRUCO PARA MOSTRAR IMAGEN:
-    // Si la solicitud tiene 'id_evidencia', el admin debería poder verla.
-    // Como tu endpoint /obtener_solicitudes actual tal vez no trae la URL directa,
-    // agregaremos un botón para "Ver Evidencia" si es necesario, o mostraremos si está disponible.
-    
-    // *Para que esto funcione perfecto, asegúrate que en main.py /obtener_solicitudes 
-    // haga un JOIN con Evidencias para traer 'Url_Archivo'. 
-    // Si no, usaremos un placeholder o intentaremos mostrarla si está en el objeto.*
-    
-    const evidenciaUrl = solicitud.Url_Archivo || solicitud.url_archivo || solicitud.evidencia_url || ''; 
+    // Datos de la evidencia (Ahora sí llegarán gracias al cambio en main.py)
+    const evidenciaUrl = solicitud.Url_Archivo || solicitud.url_archivo || solicitud.evidencia_url;
+    const tipoArchivo = (solicitud.Tipo_Archivo || solicitud.tipo_archivo || 'imagen').toLowerCase();
 
+    // 3. Buscar nombre del usuario
     const usuario = usuarios.find(u => (u.cedula || u.CI) == ci);
     const nombreUsuario = usuario ? `${usuario.nombre} ${usuario.apellido}` : ci;
     const tipoLimpio = tipoRaw.replace(/_/g, ' ');
 
-    // 3. Generar HTML Dinámico
+    // 4. GENERADOR DE PREVISUALIZACIÓN (Inteligente)
+    let htmlPrevisualizacion = '';
+    
+    if (evidenciaUrl) {
+        if (tipoArchivo.includes('video') || evidenciaUrl.endsWith('.mp4')) {
+            // ES VIDEO
+            htmlPrevisualizacion = `
+                <video controls style="width:100%; max-height:250px; border-radius:8px; background:#000;">
+                    <source src="${evidenciaUrl}" type="video/mp4">
+                    Tu navegador no soporta videos.
+                </video>`;
+        } else if (tipoArchivo.includes('doc') || tipoArchivo.includes('pdf') || evidenciaUrl.endsWith('.pdf')) {
+            // ES DOCUMENTO
+            htmlPrevisualizacion = `
+                <div style="padding:20px; background:rgba(0,0,0,0.05); border-radius:8px;">
+                    <i class="fas fa-file-alt" style="font-size:3rem; color:var(--primary);"></i>
+                    <p style="margin-top:10px;">Documento Adjunto</p>
+                    <a href="${evidenciaUrl}" target="_blank" class="btn-submit" style="display:inline-block; margin-top:5px; text-decoration:none;">
+                        <i class="fas fa-download"></i> Descargar / Ver
+                    </a>
+                </div>`;
+        } else {
+            // ES IMAGEN (Por defecto)
+            htmlPrevisualizacion = `
+                <img src="${evidenciaUrl}" style="max-width:100%; max-height:250px; border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.1);" 
+                onclick="window.open(this.src, '_blank')" style="cursor:pointer;" title="Clic para ampliar">`;
+        }
+    } else {
+        htmlPrevisualizacion = '<p style="color:#888; font-style:italic;">(No se encontró archivo adjunto o no aplica)</p>';
+    }
+
+    // 5. Construcción del HTML
     let html = `
         <div class="info-bloque" style="background:var(--bg-input); padding:15px; border-radius:8px; margin-bottom:15px; text-align:left;">
             <p><strong>Usuario:</strong> ${nombreUsuario}</p>
@@ -2245,8 +2265,8 @@ function procesarSolicitudDesdeCard(tipoRaw, solicitudId) {
     if (tipoRaw === 'REPORTE_EVIDENCIA') {
         html += `
             <div style="text-align:center; margin-bottom:15px; border:2px solid var(--error); padding:10px; border-radius:8px;">
-                <p style="color:var(--error); font-weight:bold;"><i class="fas fa-exclamation-circle"></i> Usuario dice: "No soy yo"</p>
-                ${evidenciaUrl ? `<img src="${evidenciaUrl}" style="max-height:200px; border-radius:5px; box-shadow:0 4px 10px rgba(0,0,0,0.1);">` : '<p style="font-size:0.8rem;">(ID Evidencia: '+solicitud.Id_Evidencia+') - Verifique en galería del usuario</p>'}
+                <p style="color:var(--error); font-weight:bold; margin-bottom:10px;"><i class="fas fa-exclamation-circle"></i> Usuario reporta: "No soy yo"</p>
+                ${htmlPrevisualizacion}
             </div>
             <div class="form-group">
                 <label>Respuesta al estudiante:</label>
@@ -2254,7 +2274,7 @@ function procesarSolicitudDesdeCard(tipoRaw, solicitudId) {
             </div>
             <div class="botones-accion" style="display:flex; gap:10px;">
                 <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'aprobar')" style="background:var(--error); flex:1;">
-                    <i class="fas fa-trash"></i> Aceptar (Borrar Foto)
+                    <i class="fas fa-trash"></i> Aceptar (Borrar)
                 </button>
                 <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'rechazar')" style="background:#7f8c8d; flex:1;">
                     <i class="fas fa-times"></i> Rechazar (Mantener)
@@ -2265,32 +2285,33 @@ function procesarSolicitudDesdeCard(tipoRaw, solicitudId) {
     else if (tipoRaw === 'SUBIR_EVIDENCIA') {
         html += `
             <div style="text-align:center; margin-bottom:15px; border:2px solid var(--secondary); padding:10px; border-radius:8px;">
-                <p style="color:var(--secondary); font-weight:bold;"><i class="fas fa-upload"></i> Propuesta de Subida</p>
-                ${evidenciaUrl ? `<img src="${evidenciaUrl}" style="max-height:200px; border-radius:5px;">` : '<p>Archivo pendiente de revisión</p>'}
+                <p style="color:var(--secondary); font-weight:bold; margin-bottom:10px;"><i class="fas fa-cloud-upload-alt"></i> Propuesta de Subida</p>
+                ${htmlPrevisualizacion}
             </div>
             <div class="form-group">
                 <label>Comentario:</label>
-                <textarea id="mensajeAdmin" class="form-control" rows="2" placeholder="Ej: Excelente foto, aprobada."></textarea>
+                <textarea id="mensajeAdmin" class="form-control" rows="2" placeholder="Ej: Excelente aporte, aprobada."></textarea>
             </div>
             <div class="botones-accion" style="display:flex; gap:10px;">
                 <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'aprobar')" style="background:var(--secondary); flex:1;">
                     <i class="fas fa-check"></i> Aceptar (Publicar)
                 </button>
-                <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'rechazar')" style="background:#7f8c8d; flex:1;">
+                <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'rechazar')" style="background:var(--error); flex:1;">
                     <i class="fas fa-times"></i> Rechazar (Borrar)
                 </button>
             </div>
         `;
     }
     else if (tipoRaw === 'RECUPERACION_CONTRASENA') {
+        // ... (El código de recuperación se mantiene igual que antes) ...
         html += `
             <div style="background:#e8f8f5; padding:10px; border-radius:8px; margin-bottom:15px; border-left:4px solid var(--info);">
-                <p style="font-size:0.9rem;"><strong><i class="fas fa-envelope"></i> Acción Automática:</strong> Al enviar, el sistema mandará un correo al estudiante con lo que escribas abajo.</p>
-                <p style="font-size:0.85rem; margin-top:5px;">Correo destino: <strong>${solicitud.Email || solicitud.email || 'No registrado'}</strong></p>
+                <p style="font-size:0.9rem;"><strong><i class="fas fa-envelope"></i> Acción Automática:</strong> Se enviará un correo con la clave.</p>
+                <p style="font-size:0.85rem;">Email destino: <strong>${solicitud.Email || solicitud.email || 'No registrado'}</strong></p>
             </div>
             <div class="form-group">
-                <label style="font-weight:bold;">Escribe la Contraseña o Solución:</label>
-                <textarea id="mensajeAdmin" class="form-control" rows="2" placeholder="Ej: Tu nueva clave es: Estudiante2025"></textarea>
+                <label style="font-weight:bold;">Escribe la Contraseña:</label>
+                <textarea id="mensajeAdmin" class="form-control" rows="1" placeholder="Ej: ClaveNueva2025"></textarea>
             </div>
             <div class="botones-accion" style="display:flex; gap:10px;">
                 <button class="btn-primary" onclick="enviarGestion(${solicitudId}, 'aprobar')" style="background:var(--info); flex:1;">
@@ -2302,7 +2323,8 @@ function procesarSolicitudDesdeCard(tipoRaw, solicitudId) {
             </div>
         `;
     }
-    else { // SOPORTE GENERAL
+    else { 
+        // SOPORTE GENERAL
         html += `
             <div class="form-group">
                 <label>Tu Respuesta:</label>
