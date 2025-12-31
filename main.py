@@ -740,7 +740,7 @@ async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
 @app.post("/buscar_estudiante")
 async def buscar_estudiante(cedula: str = Form(...)):
     """
-    Versión Única y Corregida:
+    Versión CORREGIDA y LIMPIA:
     Trae los datos del estudiante Y su galería de evidencias.
     """
     conn = None
@@ -748,7 +748,7 @@ async def buscar_estudiante(cedula: str = Form(...)):
         conn = get_db_connection()
         c = conn.cursor(cursor_factory=RealDictCursor)
         
-        # Usamos SELECT * para asegurar que traiga la columna 'Tema' nueva
+        # Buscar usuario
         c.execute("SELECT * FROM Usuarios WHERE CI = %s", (cedula.strip(),))
         u = c.fetchone()
         
@@ -759,11 +759,11 @@ async def buscar_estudiante(cedula: str = Form(...)):
                 "cedula": u.get('ci') or u.get('CI'),
                 "nombre": u.get('nombre') or u.get('Nombre'),
                 "apellido": u.get('apellido') or u.get('Apellido'),
-                "url_foto": u.get('url_foto') or u.get('Url_Foto') or "",
+                "url_foto": u.get('url_foto') or u.get('Url_Foto') or u.get('Foto') or u.get('foto') or "",
                 "email": u.get('email') or u.get('Email') or "",
                 "tipo": u.get('tipo') or u.get('Tipo'),
-                "tema": u.get('Tema') or u.get('tema') or 0, # <--- ESTO ES CRUCIAL
-                "galeria": [] # Se llenará abajo
+                "tema": u.get('Tema') or u.get('tema') or 0, # <--- Importante para el modo oscuro
+                "galeria": [] 
             }
             
             # Buscar evidencias (galería)
@@ -774,14 +774,8 @@ async def buscar_estudiante(cedula: str = Form(...)):
 
             return JSONResponse({"status": "ok", "encontrado": True, "datos": jsonable_encoder(datos)})
         
-        # 3. Empaquetamos todo (jsonable_encoder arregla el error de las fechas)
-        datos_completos = jsonable_encoder(user)
-        datos_completos["galeria"] = jsonable_encoder(evidencias)
-        
-        # Compatibilidad de nombres para perfil.html
-        datos_completos["Url_Foto"] = user.get('foto') or user.get('Foto') or user.get('url_foto')
-        
-        return JSONResponse({"status": "ok", "datos": datos_completos})
+        # Si no encuentra usuario, devuelve error limpio en lugar de crashear
+        return JSONResponse({"status": "error", "mensaje": "Usuario no encontrado"})
         
     except Exception as e:
         print(f"❌ Error en buscar_estudiante: {e}")
@@ -2440,19 +2434,18 @@ from urllib.parse import urlparse
 
 def limpieza_duplicados_startup():
     """
-    V5.4 - CORREGIDA PARA POSTGRESQL (Fix HAVING y Lowercase)
+    V5.5 - CORREGIDA: Usa RealDictCursor para evitar errores de índice.
     """
     print("🧹 INICIANDO PROTOCOLO DE LIMPIEZA Y MANTENIMIENTO...")
     
     try:
         conn = get_db_connection()
-        c = conn.cursor()
+        # CORRECCIÓN AQUÍ: Usar RealDictCursor para poder acceder por nombre (row['Url_Archivo'])
+        c = conn.cursor(cursor_factory=RealDictCursor) 
         
-        # ---------------------------------------------------------
+        # ... (Resto del código igual) ...
         # FASE 0: LIMPIEZA POR URL EXACTA
-        # ---------------------------------------------------------
         print("🔍 FASE 0: Buscando URLs idénticas...")
-        # CORRECCIÓN: Usamos COUNT(*) > 1 en vez de 'cantidad'
         c.execute("""
             SELECT Url_Archivo, COUNT(*) as cantidad FROM Evidencias 
             GROUP BY Url_Archivo HAVING COUNT(*) > 1
@@ -2655,6 +2648,7 @@ def limpieza_duplicados_startup():
 
     except Exception as e:
         print(f"❌ Error en limpieza startup: {e}")
+
 @app.post("/recuperar_evidencias_nube")
 async def recuperar_evidencias_nube(background_tasks: BackgroundTasks):
     """
