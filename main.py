@@ -1326,54 +1326,83 @@ async def crear_backup():
 
 @app.get("/descargar_multimedia_zip")
 async def descargar_multimedia_zip():
-    """Descarga todas las evidencias de la nube (S3) y las comprime en un ZIP."""
+    """
+    Descarga evidencias S3 en un ZIP.
+    Incluye un archivo de diagnóstico para saber qué pasó si algo falla.
+    """
     try:
         if not s3_client or not BUCKET_NAME:
-            return JSONResponse({"error": "Almacenamiento en nube no configurado"}, status_code=500)
+            return JSONResponse({"error": "S3 no configurado"}, status_code=500)
 
         conn = get_db_connection()
         c = conn.cursor(cursor_factory=RealDictCursor)
-        
-        # Obtenemos todas las evidencias
         c.execute("SELECT * FROM Evidencias")
         evidencias = c.fetchall()
         conn.close()
 
         if not evidencias:
-            return JSONResponse({"error": "No hay evidencias para descargar"}, status_code=404)
+            return JSONResponse({"error": "Tabla Evidencias vacía"}, status_code=404)
 
-        # Crear archivo ZIP en memoria
+        # Buffer en memoria
         zip_buffer = io.BytesIO()
-        
+        log_diagnostico = [] # Aquí guardaremos el reporte
+        archivos_guardados = 0
+
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            log_diagnostico.append(f"INICIO DEL PROCESO: {ahora_ecuador()}")
+            log_diagnostico.append(f"BUCKET CONFIGURADO: {BUCKET_NAME}")
+            log_diagnostico.append(f"TOTAL EVIDENCIAS EN BD: {len(evidencias)}")
+            log_diagnostico.append("-" * 30)
+
             for ev in evidencias:
-                # --- AQUÍ ESTABA EL ERROR ---
-                # Usamos .get() para intentar con mayúsculas O minúsculas
-                url = ev.get('Url_Archivo') or ev.get('url_archivo')
-                # ----------------------------
+                # Intentar obtener la URL (mayúsculas o minúsculas)
+                url = ev.get('Url_Archivo') or ev.get('url_archivo') or ""
+                id_ev = ev.get('id') or ev.get('ID')
                 
-                if url and f"/file/{BUCKET_NAME}/" in url:
-                    try:
-                        # Extraer la clave del archivo (ej: evidencias/foto1.jpg)
+                if not url:
+                    log_diagnostico.append(f"[ID {id_ev}] SALTADO: URL vacía.")
+                    continue
+
+                # LÓGICA DE INTENTO DE DESCARGA
+                try:
+                    # 1. Intentamos extraer la KEY del archivo
+                    file_key = None
+                    
+                    # Caso A: URL estándar de Backblaze/S3
+                    if f"/file/{BUCKET_NAME}/" in url:
                         file_key = url.split(f"/file/{BUCKET_NAME}/")[1]
-                        
-                        # Descargar desde S3/Backblaze a memoria
+                    # Caso B: URL genérica (intentamos tomar lo último)
+                    elif BUCKET_NAME in url:
+                        # Si la URL contiene el bucket pero en otro formato, intentamos adivinar
+                        partes = url.split(BUCKET_NAME)
+                        if len(partes) > 1:
+                            # Tomamos lo que sigue al bucket y quitamos el primer slash si existe
+                            file_key = partes[1].lstrip('/')
+                    
+                    if file_key:
+                        # Descargar desde la nube
                         file_obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=file_key)
                         file_content = file_obj['Body'].read()
                         
-                        # Añadir al ZIP con un nombre limpio
-                        # Usamos el ID o el nombre original para evitar duplicados
-                        nombre_limpio = file_key.split('/')[-1]
-                        nombre_zip = f"evidencia_{ev['id']}_{nombre_limpio}"
+                        # Nombre limpio para el ZIP
+                        nombre_archivo = file_key.split('/')[-1]
+                        nombre_zip = f"evidencia_{id_ev}_{nombre_archivo}"
                         
                         zip_file.writestr(nombre_zip, file_content)
-                        
-                    except Exception as e:
-                        print(f"⚠️ Error descargando archivo {url}: {e}")
-                        # Agregamos un archivo de texto explicando el error
-                        zip_file.writestr(f"error_log_{ev['id']}.txt", f"No se pudo descargar: {str(e)}")
+                        archivos_guardados += 1
+                        log_diagnostico.append(f"[ID {id_ev}] OK: {nombre_archivo}")
+                    else:
+                        log_diagnostico.append(f"[ID {id_ev}] SALTADO: URL no coincide con bucket '{BUCKET_NAME}'. URL: {url}")
 
-        # Preparar la descarga
+                except Exception as e:
+                    log_diagnostico.append(f"[ID {id_ev}] ERROR: {str(e)}. URL: {url}")
+
+            # AGREGAR EL ARCHIVO DE DIAGNÓSTICO AL ZIP
+            # Esto asegura que el ZIP nunca esté vacío y puedas leer qué pasó
+            log_content = "\n".join(log_diagnostico)
+            zip_file.writestr("_LEEME_DIAGNOSTICO.txt", log_content)
+
+        # Preparar descarga
         zip_buffer.seek(0)
         fecha_str = ahora_ecuador().strftime("%Y%m%d_%H%M")
         nombre_descarga = f"respaldo_multimedia_{fecha_str}.zip"
