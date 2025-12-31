@@ -740,20 +740,19 @@ async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
 @app.post("/buscar_estudiante")
 async def buscar_estudiante(cedula: str = Form(...)):
     """
-    Versión CORREGIDA y LIMPIA:
-    Trae los datos del estudiante Y su galería de evidencias.
+    Versión CORREGIDA: Usa el nombre de columna correcto (CI_Estudiante).
     """
     conn = None
     try:
         conn = get_db_connection()
         c = conn.cursor(cursor_factory=RealDictCursor)
         
-        # Buscar usuario
+        # 1. Buscar Datos Personales
         c.execute("SELECT * FROM Usuarios WHERE CI = %s", (cedula.strip(),))
         u = c.fetchone()
         
         if u:
-            # Construir respuesta asegurando que 'tema' vaya en los datos
+            # Construir respuesta
             datos = {
                 "id": u.get('id') or u.get('ID'),
                 "cedula": u.get('ci') or u.get('CI'),
@@ -762,24 +761,23 @@ async def buscar_estudiante(cedula: str = Form(...)):
                 "url_foto": u.get('url_foto') or u.get('Url_Foto') or u.get('Foto') or u.get('foto') or "",
                 "email": u.get('email') or u.get('Email') or "",
                 "tipo": u.get('tipo') or u.get('Tipo'),
-                "tema": u.get('Tema') or u.get('tema') or 0, # <--- Importante para el modo oscuro
+                "tema": u.get('Tema') or u.get('tema') or 0,
                 "galeria": [] 
             }
             
-            # Buscar evidencias (galería)
-            c.execute("SELECT * FROM Evidencias WHERE Cedula_Estudiante = %s ORDER BY Fecha_Subida DESC", (cedula.strip(),))
+            # 2. Buscar Evidencias (CORREGIDO: CI_Estudiante)
+            c.execute("SELECT * FROM Evidencias WHERE CI_Estudiante = %s ORDER BY Fecha_Subida DESC", (cedula.strip(),))
             evidencias = c.fetchall()
             if evidencias:
                 datos['galeria'] = [dict(row) for row in evidencias]
 
             return JSONResponse({"status": "ok", "encontrado": True, "datos": jsonable_encoder(datos)})
         
-        # Si no encuentra usuario, devuelve error limpio en lugar de crashear
         return JSONResponse({"status": "error", "mensaje": "Usuario no encontrado"})
         
     except Exception as e:
         print(f"❌ Error en buscar_estudiante: {e}")
-        return JSONResponse({"status": "error", "mensaje": str(e)})
+        return JSONResponse({"status": "error", "mensaje": f"Error interno: {str(e)}"})
     finally:
         if conn: conn.close()
     
