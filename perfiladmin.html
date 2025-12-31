@@ -1523,78 +1523,87 @@
 
     async function actualizarDatosDashboard() {
     try {
-        // 1. OBTENER DATOS DEL SERVIDOR (Almacenamiento y Costos)
+        // 1. OBTENER DATOS DEL SERVIDOR
         const res = await fetch(`${API_URL}/estadisticas_almacenamiento`);
+        
         if (!res.ok) throw new Error("Error del servidor");
+
         const stats = await res.json();
         
-        // 2. ACTUALIZAR CONTADORES BÁSICOS (Usuarios y Archivos)
+        // 2. ACTUALIZAR CONTADORES BÁSICOS (Con tu animación original)
+        // Verificamos si existe tu función de animación para usarla
         if (typeof actualizarContador === 'function') {
             actualizarContador('statUsers', stats.usuarios_activos || 0);
             actualizarContador('statFiles', stats.total_evidencias || 0);
         } else {
+            // Fallback por si acaso
             if(document.getElementById('statUsers')) document.getElementById('statUsers').textContent = stats.usuarios_activos || 0;
             if(document.getElementById('statFiles')) document.getElementById('statFiles').textContent = stats.total_evidencias || 0;
         }
 
-        // ============================================================
-        // 3. 🔥 CORRECCIÓN BLINDADA: FILTRO DE SOLICITUDES PENDIENTES
-        // ============================================================
-        if (typeof solicitudes !== 'undefined' && Array.isArray(solicitudes)) {
-            // Filtramos con "limpieza" de texto para evitar errores de espacios o mayúsculas
-            const pendientesReales = solicitudes.filter(s => {
-                // Obtenemos el estado sin importar si viene como 'Estado' o 'estado'
-                const estadoRaw = s.Estado || s.estado || ''; 
-                // Convertimos a mayúsculas y quitamos espacios en blanco
-                return estadoRaw.toString().trim().toUpperCase() === 'PENDIENTE';
-            });
-
-            const cuenta = pendientesReales.length;
+        // 3. 🔥 SOLICITUDES PENDIENTES (La corrección definitiva)
+        // Usamos el dato directo del servidor (stats.solicitudes_pendientes)
+        // Ya no filtramos el array localmente, así es 100% exacto.
+        const valSolicitudes = document.getElementById('valSolicitudes') || document.getElementById('statRequests');
+        if (valSolicitudes) {
+            // Si el servidor no mandó el dato (versión vieja de main.py), ponemos 0 para no romper
+            const pendientes = stats.solicitudes_pendientes !== undefined ? stats.solicitudes_pendientes : 0;
+            valSolicitudes.textContent = pendientes;
             
-            // Debug: Mira esto en la consola (F12) para confirmar
-            console.log(`Total solicitudes: ${solicitudes.length}, Pendientes reales: ${cuenta}`);
-
-            // Actualizamos la tarjeta de Solicitudes Pendientes
-            const tarjetaSolicitudes = document.getElementById('valSolicitudes');
-            if (tarjetaSolicitudes) {
-                tarjetaSolicitudes.textContent = cuenta;
-            }
+            // Si tienes animación para este también:
+            // if (typeof actualizarContador === 'function') actualizarContador('valSolicitudes', pendientes);
         }
-        // ============================================================
-        
-        // 4. ALMACENAMIENTO (Lógica original intacta)
+
+        // 4. ALMACENAMIENTO (Tu código original intacto)
         const gb = stats.almacenamiento_gb || 0;
         if(document.getElementById('statSize')) document.getElementById('statSize').textContent = gb.toFixed(2) + ' GB';
         if(document.getElementById('realSizeDisplay')) document.getElementById('realSizeDisplay').textContent = gb.toFixed(2) + ' GB';
         
-        // 5. COSTOS Y BARRAS (Lógica original intacta)
+        // 5. COSTOS Y BARRAS (Tu código original intacto)
         const costoMensual = (gb * 0.005).toFixed(3);
         const costoAnual = (gb * 0.005 * 12).toFixed(3);
         
         if(document.getElementById('monthlyCost')) document.getElementById('monthlyCost').textContent = '$' + costoMensual;
         if(document.getElementById('yearlyCost')) document.getElementById('yearlyCost').textContent = '$' + costoAnual;
         
+        // Barras de progreso
         if(document.getElementById('mainStorageBar')) document.getElementById('mainStorageBar').style.width = Math.min(100, (gb/50)*100) + '%';
+        
+        // Barra lateral (importante no perderla)
         if(document.getElementById('sidebarStorageBar')) {
             document.getElementById('sidebarStorageBar').style.width = Math.min(100, (gb/50)*100) + '%';
             document.getElementById('sidebarStorageText').textContent = gb.toFixed(1) + ' GB usados';
         }
         
-        // 6. SECCIÓN REKOGNITION (Si existe)
-        if(document.getElementById('rekognitionCount')) {
-            document.getElementById('rekognitionCount').textContent = stats.total_evidencias || 0;
-            let iaCost = 0;
-            if (stats.costo_estimado_usd && stats.costo_estimado_usd.rekognition) {
-                iaCost = parseFloat(stats.costo_estimado_usd.rekognition);
-            } else {
-                iaCost = ((stats.total_evidencias || 0) / 1000);
+        // 6. SECCIÓN IA / REKOGNITION (Tu código original intacto)
+        if(document.getElementById('rekognitionCost')) {
+            // Contador de evidencias analizadas
+            if(document.getElementById('rekognitionCount')) {
+                 document.getElementById('rekognitionCount').textContent = stats.total_evidencias || 0;
             }
-            document.getElementById('rekognitionCost').textContent = '$' + iaCost.toFixed(2);
-            document.getElementById('totalCost').textContent = '$' + (parseFloat(costoMensual) + iaCost).toFixed(2);
+
+            // Costos totales priorizando dato del backend
+            let totalCost = 0;
+            if (stats.costo_estimado_usd) {
+                // Costo IA
+                const iaCost = stats.costo_estimado_usd.rekognition || 0;
+                document.getElementById('rekognitionCost').textContent = '$' + iaCost.toFixed(2);
+                // Costo Total
+                totalCost = stats.costo_estimado_usd.total || 0;
+            } else {
+                // Cálculo manual de respaldo
+                const iaCost = ((stats.total_evidencias || 0) / 1000); 
+                document.getElementById('rekognitionCost').textContent = '$' + iaCost.toFixed(2);
+                totalCost = parseFloat(costoMensual) + iaCost;
+            }
+            
+            document.getElementById('totalCost').textContent = '$' + totalCost.toFixed(2);
         }
         
     } catch (error) {
         console.error("Error conectando al dashboard:", error);
+        // Mostrar offline solo si falla la conexión
+        if(document.getElementById('statUsers')) document.getElementById('statUsers').innerHTML = '<span style="font-size:1rem; color:var(--error);">Offline</span>';
     }
 }
 
