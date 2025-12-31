@@ -1454,54 +1454,100 @@
 
     // Inicializar al cargar
     document.addEventListener('DOMContentLoaded', function() {
-        // Verificar Admin
-        const tipoUsuario = localStorage.getItem('usuario_tipo');
-        if (tipoUsuario !== "0") {
-            Swal.fire({
-                title: 'Acceso restringido',
-                text: 'Solo administradores pueden acceder a esta sección',
-                icon: 'error',
-                confirmButtonColor: '#6A0DAD'
-            }).then(() => {
-                window.location.href = "index.html";
-            });
-            return;
-        }
+    // 1. Verificar Admin
+    const tipoUsuario = localStorage.getItem('usuario_tipo');
+    if (tipoUsuario !== "0") {
+        Swal.fire({
+            title: 'Acceso restringido',
+            text: 'Solo administradores pueden acceder a esta sección',
+            icon: 'error',
+            confirmButtonColor: '#6A0DAD'
+        }).then(() => {
+            window.location.href = "index.html";
+        });
+        return;
+    }
 
-        // --- CARGA DE DATOS Y CONFIGURACIÓN (OPTIMIZADO) ---
-        inicializarTema();
+    // =========================================================
+    // 2. NUEVA LÓGICA DE TEMA (BD > NAVEGADOR) - AGREGADO
+    // =========================================================
+    try {
+        // Recuperamos al usuario de la memoria temporal
+        const usuarioGuardado = sessionStorage.getItem('usuario');
+        let usuarioLogueado = null;
+        if (usuarioGuardado) usuarioLogueado = JSON.parse(usuarioGuardado);
+
+        let temaInicial = 'light';
         
-        // TRUCO DE VELOCIDAD: 
-        // 1. Cargamos los números del Dashboard y notificaciones INMEDIATAMENTE (sin esperar a la tabla)
-        actualizarDatosDashboard(); 
-        cargarSolicitudesPendientes();
+        // Prioridad 1: Lo que diga la Base de Datos (1 = Oscuro)
+        if (usuarioLogueado && usuarioLogueado.tema === 1) {
+            temaInicial = 'dark';
+        } 
+        // Prioridad 2: Lo que diga el navegador si no hay dato en BD
+        else if (localStorage.getItem('theme') === 'dark') {
+            temaInicial = 'dark';
+        }
         
-        // 2. Y al mismo tiempo, cargamos las tablas pesadas (Usuarios, Evidencias, Logs)
-        cargarDatosIniciales();
+        // Aplicar al cuerpo de la página
+        document.body.setAttribute('data-theme', temaInicial);
         
-        // Configurar todas las funciones interactivas
-        configurarFormularios();
-        configurarDragAndDrop();      
-        configurarEventosTeclado();   
+        // Buscar y ajustar el icono (busca ambos IDs por seguridad)
+        let iconTheme = document.querySelector('#themeBtn i');
+        if (!iconTheme) iconTheme = document.querySelector('#themeToggle i');
         
-        // Iniciar actualizaciones automáticas (para que se refresque cada 10s)
-        iniciarActualizacionesAutomaticas();
-        
-        // --- EVENTOS DEL MENÚ Y UI ---
-        document.getElementById('menuToggle').addEventListener('click', () => {
+        if(iconTheme) {
+            iconTheme.className = temaInicial === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        }
+    } catch (e) { console.error("Error aplicando tema:", e); }
+    // =========================================================
+
+
+    // --- CARGA DE DATOS Y CONFIGURACIÓN (OPTIMIZADO) ---
+    // (Mantenemos inicializarTema por si tiene otras configuraciones, pero la lógica de arriba manda)
+    if(typeof inicializarTema === 'function') inicializarTema();
+    
+    // TRUCO DE VELOCIDAD: 
+    // 1. Cargamos los números del Dashboard y notificaciones INMEDIATAMENTE
+    actualizarDatosDashboard(); 
+    cargarSolicitudesPendientes();
+    
+    // 2. Y al mismo tiempo, cargamos las tablas pesadas (Usuarios, Evidencias, Logs)
+    cargarDatosIniciales();
+    
+    // Configurar todas las funciones interactivas
+    configurarFormularios();
+    configurarDragAndDrop();      
+    configurarEventosTeclado();   
+    
+    // Iniciar actualizaciones automáticas existentes
+    iniciarActualizacionesAutomaticas();
+
+    // --- NUEVO: ACTUALIZACIÓN DE LOGS CADA 5 SEGUNDOS ---
+    if(typeof cargarLogs === 'function') {
+        setInterval(cargarLogs, 5000);
+    }
+    // ----------------------------------------------------
+    
+    // --- EVENTOS DEL MENÚ Y UI ---
+    const menuToggle = document.getElementById('menuToggle');
+    if(menuToggle) {
+        menuToggle.addEventListener('click', () => {
             document.getElementById('sidebar').classList.toggle('active');
         });
-        
-        // Cerrar menús al hacer clic fuera
-        document.addEventListener('click', (e) => {
-            if (window.innerWidth <= 992 && !e.target.closest('#sidebar') && !e.target.closest('#menuToggle')) {
-                document.getElementById('sidebar').classList.remove('active');
-            }
-            if (!e.target.closest('.notis-dropdown') && !e.target.closest('.btn-icon-header')) {
-                document.getElementById('notisDropdown').classList.remove('active');
-            }
-        });
+    }
+    
+    // Cerrar menús al hacer clic fuera
+    document.addEventListener('click', (e) => {
+        if (window.innerWidth <= 992 && !e.target.closest('#sidebar') && !e.target.closest('#menuToggle')) {
+            const sidebar = document.getElementById('sidebar');
+            if(sidebar) sidebar.classList.remove('active');
+        }
+        if (!e.target.closest('.notis-dropdown') && !e.target.closest('.btn-icon-header')) {
+            const notis = document.getElementById('notisDropdown');
+            if(notis) notis.classList.remove('active');
+        }
     });
+});
 
     const tipoUsuario = localStorage.getItem('usuario_tipo');
     
@@ -1783,23 +1829,30 @@
 
     async function toggleTheme() {
         const body = document.body;
+        // 1. Alternar clase en el body
         const currentTheme = body.getAttribute('data-theme');
         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        const icon = document.querySelector('#themeToggle i');
-        
-        // 1. Cambiar visualmente (Rápido)
         body.setAttribute('data-theme', newTheme);
-        if (icon) icon.className = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        
+        // 2. Alternar icono (CORREGIDO: Busca 'themeBtn' O 'themeToggle' por si acaso)
+        let icon = document.querySelector('#themeBtn i');
+        if (!icon) icon = document.querySelector('#themeToggle i'); // Intento secundario
+        
+        if (icon) {
+            icon.className = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        }
+
+        // 3. Guardar en navegador
         localStorage.setItem('theme', newTheme);
 
-        // 2. Guardar en la Nube (Base de Datos)
+        // 4. Guardar en Base de Datos (Si el usuario existe)
         if(usuarioLogueado && usuarioLogueado.cedula) {
-            // Actualizamos la memoria del navegador
-            usuarioLogueado.tema = newTheme === 'dark' ? 1 : 0;
-            sessionStorage.setItem('usuario', JSON.stringify(usuarioLogueado));
-            
-            // Enviamos al servidor (Backend)
             try {
+                // Actualizamos memoria local
+                usuarioLogueado.tema = newTheme === 'dark' ? 1 : 0;
+                sessionStorage.setItem('usuario', JSON.stringify(usuarioLogueado));
+                
+                // Enviamos al servidor
                 await fetch(`${API_URL}/actualizar_tema`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
