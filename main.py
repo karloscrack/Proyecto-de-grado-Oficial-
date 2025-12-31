@@ -1258,12 +1258,12 @@ async def subir_manual(
 
 @app.get("/crear_backup")
 async def crear_backup():
-    """Genera un archivo SQL con los datos actuales de Supabase (PostgreSQL)"""
+    """Genera un archivo SQL con los datos REALES de Supabase"""
     try:
         conn = get_db_connection()
-        c = conn.cursor()
+        c = conn.cursor() # Usamos cursor normal (RealDictCursor a veces complica el orden en backups)
         
-        # Buffer en memoria para escribir el SQL
+        # Buffer en memoria
         output = io.StringIO()
         output.write(f"-- RESPALDO SISTEMA DESPERTAR --\n")
         output.write(f"-- FECHA: {ahora_ecuador()} --\n\n")
@@ -1272,27 +1272,35 @@ async def crear_backup():
         
         for tabla in tablas:
             try:
+                # 1. Obtener datos
                 c.execute(f"SELECT * FROM {tabla}")
                 filas = c.fetchall()
+                
+                # 2. Obtener nombres de columnas exactos
                 columnas = [desc[0] for desc in c.description]
+                cols_str = ", ".join(columnas)
                 
                 output.write(f"\n-- DATA TABLE: {tabla} --\n")
                 
                 for fila in filas:
                     vals = []
-                    for val in fila:
+                    # fila es una tupla o lista, así que iteramos directamente sus valores
+                    # NOTA: Al quitar RealDictCursor solo para esta función, garantizamos el orden
+                    for val in fila: 
                         if val is None:
                             vals.append("NULL")
                         elif isinstance(val, (int, float)):
                             vals.append(str(val))
+                        elif isinstance(val, bool):
+                            vals.append("TRUE" if val else "FALSE")
                         else:
-                            # Escapar comillas simples para SQL
+                            # Escapar comillas simples para que no rompa el SQL
                             clean_val = str(val).replace("'", "''")
                             vals.append(f"'{clean_val}'")
                     
-                    cols_str = ", ".join(columnas)
                     vals_str = ", ".join(vals)
                     output.write(f"INSERT INTO {tabla} ({cols_str}) VALUES ({vals_str});\n")
+                    
             except Exception as e_tab:
                 output.write(f"-- Error exportando tabla {tabla}: {e_tab} --\n")
 
@@ -1302,7 +1310,6 @@ async def crear_backup():
         fecha_str = ahora_ecuador().strftime("%Y%m%d_%H%M")
         nombre_archivo = f"backup_completo_{fecha_str}.sql"
         
-        # Convertir a bytes para la descarga
         mem_bytes = io.BytesIO(output.getvalue().encode('utf-8'))
         output.close()
         mem_bytes.seek(0)
