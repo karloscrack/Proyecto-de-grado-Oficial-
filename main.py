@@ -1766,31 +1766,36 @@ async def reportar_evidencia(
     background_tasks: BackgroundTasks,
     id_evidencia: int = Form(...),
     motivo: str = Form(...),
-    cedula_solicitante: str = Form(...)
+    cedula: str = Form(...) # ✅ CORREGIDO: Ahora coincide con tu HTML
 ):
     conn = None
     try:
         conn = get_db_connection()
         c = conn.cursor(cursor_factory=RealDictCursor)
         
-        # 1. Obtener datos del usuario para el registro
-        c.execute("SELECT * FROM Usuarios WHERE CI = %s", (cedula_solicitante,))
+        # 1. Obtener datos del usuario (para registro interno)
+        c.execute("SELECT * FROM Usuarios WHERE CI = %s", (cedula.strip(),))
         usuario = c.fetchone()
-        email_usuario = usuario['email'] if usuario else 'Sin correo'
+        email_usuario = usuario.get('email') if usuario else 'Sin correo'
         
         # 2. Crear la Solicitud en la Base de Datos
-        # (Esto es lo importante: que aparezca en tu panel)
+        # Esto hace que aparezca en tu Panel de Admin
+        detalle_reporte = f"Reporte de evidencia ID {id_evidencia}. Motivo: {motivo}"
+        
         c.execute("""
             INSERT INTO Solicitudes (Tipo, CI_Solicitante, Email, Detalle, Id_Evidencia, Estado, Fecha)
             VALUES ('REPORTE_EVIDENCIA', %s, %s, %s, %s, 'PENDIENTE', %s)
-        """, (cedula_solicitante, email_usuario, f"Reporte de evidencia ID {id_evidencia}. Motivo: {motivo}", id_evidencia, ahora_ecuador()))
+        """, (cedula, email_usuario, detalle_reporte, id_evidencia, ahora_ecuador()))
         
         conn.commit()
+        
+        # ❌ SIN CORREO: Hemos quitado la línea que enviaba emails para evitar SPAM.
         
         return JSONResponse({"status": "ok", "mensaje": "Reporte enviado al administrador."})
 
     except Exception as e:
         if conn: conn.rollback()
+        print(f"Error en reporte: {e}")
         return JSONResponse({"status": "error", "mensaje": str(e)})
     finally:
         if conn: conn.close()
