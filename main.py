@@ -1763,48 +1763,34 @@ async def solicitar_subida(
 
 @app.post("/reportar_evidencia")
 async def reportar_evidencia(
-    background_tasks: BackgroundTasks, # Necesario para enviar el correo
-    cedula: str = Form(...),
+    background_tasks: BackgroundTasks,
     id_evidencia: int = Form(...),
-    motivo: str = Form(...)
+    motivo: str = Form(...),
+    cedula_solicitante: str = Form(...)
 ):
     conn = None
     try:
         conn = get_db_connection()
         c = conn.cursor(cursor_factory=RealDictCursor)
         
-        # 1. Obtener datos del estudiante para el correo
-        c.execute("SELECT Nombre, Apellido, Email FROM Usuarios WHERE CI = %s", (cedula.strip(),))
-        user = c.fetchone()
-        nombre_est = f"{user['nombre']} {user['apellido']}" if user else cedula
-        email_est = user['email'] if user else "Sin correo"
+        # 1. Obtener datos del usuario para el registro
+        c.execute("SELECT * FROM Usuarios WHERE CI = %s", (cedula_solicitante,))
+        usuario = c.fetchone()
+        email_usuario = usuario['email'] if usuario else 'Sin correo'
         
-        # 2. Insertar la solicitud en la base de datos
-        detalle = f"Reporte de evidencia ID {id_evidencia}. Motivo: {motivo}"
-        
+        # 2. Crear la Solicitud en la Base de Datos
+        # (Esto es lo importante: que aparezca en tu panel)
         c.execute("""
             INSERT INTO Solicitudes (Tipo, CI_Solicitante, Email, Detalle, Id_Evidencia, Estado, Fecha)
             VALUES ('REPORTE_EVIDENCIA', %s, %s, %s, %s, 'PENDIENTE', %s)
-        """, (cedula, email_est, detalle, id_evidencia, ahora_ecuador()))
+        """, (cedula_solicitante, email_usuario, f"Reporte de evidencia ID {id_evidencia}. Motivo: {motivo}", id_evidencia, ahora_ecuador()))
         
         conn.commit()
-        
-        # 3. ENVIAR CORREO AL ADMIN (Lo que faltaba)
-        asunto = "🚨 Reporte de Evidencia Incorrecta"
-        cuerpo = f"""
-        <h2>Reporte de Estudiante</h2>
-        <p><strong>Estudiante:</strong> {nombre_est} ({cedula})</p>
-        <p><strong>Evidencia Reportada (ID):</strong> {id_evidencia}</p>
-        <p><strong>Motivo:</strong> {motivo}</p>
-        <hr>
-        <p>Por favor revisa el panel de administración para eliminar la evidencia si es necesario.</p>
-        """
-        background_tasks.add_task(enviar_correo_real, "karlos.ayala.lopez.1234@gmail.com", asunto, cuerpo, True)
         
         return JSONResponse({"status": "ok", "mensaje": "Reporte enviado al administrador."})
 
     except Exception as e:
-        print(f"Error reporte: {e}")
+        if conn: conn.rollback()
         return JSONResponse({"status": "error", "mensaje": str(e)})
     finally:
         if conn: conn.close()
@@ -1857,68 +1843,68 @@ async def gestionar_solicitud(
         if not sol:
             return JSONResponse({"status": "error", "mensaje": "Solicitud no encontrada"})
 
-        # Extraemos datos clave (Soporte para mayúsculas/minúsculas de Postgres)
+        # Recuperar datos clave (Soporta mayúsculas/minúsculas de la BD)
         tipo = sol.get('tipo') or sol.get('Tipo')
-        # Aquí aseguramos obtener el ID correctamente
-        id_evidencia = sol.get('id_evidencia') or sol.get('Id_Evidencia') 
+        id_evidencia = sol.get('id_evidencia') or sol.get('Id_Evidencia')
         email_usuario = sol.get('email') or sol.get('Email')
 
         # ---------------------------------------------------------
-        # 2. EJECUTAR ACCIONES AUTOMÁTICAS SEGÚN EL TIPO
+        # 2. LÓGICA DE GESTIÓN (AQUÍ ESTÁ LA MAGIA)
         # ---------------------------------------------------------
 
-        # --- CASO A: REPORTE "NO SOY YO" (CORREGIDO) ---
+        # --- CASO A: REPORTE "NO SOY YO" ---
         if tipo == 'REPORTE_EVIDENCIA':
             if accion == 'APROBADA':
                 if id_evidencia:
-                    # PASO 1: Buscar la URL antes de borrar el registro
+                    # PASO 1: Obtener la URL del archivo ANTES de borrar el registro
                     c.execute("SELECT Url_Archivo FROM Evidencias WHERE id = %s", (id_evidencia,))
                     ev_data = c.fetchone()
                     
+                    # PASO 2: Borrar archivo físico de la nube (S3/Backblaze)
                     if ev_data:
-                        # Borrado Físico de la Nube (Backblaze/S3)
                         url = ev_data.get('Url_Archivo') or ev_data.get('url_archivo')
-                        if url and s3_client and BUCKET_NAME and "backblazeb2.com" in url:
+                        # Verificamos si tenemos conexión a S3 y si la URL es de la nube
+                        if url and s3_client and BUCKET_NAME:
                             try:
-                                partes = url.split(f"/file/{BUCKET_NAME}/")
-                                if len(partes) > 1:
-                                    s3_client.delete_object(Bucket=BUCKET_NAME, Key=partes[1])
-                                    print(f"🗑️ Archivo físico eliminado de la nube: {partes[1]}")
+                                # Truco: Extraer la "Key" (nombre del archivo) de la URL
+                                # Ejemplo URL: https://.../file/mi-bucket/evidencias/foto.jpg
+                                # Key necesaria: evidencias/foto.jpg
+                                if f"/file/{BUCKET_NAME}/" in url:
+                                    file_key = url.split(f"/file/{BUCKET_NAME}/")[1]
+                                    s3_client.delete_object(Bucket=BUCKET_NAME, Key=file_key)
+                                    print(f"✅ Archivo físico eliminado: {file_key}")
                             except Exception as e:
-                                print(f"⚠️ Alerta: No se pudo borrar de la nube: {e}")
+                                print(f"⚠️ Error intentando borrar de S3 (No crítico): {e}")
 
-                        # PASO 2: Borrar de la Base de Datos
+                        # PASO 3: Borrar el registro de la Base de Datos
                         c.execute("DELETE FROM Evidencias WHERE id = %s", (id_evidencia,))
-                        print(f"✅ Registro de evidencia {id_evidencia} eliminado de la BD.")
-                    else:
-                        print(f"⚠️ La evidencia {id_evidencia} ya no existía en la BD.")
-
             else:
-                # Si se rechaza, no hacemos nada (la evidencia se queda)
+                # Si rechazamos el reporte, la foto se queda.
                 pass
 
         # --- CASO B: SUBIR EVIDENCIA ---
         elif tipo == 'SUBIR_EVIDENCIA':
             if accion == 'APROBADA':
                 if id_evidencia:
+                    # Hacemos visible la evidencia (Estado 1)
                     c.execute("UPDATE Evidencias SET Estado = 1 WHERE id = %s", (id_evidencia,))
             else:
-                # Si rechaza, BORRAMOS el archivo pendiente
+                # Si rechazamos, borramos el archivo pendiente para no ocupar espacio
                 if id_evidencia:
-                    # También intentamos borrar el físico si existe
+                    # También intentamos borrar el físico si es posible
                     c.execute("SELECT Url_Archivo FROM Evidencias WHERE id = %s", (id_evidencia,))
                     ev_data = c.fetchone()
                     if ev_data:
-                        url = ev_data.get('Url_Archivo') or ev_data.get('url_archivo')
-                        if url and s3_client and BUCKET_NAME and "backblazeb2.com" in url:
+                        url = ev_data.get('Url_Archivo')
+                        if url and s3_client and BUCKET_NAME and f"/file/{BUCKET_NAME}/" in url:
                             try:
-                                partes = url.split(f"/file/{BUCKET_NAME}/")
-                                if len(partes) > 1: s3_client.delete_object(Bucket=BUCKET_NAME, Key=partes[1])
+                                key = url.split(f"/file/{BUCKET_NAME}/")[1]
+                                s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
                             except: pass
                     
                     c.execute("DELETE FROM Evidencias WHERE id = %s", (id_evidencia,))
 
-        # --- CASO C: RECUPERACIÓN DE CONTRASEÑA ---
+        # --- CASO C: RECUPERACIÓN DE CONTRASEÑA (ÚNICO QUE ENVÍA CORREO) ---
         elif tipo == 'RECUPERACION_CONTRASENA':
             if accion == 'APROBADA':
                 asunto = "🔐 Recuperación de Acceso - U.E. Despertar"
@@ -1928,13 +1914,14 @@ async def gestionar_solicitud(
                 <p><strong>Tu contraseña/respuesta es:</strong></p>
                 <h2 style="color:#6A0DAD;">{mensaje}</h2>
                 <hr>
-                <p>Intenta ingresar nuevamente en la biblioteca.</p>
+                <p>Intenta ingresar nuevamente.</p>
                 """
                 if email_usuario and '@' in email_usuario:
+                    # ✅ ESTE SÍ ENVÍA CORREO
                     background_tasks.add_task(enviar_correo_real, email_usuario, asunto, cuerpo)
 
         # ---------------------------------------------------------
-        # 3. ACTUALIZAR LA SOLICITUD (HISTORIAL COMPLETO)
+        # 3. ACTUALIZAR HISTORIAL
         # ---------------------------------------------------------
         c.execute("""
             UPDATE Solicitudes 
@@ -1947,7 +1934,7 @@ async def gestionar_solicitud(
 
     except Exception as e:
         if conn: conn.rollback()
-        print(f"Error en gestionar_solicitud: {e}") 
+        print(f"Error gestionando solicitud: {e}")
         return JSONResponse({"status": "error", "mensaje": str(e)})
     finally:
         if conn: conn.close()
