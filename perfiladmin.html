@@ -2921,15 +2921,31 @@ async function eliminarEvidenciaActual() {
     // ==========================================
     async function cargarLogs() {
         try {
-            const respuesta = await fetch(`${API_URL}/obtener_logs`);
-            logs = await respuesta.json();
-            renderizarLogs();
-            mostrarMensaje('Logs actualizados', 'success');
+            // TRUCO ANTI-CACHÉ: Agregamos ?t=tiempo_actual a la URL
+            // Esto obliga al navegador a pedir datos frescos SIEMPRE.
+            const tiempo = new Date().getTime();
+            const respuesta = await fetch(`${API_URL}/obtener_logs?t=${tiempo}`);
+            
+            if (!respuesta.ok) throw new Error("Error al obtener logs");
+
+            logs = await respuesta.json(); // Actualizamos la variable global 'logs'
+            renderizarLogs(); // Dibujamos la tabla
+            
+            // Opcional: Actualizar contador si tienes uno
+            // console.log("Logs actualizados: " + logs.length);
+            
         } catch (error) {
-            console.error('Error cargando logs:', error);
-            mostrarMensaje('Error al cargar logs: ' + error.message, 'error');
+            console.error('Error silencioso cargando logs:', error);
+            // No mostramos alerta para no interrumpir al usuario cada 5 segundos
         }
     }
+
+    // ==========================================
+    // 2. AGREGA ESTO AL FINAL DE TU SCRIPT O EN initDashboard()
+    // ==========================================
+    
+    // Esto hace que la tabla se actualice sola cada 5 segundos
+    setInterval(cargarLogs, 5000);
 
     function renderizarLogs() {
         const tbody = document.getElementById('logsTableBody');
