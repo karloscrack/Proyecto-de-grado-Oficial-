@@ -740,7 +740,7 @@ async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
 @app.post("/buscar_estudiante")
 async def buscar_estudiante(cedula: str = Form(...)):
     """
-    Versión CORREGIDA: Usa el nombre de columna correcto (CI_Estudiante).
+    Versión BLINDADA: Ordena por ID para evitar errores con nombres de fechas.
     """
     conn = None
     try:
@@ -752,12 +752,13 @@ async def buscar_estudiante(cedula: str = Form(...)):
         u = c.fetchone()
         
         if u:
-            # Construir respuesta
+            # Construir respuesta con todos los datos necesarios
             datos = {
                 "id": u.get('id') or u.get('ID'),
                 "cedula": u.get('ci') or u.get('CI'),
                 "nombre": u.get('nombre') or u.get('Nombre'),
                 "apellido": u.get('apellido') or u.get('Apellido'),
+                # Buscamos la foto en todas sus posibles variantes de nombre
                 "url_foto": u.get('url_foto') or u.get('Url_Foto') or u.get('Foto') or u.get('foto') or "",
                 "email": u.get('email') or u.get('Email') or "",
                 "tipo": u.get('tipo') or u.get('Tipo'),
@@ -765,8 +766,9 @@ async def buscar_estudiante(cedula: str = Form(...)):
                 "galeria": [] 
             }
             
-            # 2. Buscar Evidencias (CORREGIDO: CI_Estudiante)
-            c.execute("SELECT * FROM Evidencias WHERE CI_Estudiante = %s ORDER BY Fecha_Subida DESC", (cedula.strip(),))
+            # 2. Buscar Evidencias (CORRECCIÓN AQUÍ: Usamos 'ORDER BY id DESC')
+            # El ID nunca falla. ID más alto = Foto más reciente.
+            c.execute("SELECT * FROM Evidencias WHERE CI_Estudiante = %s ORDER BY id DESC", (cedula.strip(),))
             evidencias = c.fetchall()
             if evidencias:
                 datos['galeria'] = [dict(row) for row in evidencias]
@@ -776,8 +778,8 @@ async def buscar_estudiante(cedula: str = Form(...)):
         return JSONResponse({"status": "error", "mensaje": "Usuario no encontrado"})
         
     except Exception as e:
-        print(f"❌ Error en buscar_estudiante: {e}")
-        return JSONResponse({"status": "error", "mensaje": f"Error interno: {str(e)}"})
+        print(f"❌ Error crítico en buscar_estudiante: {e}")
+        return JSONResponse({"status": "error", "mensaje": f"Error del servidor: {str(e)}"})
     finally:
         if conn: conn.close()
     
