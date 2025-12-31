@@ -1522,63 +1522,82 @@
     }
 
     async function actualizarDatosDashboard() {
-        try {
-            const res = await fetch(`${API_URL}/estadisticas_almacenamiento`);
-            
-            if (!res.ok) throw new Error("Error del servidor");
+    try {
+        // 1. OBTENER DATOS DEL SERVIDOR (Tu código original)
+        const res = await fetch(`${API_URL}/estadisticas_almacenamiento`);
+        
+        if (!res.ok) throw new Error("Error del servidor");
 
-            const stats = await res.json();
-            
-            // Actualizar contadores con animación simple
+        const stats = await res.json();
+        
+        // 2. ACTUALIZAR CONTADORES BÁSICOS (Tu código)
+        // Usamos la función actualizarContador si existe, si no, texto directo
+        if (typeof actualizarContador === 'function') {
             actualizarContador('statUsers', stats.usuarios_activos || 0);
             actualizarContador('statFiles', stats.total_evidencias || 0);
-            
-            // Almacenamiento
-            const gb = stats.almacenamiento_gb || 0;
-            document.getElementById('statSize').textContent = gb.toFixed(2) + ' GB';
-            document.getElementById('realSizeDisplay').textContent = gb.toFixed(2) + ' GB';
-            
-            // Costos
-            const costoMensual = (gb * 0.005).toFixed(3);
-            const costoAnual = (gb * 0.005 * 12).toFixed(3);
-            
-            document.getElementById('monthlyCost').textContent = '$' + costoMensual;
-            document.getElementById('yearlyCost').textContent = '$' + costoAnual;
-            
-            // Barras de progreso
-            document.getElementById('mainStorageBar').style.width = Math.min(100, (gb/50)*100) + '%';
-            if(document.getElementById('sidebarStorageBar')) {
-                document.getElementById('sidebarStorageBar').style.width = Math.min(100, (gb/50)*100) + '%';
-                document.getElementById('sidebarStorageText').textContent = gb.toFixed(1) + ' GB usados';
-            }
-            
-            // Sección Mantenimiento (Costos AWS)
-            if(document.getElementById('rekognitionCount')) {
-                document.getElementById('rekognitionCount').textContent = stats.total_evidencias || 0;
-                
-                // Priorizar datos precisos del backend si existen
-                let iaCost = 0;
-                if (stats.costo_estimado_usd && stats.costo_estimado_usd.rekognition) {
-                    iaCost = parseFloat(stats.costo_estimado_usd.rekognition);
-                } else {
-                    iaCost = ((stats.total_evidencias || 0) / 1000);
-                }
-                
-                document.getElementById('rekognitionCost').textContent = '$' + iaCost.toFixed(2);
-                
-                // Costo Total = Storage + IA
-                const totalMensual = (parseFloat(costoMensual) + iaCost).toFixed(2);
-                document.getElementById('totalCost').textContent = '$' + totalMensual;
-            }
-            
-        } catch (error) {
-            console.error("Error conectando al dashboard:", error);
-            // Mostrar visualmente que hay un error de conexión
-            document.getElementById('statUsers').innerHTML = '<span style="font-size:1rem; color:var(--error);">Offline</span>';
-            document.getElementById('statFiles').innerHTML = '<span style="font-size:1rem; color:var(--error);">Offline</span>';
-            document.getElementById('statSize').innerHTML = '<span style="font-size:1rem; color:var(--error);">Offline</span>';
+        } else {
+            if(document.getElementById('statUsers')) document.getElementById('statUsers').textContent = stats.usuarios_activos || 0;
+            if(document.getElementById('statFiles')) document.getElementById('statFiles').textContent = stats.total_evidencias || 0;
         }
+
+        // ============================================================
+        // 3. 🔥 LA CORRECCIÓN CLAVE: SOLICITUDES PENDIENTES
+        // ============================================================
+        // Verificamos que la lista global de solicitudes exista
+        if (typeof solicitudes !== 'undefined' && Array.isArray(solicitudes)) {
+            // Filtramos SOLO las que tienen estado 'PENDIENTE'
+            const totalPendientes = solicitudes.filter(s => (s.Estado || s.estado) === 'PENDIENTE').length;
+            
+            // Actualizamos el número en la tarjeta (buscamos el ID correcto)
+            const valSolicitudes = document.getElementById('valSolicitudes') || document.getElementById('statRequests');
+            if (valSolicitudes) {
+                valSolicitudes.textContent = totalPendientes;
+            }
+        }
+        // ============================================================
+        
+        // 4. ALMACENAMIENTO (Tu código intacto)
+        const gb = stats.almacenamiento_gb || 0;
+        if(document.getElementById('statSize')) document.getElementById('statSize').textContent = gb.toFixed(2) + ' GB';
+        if(document.getElementById('realSizeDisplay')) document.getElementById('realSizeDisplay').textContent = gb.toFixed(2) + ' GB';
+        
+        // 5. COSTOS (Tu código intacto)
+        const costoMensual = (gb * 0.005).toFixed(3);
+        const costoAnual = (gb * 0.005 * 12).toFixed(3);
+        
+        if(document.getElementById('monthlyCost')) document.getElementById('monthlyCost').textContent = '$' + costoMensual;
+        if(document.getElementById('yearlyCost')) document.getElementById('yearlyCost').textContent = '$' + costoAnual;
+        
+        // 6. BARRAS DE PROGRESO (Tu código intacto)
+        if(document.getElementById('mainStorageBar')) document.getElementById('mainStorageBar').style.width = Math.min(100, (gb/50)*100) + '%';
+        if(document.getElementById('sidebarStorageBar')) {
+            document.getElementById('sidebarStorageBar').style.width = Math.min(100, (gb/50)*100) + '%';
+            document.getElementById('sidebarStorageText').textContent = gb.toFixed(1) + ' GB usados';
+        }
+        
+        // 7. SECCIÓN MANTENIMIENTO / REKOGNITION (Tu código intacto)
+        if(document.getElementById('rekognitionCount')) {
+            document.getElementById('rekognitionCount').textContent = stats.total_evidencias || 0;
+            
+            let iaCost = 0;
+            if (stats.costo_estimado_usd && stats.costo_estimado_usd.rekognition) {
+                iaCost = parseFloat(stats.costo_estimado_usd.rekognition);
+            } else {
+                iaCost = ((stats.total_evidencias || 0) / 1000);
+            }
+            
+            document.getElementById('rekognitionCost').textContent = '$' + iaCost.toFixed(2);
+            
+            const totalMensual = (parseFloat(costoMensual) + iaCost).toFixed(2);
+            document.getElementById('totalCost').textContent = '$' + totalMensual;
+        }
+        
+    } catch (error) {
+        console.error("Error conectando al dashboard:", error);
+        // Mostrar error visualmente solo si fallan los elementos
+        if(document.getElementById('statUsers')) document.getElementById('statUsers').innerHTML = '<span style="font-size:1rem; color:var(--error);">Offline</span>';
     }
+}
 
     // Pequeña función auxiliar para animar los números (opcional, pero se ve profesional)
     function actualizarContador(id, valorFinal) {
