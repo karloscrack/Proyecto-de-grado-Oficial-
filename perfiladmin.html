@@ -1528,14 +1528,10 @@
 
         const stats = await res.json();
 
-        const valSolicitudes = document.getElementById('valSolicitudes');
+        const valSolicitudes = document.getElementById('statReqs'); 
         if (valSolicitudes) {
-            // Si el servidor no mandó el dato (versión vieja de main.py), ponemos 0 para no romper
-            const pendientes = stats.solicitudes_pendientes !== undefined ? stats.solicitudes_pendientes : 0;
+          // Usamos el dato que viene del servidor (o 0 si no llega)
             valSolicitudes.textContent = stats.solicitudes_pendientes || 0;
-            
-            // Si tienes animación para este también:
-            // if (typeof actualizarContador === 'function') actualizarContador('valSolicitudes', pendientes);
         }
 
         // 2. ACTUALIZAR CONTADORES BÁSICOS (Con tu animación original)
