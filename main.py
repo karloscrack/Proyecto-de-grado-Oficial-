@@ -1331,13 +1331,48 @@ async def crear_backup():
 @app.get("/descargar_multimedia_zip")
 async def descargar_multimedia_zip():
     """
-    Descarga evidencias S3 en un ZIP.
-    Incluye un archivo de diagnóstico para saber qué pasó si algo falla.
+    Descarga evidencias S3 en un ZIP usando RASTREO INTELIGENTE.
+    Escanea el bucket real para encontrar los archivos donde sea que estén.
     """
     try:
+        from urllib.parse import unquote # Importar aquí para asegurar
+
         if not s3_client or not BUCKET_NAME:
             return JSONResponse({"error": "S3 no configurado"}, status_code=500)
 
+        # 1. ESPIAR EL BUCKET (Mapa de Realidad)
+        # Averiguamos qué archivos existen FÍSICAMENTE en la nube
+        mapa_nube = {} # Clave: NombreArchivo -> Valor: RutaCompleta (Key)
+        log_diagnostico = []
+        log_diagnostico.append(f"INICIO: {ahora_ecuador()}")
+        
+        try:
+            print("🕵️ Escaneando bucket real...")
+            paginator = s3_client.get_paginator('list_objects_v2')
+            total_nube = 0
+            for page in paginator.paginate(Bucket=BUCKET_NAME):
+                if 'Contents' in page:
+                    for obj in page['Contents']:
+                        full_key = obj['Key']
+                        # Guardamos el nombre limpio para buscarlo después
+                        # Ej: evidencias/foto1.jpg -> Clave: foto1.jpg
+                        nombre_limpio = full_key.split('/')[-1]
+                        mapa_nube[nombre_limpio] = full_key
+                        total_nube += 1
+            
+            log_diagnostico.append(f"ARCHIVOS EN NUBE ENCONTRADOS: {total_nube}")
+            print(f"✅ Mapa de nube creado con {total_nube} archivos.")
+
+        except Exception as e_scan:
+            return JSONResponse({"error": f"Error escaneando bucket: {str(e_scan)}"}, status_code=500)
+
+        # 2. OBTENER DATOS DE LA BD
+        conn = get_db_connection()
+        conn.cursor_factory = None 
+        c = conn.cursor() # Cursor simple para velocidad
+        
+        # Leemos directo con RealDict para facilitar
+        conn.close()
         conn = get_db_connection()
         c = conn.cursor(cursor_factory=RealDictCursor)
         c.execute("SELECT * FROM Evidencias")
@@ -1347,78 +1382,67 @@ async def descargar_multimedia_zip():
         if not evidencias:
             return JSONResponse({"error": "Tabla Evidencias vacía"}, status_code=404)
 
-        # Buffer en memoria
+        # 3. EMPAREJAR Y DESCARGAR
         zip_buffer = io.BytesIO()
-        log_diagnostico = [] # Aquí guardaremos el reporte
         archivos_guardados = 0
 
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-            log_diagnostico.append(f"INICIO DEL PROCESO: {ahora_ecuador()}")
-            log_diagnostico.append(f"BUCKET CONFIGURADO: {BUCKET_NAME}")
-            log_diagnostico.append(f"TOTAL EVIDENCIAS EN BD: {len(evidencias)}")
-            log_diagnostico.append("-" * 30)
-
+            
             for ev in evidencias:
-                # Intentar obtener la URL (mayúsculas o minúsculas)
                 url = ev.get('Url_Archivo') or ev.get('url_archivo') or ""
                 id_ev = ev.get('id') or ev.get('ID')
                 
-                if not url:
-                    log_diagnostico.append(f"[ID {id_ev}] SALTADO: URL vacía.")
-                    continue
+                if not url: continue
 
-                # LÓGICA DE INTENTO DE DESCARGA
-                try:
-                    # 1. Intentamos extraer la KEY del archivo
-                    file_key = None
-                    
-                    # Caso A: URL estándar de Backblaze/S3
-                    if f"/file/{BUCKET_NAME}/" in url:
-                        file_key = url.split(f"/file/{BUCKET_NAME}/")[1]
-                    # Caso B: URL genérica (intentamos tomar lo último)
-                    elif BUCKET_NAME in url:
-                        # Si la URL contiene el bucket pero en otro formato, intentamos adivinar
-                        partes = url.split(BUCKET_NAME)
-                        if len(partes) > 1:
-                            # Tomamos lo que sigue al bucket y quitamos el primer slash si existe
-                            file_key = partes[1].lstrip('/')
-                    
-                    if file_key:
-                        # Descargar desde la nube
-                        file_obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=file_key)
+                # Extraemos solo el nombre del archivo de la URL de la base de datos
+                # Ej: https://.../evidencias/foto_perrito.jpg -> foto_perrito.jpg
+                nombre_buscado = url.split('/')[-1]
+                nombre_buscado = unquote(nombre_buscado) # Quitar %20 por espacios
+                
+                # BUSCAMOS EN EL MAPA REAL
+                real_key = mapa_nube.get(nombre_buscado)
+                
+                if real_key:
+                    try:
+                        # Descargar usando la RUTA REAL encontrada
+                        file_obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=real_key)
                         file_content = file_obj['Body'].read()
                         
-                        # Nombre limpio para el ZIP
-                        nombre_archivo = file_key.split('/')[-1]
-                        nombre_zip = f"evidencia_{id_ev}_{nombre_archivo}"
-                        
-                        zip_file.writestr(nombre_zip, file_content)
+                        # Guardar en ZIP
+                        zip_file.writestr(f"evidencia_{id_ev}_{nombre_buscado}", file_content)
                         archivos_guardados += 1
-                        log_diagnostico.append(f"[ID {id_ev}] OK: {nombre_archivo}")
-                    else:
-                        log_diagnostico.append(f"[ID {id_ev}] SALTADO: URL no coincide con bucket '{BUCKET_NAME}'. URL: {url}")
+                        log_diagnostico.append(f"[ID {id_ev}] OK: Encontrado en '{real_key}'")
+                    except Exception as e:
+                        log_diagnostico.append(f"[ID {id_ev}] ERROR DESCARGA: {str(e)}")
+                else:
+                    # Si no está en el mapa, es que no existe en el bucket
+                    log_diagnostico.append(f"[ID {id_ev}] PERDIDO: '{nombre_buscado}' no existe en el bucket.")
 
-                except Exception as e:
-                    log_diagnostico.append(f"[ID {id_ev}] ERROR: {str(e)}. URL: {url}")
+            # Reporte final
+            log_diagnostico.append("-" * 20)
+            log_diagnostico.append(f"TOTAL BD: {len(evidencias)}")
+            log_diagnostico.append(f"TOTAL RECUPERADOS: {archivos_guardados}")
+            
+            # Si no encontró nada, listamos los primeros 10 archivos que SÍ hay en la nube para dar pistas
+            if archivos_guardados == 0 and mapa_nube:
+                log_diagnostico.append("\n--- EJEMPLOS DE LO QUE SÍ HAY EN EL BUCKET ---")
+                ejemplos = list(mapa_nube.values())[:10]
+                for ej in ejemplos:
+                    log_diagnostico.append(f"EXISTE: {ej}")
 
-            # AGREGAR EL ARCHIVO DE DIAGNÓSTICO AL ZIP
-            # Esto asegura que el ZIP nunca esté vacío y puedas leer qué pasó
-            log_content = "\n".join(log_diagnostico)
-            zip_file.writestr("_LEEME_DIAGNOSTICO.txt", log_content)
+            zip_file.writestr("_REPORTE_RASTREO.txt", "\n".join(log_diagnostico))
 
-        # Preparar descarga
         zip_buffer.seek(0)
         fecha_str = ahora_ecuador().strftime("%Y%m%d_%H%M")
-        nombre_descarga = f"respaldo_multimedia_{fecha_str}.zip"
         
         return StreamingResponse(
             zip_buffer, 
             media_type="application/zip", 
-            headers={"Content-Disposition": f"attachment; filename={nombre_descarga}"}
+            headers={"Content-Disposition": f"attachment; filename=multimedia_smart_{fecha_str}.zip"}
         )
 
     except Exception as e:
-        print(f"❌ Error backup multimedia: {e}")
+        print(f"❌ Error crítico multimedia: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
 
 from urllib.parse import urlparse
