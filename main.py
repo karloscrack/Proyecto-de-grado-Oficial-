@@ -1843,7 +1843,7 @@ async def gestionar_solicitud(
     id_solicitud: int = Form(...),
     accion: str = Form(...), # 'APROBADA' o 'RECHAZADA'
     mensaje: str = Form(...),
-    id_admin: str = Form("Administrador") # Recibe el nombre real (ej: "Karlos Ayala")
+    id_admin: str = Form("Administrador")
 ):
     conn = None
     try:
@@ -1857,40 +1857,70 @@ async def gestionar_solicitud(
         if not sol:
             return JSONResponse({"status": "error", "mensaje": "Solicitud no encontrada"})
 
-        # Extraemos datos clave para la lógica automática
-        tipo = sol['tipo']
-        id_evidencia = sol.get('id_evidencia')
-        email_usuario = sol.get('email')
+        # Extraemos datos clave (Soporte para mayúsculas/minúsculas de Postgres)
+        tipo = sol.get('tipo') or sol.get('Tipo')
+        # Aquí aseguramos obtener el ID correctamente
+        id_evidencia = sol.get('id_evidencia') or sol.get('Id_Evidencia') 
+        email_usuario = sol.get('email') or sol.get('Email')
 
         # ---------------------------------------------------------
         # 2. EJECUTAR ACCIONES AUTOMÁTICAS SEGÚN EL TIPO
         # ---------------------------------------------------------
 
-        # --- CASO A: REPORTE "NO SOY YO" ---
+        # --- CASO A: REPORTE "NO SOY YO" (CORREGIDO) ---
         if tipo == 'REPORTE_EVIDENCIA':
             if accion == 'APROBADA':
-                # Si el admin aprueba el reporte, BORRAMOS la evidencia
                 if id_evidencia:
-                    c.execute("DELETE FROM Evidencias WHERE id = %s", (id_evidencia,))
+                    # PASO 1: Buscar la URL antes de borrar el registro
+                    c.execute("SELECT Url_Archivo FROM Evidencias WHERE id = %s", (id_evidencia,))
+                    ev_data = c.fetchone()
+                    
+                    if ev_data:
+                        # Borrado Físico de la Nube (Backblaze/S3)
+                        url = ev_data.get('Url_Archivo') or ev_data.get('url_archivo')
+                        if url and s3_client and BUCKET_NAME and "backblazeb2.com" in url:
+                            try:
+                                partes = url.split(f"/file/{BUCKET_NAME}/")
+                                if len(partes) > 1:
+                                    s3_client.delete_object(Bucket=BUCKET_NAME, Key=partes[1])
+                                    print(f"🗑️ Archivo físico eliminado de la nube: {partes[1]}")
+                            except Exception as e:
+                                print(f"⚠️ Alerta: No se pudo borrar de la nube: {e}")
+
+                        # PASO 2: Borrar de la Base de Datos
+                        c.execute("DELETE FROM Evidencias WHERE id = %s", (id_evidencia,))
+                        print(f"✅ Registro de evidencia {id_evidencia} eliminado de la BD.")
+                    else:
+                        print(f"⚠️ La evidencia {id_evidencia} ya no existía en la BD.")
+
             else:
-                # Si rechaza el reporte, la evidencia se mantiene
+                # Si se rechaza, no hacemos nada (la evidencia se queda)
                 pass
 
         # --- CASO B: SUBIR EVIDENCIA ---
         elif tipo == 'SUBIR_EVIDENCIA':
             if accion == 'APROBADA':
-                # Si admin acepta, PUBLICAMOS la evidencia (Estado 1)
                 if id_evidencia:
                     c.execute("UPDATE Evidencias SET Estado = 1 WHERE id = %s", (id_evidencia,))
             else:
-                # Si rechaza, BORRAMOS el archivo pendiente para liberar espacio
+                # Si rechaza, BORRAMOS el archivo pendiente
                 if id_evidencia:
+                    # También intentamos borrar el físico si existe
+                    c.execute("SELECT Url_Archivo FROM Evidencias WHERE id = %s", (id_evidencia,))
+                    ev_data = c.fetchone()
+                    if ev_data:
+                        url = ev_data.get('Url_Archivo') or ev_data.get('url_archivo')
+                        if url and s3_client and BUCKET_NAME and "backblazeb2.com" in url:
+                            try:
+                                partes = url.split(f"/file/{BUCKET_NAME}/")
+                                if len(partes) > 1: s3_client.delete_object(Bucket=BUCKET_NAME, Key=partes[1])
+                            except: pass
+                    
                     c.execute("DELETE FROM Evidencias WHERE id = %s", (id_evidencia,))
 
         # --- CASO C: RECUPERACIÓN DE CONTRASEÑA ---
         elif tipo == 'RECUPERACION_CONTRASENA':
             if accion == 'APROBADA':
-                # Enviamos el correo AUTOMÁTICAMENTE
                 asunto = "🔐 Recuperación de Acceso - U.E. Despertar"
                 cuerpo = f"""
                 <h3>Hola, hemos procesado tu solicitud.</h3>
@@ -1900,14 +1930,12 @@ async def gestionar_solicitud(
                 <hr>
                 <p>Intenta ingresar nuevamente en la biblioteca.</p>
                 """
-                # Validación de seguridad para el email
                 if email_usuario and '@' in email_usuario:
                     background_tasks.add_task(enviar_correo_real, email_usuario, asunto, cuerpo)
 
         # ---------------------------------------------------------
         # 3. ACTUALIZAR LA SOLICITUD (HISTORIAL COMPLETO)
         # ---------------------------------------------------------
-        # Aquí guardamos el estado, la respuesta, QUIÉN lo hizo y CUÁNDO
         c.execute("""
             UPDATE Solicitudes 
             SET Estado = %s, Respuesta = %s, Id_Admin = %s, Fecha_Resolucion = %s
@@ -1915,11 +1943,10 @@ async def gestionar_solicitud(
         """, (accion, mensaje, id_admin, ahora_ecuador(), id_solicitud))
         
         conn.commit()
-        return JSONResponse({"status": "ok", "mensaje": "Acción ejecutada y notificada correctamente."})
+        return JSONResponse({"status": "ok", "mensaje": "Acción ejecutada correctamente."})
 
     except Exception as e:
         if conn: conn.rollback()
-        # Imprimimos el error en los logs para depuración
         print(f"Error en gestionar_solicitud: {e}") 
         return JSONResponse({"status": "error", "mensaje": str(e)})
     finally:
