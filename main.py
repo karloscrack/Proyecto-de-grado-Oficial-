@@ -807,8 +807,6 @@ async def registrar_usuario(
     cedula: str = Form(...),
     contrasena: str = Form(...),
     tipo_usuario: int = Form(...),
-    email: Optional[str] = Form(None),
-    telefono: Optional[str] = Form(None),
     foto: UploadFile = File(...)
 ):
     """Registra un nuevo usuario con zona horaria Ecuador"""
@@ -832,6 +830,8 @@ async def registrar_usuario(
             return JSONResponse(content={
                 "error": "Usuario ya existe en el sistema"
             })
+        
+
         
         # Manejar archivo de foto
         temp_dir = tempfile.mkdtemp()
@@ -866,24 +866,24 @@ async def registrar_usuario(
         # 👇 CAMBIO CLAVE: Convertimos la fecha a texto simple para evitar errores
         fecha_str = fecha_registro.strftime("%Y-%m-%d %H:%M:%S") 
 
-        # ENCRIPTAR ANTES DE GUARDAR
+        # Encriptar contraseña
         hashed_password = get_password_hash(contrasena.strip())
+
+        fecha_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         c.execute("""
-        INSERT INTO Usuarios 
-        (Nombre, Apellido, CI, Password, Tipo, Foto, Activo, Email, Telefono, Fecha_Registro)
-        VALUES (%s,%s,%s,%s,%s,%s,1,%s,%s,%s)
+            INSERT INTO Usuarios 
+            (Nombre, Apellido, CI, Password, Tipo, Foto, Activo, Fecha_Registro)
+            VALUES (%s, %s, %s, %s, %s, %s, 1, %s)
         """, (
-        nombre.strip(),
-        apellido.strip(),
-        cedula,
-        hashed_password,  # <--- AQUÍ ESTÁ EL CAMBIO
-        tipo_usuario,
-        url_foto,
-        email,
-        telefono,
-        fecha_str
-    ))
+            nombre.strip(),
+            apellido.strip(),
+            cedula,
+            hashed_password,
+            tipo_usuario,
+            url_foto,
+            fecha_str
+        ))
         
         # Si es estudiante, agregar a colección de rostros AWS
         if tipo_usuario == 1 and rekog:
