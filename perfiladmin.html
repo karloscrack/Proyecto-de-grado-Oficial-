@@ -2136,10 +2136,20 @@
         });
         
         if (!confirmacion.isConfirmed) return;
-        
+
+    // OBTENER LA CÉDULA DEL ADMIN LOGUEADO
+        const miCedula = localStorage.getItem('usuario_cedula'); 
+
         try {
+        // CREAMOS UN FORM DATA PARA ENVIAR QUIÉN BORRA
+            const formData = new FormData();
+            formData.append('admin_cedula', miCedula); // <--- ESTO FALTABA
+
+        // Nota: Al usar body en DELETE, asegúrate que tu servidor/proxy lo permita.
+        // Si falla, cambiaremos a POST en el futuro, pero intenta así primero.
             const respuesta = await fetch(`${API_URL}/eliminar_usuario/${cedula}`, {
-                method: 'DELETE'
+            method: 'DELETE',
+            body: formData  // <--- ENVIAMOS LOS DATOS
             });
             
             if (respuesta.ok) {
@@ -2957,59 +2967,68 @@ function imagenAnterior(e) {
 }
 
 async function eliminarEvidenciaActual() {
-        // Verificamos que haya una evidencia seleccionada
-        const evidencia = evidenciasVisor[indiceVisorActual];
-        if(!evidencia) return;
+    // Verificamos que haya una evidencia seleccionada
+    const evidencia = evidenciasVisor[indiceVisorActual];
+    if(!evidencia) return;
 
-        // 1. Preguntamos primero
-        const result = await Swal.fire({
-            title: '¿Eliminar evidencia?',
-            text: "Esta acción borrará el archivo permanentemente de la nube y del sistema.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d32f2f',
-            confirmButtonText: 'Sí, eliminar',
-            cancelButtonText: 'Cancelar'
-        });
+    // 1. Preguntamos primero
+    const result = await Swal.fire({
+        title: '¿Eliminar evidencia?',
+        text: "Esta acción borrará el archivo permanentemente de la nube y del sistema.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d32f2f',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    });
 
-        if (result.isConfirmed) {
-            // --- CORRECCIÓN CRÍTICA ANTI-CONGELAMIENTO ---
-            // Cerramos el visor INMEDIATAMENTE para liberar el scroll de la página
-            // antes de que empiece cualquier proceso de carga.
-            cerrarLightbox(); 
+    if (result.isConfirmed) {
+        // CORRECCIÓN: Cerramos visor INMEDIATAMENTE para evitar bloqueos visuales
+        cerrarLightbox(); 
+        
+        const miCedula = localStorage.getItem('usuario_cedula'); // Obtener tu cédula de admin
 
-            try {
-                // 2. Mostrar "Cargando..." mientras el servidor trabaja
-                Swal.fire({
-                    title: 'Eliminando...',
-                    text: 'Procesando la orden en Backblaze...',
-                    allowOutsideClick: false,
-                    didOpen: () => { Swal.showLoading(); }
-                });
+        try {
+            // Mostrar "Cargando..."
+            Swal.fire({
+                title: 'Eliminando...',
+                text: 'Procesando la orden...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
 
-                // 3. Enviamos la orden de borrado al servidor
-                const id = evidencia.id || evidencia.ID;
-                const res = await fetch(`${API_URL}/eliminar_evidencia/${id}`, { method: 'DELETE' });
+            const id = evidencia.id || evidencia.ID;
+            
+            // PREPARAR DATOS (Esto es lo que faltaba antes)
+            const formData = new FormData();
+            formData.append('admin_cedula', miCedula); 
+
+            // ENVIAR PETICIÓN (Una sola vez)
+            const res = await fetch(`${API_URL}/eliminar_evidencia/${id}`, { 
+                method: 'DELETE',
+                body: formData 
+            });
+
+            if(res.ok) {
+                // Si salió bien, actualizamos la lista visual
+                evidenciasEstudianteActual.splice(indiceVisorActual, 1);
                 
-                if(res.ok) {
-                    // 4. Si salió bien, la quitamos de la lista visual
-                    evidenciasEstudianteActual.splice(indiceVisorActual, 1);
-                    
-                    // Actualizamos la cuadrícula de fotos
-                    renderizarEvidenciasEstudiante();
-                    
-                    Swal.fire('Eliminado', 'La evidencia ha sido borrada correctamente.', 'success');
-                } else {
-                    // Si el servidor dio error (ej: 500), lanzamos el error
-                    throw new Error('El servidor no pudo borrar el archivo.');
-                }
-            } catch (error) {
-                console.error(error);
-                Swal.fire('Error', 'No se pudo eliminar la evidencia. Intenta de nuevo.', 'error');
-                // Nota: No reabrimos el visor para evitar trabas, el usuario puede abrir otra foto si quiere.
+                // Actualizamos la cuadrícula de fotos
+                renderizarEvidenciasEstudiante();
+                
+                Swal.fire('Eliminado', 'La evidencia ha sido borrada correctamente.', 'success');
+            } else {
+                // Si el servidor responde error (ej: 403 No autorizado)
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || 'El servidor no pudo borrar el archivo.');
             }
+
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Error', 'No se pudo eliminar: ' + error.message, 'error');
         }
     }
+}
 
     // ==========================================
     // 8. FUNCIONES DE SEGURIDAD Y LOGS

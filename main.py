@@ -21,10 +21,20 @@ from email.mime.multipart import MIMEMultipart
 from typing import Optional, List
 from fastapi import FastAPI, UploadFile, Form, HTTPException, BackgroundTasks, Request, File
 from fastapi.middleware.cors import CORSMiddleware
+from passlib.context import CryptContext
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from botocore.config import Config
 from pydantic import BaseModel
 from fastapi.encoders import jsonable_encoder
+
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
 
 # --- 0. CONFIGURACIÓN DE ZONA HORARIA ECUADOR ---
 ECUADOR_TZ = pytz.timezone('America/Guayaquil')  # UTC-5
@@ -707,7 +717,7 @@ async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
         
         pass_db = u.get('password') or u.get('Password') if u else None
         
-        if u and pass_db == contrasena.strip():
+        if u and verify_password(contrasena.strip(), pass_db):
             # Log de auditoría
             nombre_completo = f"{u.get('Nombre') or u.get('nombre')} {u.get('Apellido') or u.get('apellido')}"
             rol_num = u.get('Tipo') if u.get('Tipo') is not None else u.get('tipo')
@@ -730,7 +740,10 @@ async def iniciar_sesion(cedula: str = Form(...), contrasena: str = Form(...)):
             
             return JSONResponse({"autenticado": True, "datos": jsonable_encoder(datos_para_front)})
         
-        return JSONResponse({"autenticado": False, "mensaje": "Cédula o contraseña incorrectos."})
+        
+        else:
+             # Contraseña incorrecta
+          return JSONResponse({"autenticado": False, "mensaje": "Cédula o contraseña incorrectos."})
     except Exception as e:
         print(f"❌ Error login: {e}")
         return JSONResponse({"autenticado": False, "mensaje": str(e)})
@@ -852,22 +865,25 @@ async def registrar_usuario(
         
         # 👇 CAMBIO CLAVE: Convertimos la fecha a texto simple para evitar errores
         fecha_str = fecha_registro.strftime("%Y-%m-%d %H:%M:%S") 
+
+        # ENCRIPTAR ANTES DE GUARDAR
+        hashed_password = get_password_hash(contrasena.strip())
         
         c.execute("""
-            INSERT INTO Usuarios 
-            (Nombre, Apellido, CI, Password, Tipo, Foto, Activo, Email, Telefono, Fecha_Registro)
-            VALUES (%s,%s,%s,%s,%s,%s,1,%s,%s,%s)
+        INSERT INTO Usuarios 
+        (Nombre, Apellido, CI, Password, Tipo, Foto, Activo, Email, Telefono, Fecha_Registro)
+        VALUES (%s,%s,%s,%s,%s,%s,1,%s,%s,%s)
         """, (
-            nombre.strip(),
-            apellido.strip(),
-            cedula,
-            contrasena,
-            tipo_usuario,
-            url_foto,
-            email,
-            telefono,
-            fecha_str  # <--- Usamos la versión texto, no el objeto fecha
-        ))
+        nombre.strip(),
+        apellido.strip(),
+        cedula,
+        hashed_password,  # <--- AQUÍ ESTÁ EL CAMBIO
+        tipo_usuario,
+        url_foto,
+        email,
+        telefono,
+        fecha_str
+    ))
         
         # Si es estudiante, agregar a colección de rostros AWS
         if tipo_usuario == 1 and rekog:
@@ -940,19 +956,27 @@ async def cambiar_estado_usuario(datos: EstadoUsuarioRequest):
 
 
 @app.delete("/eliminar_usuario/{cedula}")
-async def eliminar_usuario(cedula: str):
-    """Elimina usuario y todos sus datos (Blindado contra errores de mayúsculas)"""
-    try:
+async def eliminar_usuario(cedula: str, admin_cedula: str = Form(...)):
+    try:  # <--- FALTABA ESTE TRY
         conn = get_db_connection()
-        c = conn.cursor(cursor_factory=RealDictCursor)
+        c = conn.cursor()
         
-        # 1. PRIMERO: Obtener y borrar evidencias asociadas (Nube + BD)
+        # 1. Verificar si quien pide borrar es realmente admin
+        c.execute("SELECT Tipo FROM Usuarios WHERE CI = %s", (admin_cedula,))
+        solicitante = c.fetchone()
+    
+        if not solicitante or solicitante['Tipo'] != 0:
+            conn.close() # Buena práctica cerrar si sales temprano
+            return JSONResponse({"error": "No tienes permisos de administrador"}, status_code=403)
+        
+        # 2. Obtener evidencias ANTES de intentar borrarlas (FALTABA ESTO)
         c.execute("SELECT Url_Archivo FROM Evidencias WHERE CI_Estudiante = %s", (cedula,))
         evidencias = c.fetchall()
-        
+
+        # 3. Borrar archivos de evidencias en la nube (B2)
         if s3_client and BUCKET_NAME:
             for ev in evidencias:
-                # 🛡️ CORRECCIÓN: Buscamos URL con seguridad (Mayús/Minús)
+                # Soporte para mayúsculas/minúsculas en la llave
                 url = ev.get('Url_Archivo') or ev.get('url_archivo')
                 
                 if url and "backblazeb2.com" in url:
@@ -963,26 +987,24 @@ async def eliminar_usuario(cedula: str):
                     except Exception as e:
                         print(f"⚠️ No se pudo borrar archivo B2: {e}")
 
-        # Borrar registros de evidencias
+        # 4. Borrar registros de evidencias en BD
         c.execute("DELETE FROM Evidencias WHERE CI_Estudiante = %s", (cedula,))
         
-        # 2. SEGUNDO: Obtener y borrar foto de perfil (Nube)
+        # 5. Obtener y borrar foto de perfil (Nube)
         c.execute("SELECT Foto FROM Usuarios WHERE CI = %s", (cedula,))
         usuario = c.fetchone()
         
-        # 🛡️ CORRECCIÓN: Buscamos Foto con seguridad
         if usuario:
             url_foto = usuario.get('Foto') or usuario.get('foto')
-            
             if url_foto and s3_client and BUCKET_NAME and "backblazeb2.com" in url_foto:
                 try:
                     partes = url_foto.split(f"/file/{BUCKET_NAME}/")
                     if len(partes) > 1:
                         s3_client.delete_object(Bucket=BUCKET_NAME, Key=partes[1])
                 except Exception as e:
-                     print(f"⚠️ No se pudo borrar foto perfil B2: {e}")
+                      print(f"⚠️ No se pudo borrar foto perfil B2: {e}")
 
-        # 3. TERCERO: Borrar el usuario
+        # 6. Finalmente borrar el usuario
         c.execute("DELETE FROM Usuarios WHERE CI = %s", (cedula,))
         
         conn.commit()
@@ -990,7 +1012,7 @@ async def eliminar_usuario(cedula: str):
         
         return JSONResponse({"mensaje": "Usuario y todos sus datos eliminados correctamente"})
         
-    except Exception as e:
+    except Exception as e: # <--- AHORA ALINEADO CON EL TRY
         print(f"❌ Error eliminando usuario completo: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
     
@@ -2121,10 +2143,10 @@ def listar_usuarios():
         
         # Traemos solo los campos necesarios, ordenados alfabéticamente
         c.execute("""
-            SELECT ID, Nombre, Apellido, CI, Password, Tipo, Foto, Activo, Email, Telefono 
-            FROM Usuarios 
-            ORDER BY Apellido ASC, Nombre ASC
-        """)
+        SELECT ID, Nombre, Apellido, CI, Tipo, Foto, Activo, Email, Telefono 
+        FROM Usuarios 
+        ORDER BY Apellido ASC, Nombre ASC
+    """)
         usuarios = c.fetchall()
         conn.close()
         
@@ -2186,11 +2208,17 @@ def todas_evidencias(cedula: str):
         return JSONResponse([])
 
 @app.delete("/eliminar_evidencia/{id}")
-async def eliminar_evidencia(id: int):
+async def eliminar_evidencia(id: int, admin_cedula: str = Form(...)): # 1. Pedir quién es
     try:
         conn = get_db_connection()
-        # Usamos RealDictCursor para obtener un diccionario
         c = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # 2. Verificar que sea Admin
+        c.execute("SELECT Tipo FROM Usuarios WHERE CI = %s", (admin_cedula,))
+        admin = c.fetchone()
+        if not admin or admin['Tipo'] != 0:
+             conn.close()
+             return JSONResponse({"error": "No autorizado"}, status_code=403)
         
         # 1. Buscar la evidencia
         c.execute("SELECT * FROM Evidencias WHERE id = %s", (id,))
@@ -2336,18 +2364,20 @@ async def cambiar_contrasena(datos: PasswordRequest):
     conn = None
     try:
         conn = get_db_connection()
-        c = conn.cursor(cursor_factory=RealDictCursor) # Necesitamos leer datos
+        c = conn.cursor(cursor_factory=RealDictCursor)
         
-        # 1. Obtener nombre del usuario antes de cambiar la clave (para el log)
         c.execute("SELECT Nombre, Apellido FROM Usuarios WHERE CI = %s", (datos.cedula,))
         u = c.fetchone()
         nombre_usuario = f"{u['nombre']} {u['apellido']}" if u else datos.cedula
 
-        # 2. Ejecutar el cambio
-        c.execute("UPDATE Usuarios SET Password = %s WHERE CI = %s", (datos.nueva_contrasena, datos.cedula))
+        # --- CORRECCIÓN DE SEGURIDAD ---
+        # 1. Encriptamos la nueva contraseña antes de actualizar
+        hashed_password = get_password_hash(datos.nueva_contrasena)
+
+        # 2. Guardamos el HASH, no el texto plano
+        c.execute("UPDATE Usuarios SET Password = %s WHERE CI = %s", (hashed_password, datos.cedula))
         conn.commit()
         
-        # 3. ✅ LOG DETALLADO
         registrar_auditoria(
             "CAMBIO_PASSWORD", 
             f"El Admin cambió la contraseña del usuario: {nombre_usuario} (CI: {datos.cedula})", 
@@ -2838,21 +2868,27 @@ async def reparar_admin():
         conn = get_db_connection()
         c = conn.cursor()
         
-        # 1. Verificar si existe
+        # Encriptamos la contraseña por defecto
+        pass_admin_hash = get_password_hash('admin123')
+        
         c.execute("SELECT * FROM Usuarios WHERE CI = '9999999999'")
         user = c.fetchone()
         
         if not user:
-            # Si no existe, lo creamos de cero
+            # Crear de cero con contraseña encriptada
             c.execute("""
                 INSERT INTO Usuarios (Nombre, Apellido, CI, Password, Tipo, Activo) 
-                VALUES ('Admin', 'Sistema', '9999999999', 'admin123', 0, 1)
-            """)
+                VALUES ('Admin', 'Sistema', '9999999999', %s, 0, 1)
+            """, (pass_admin_hash,))
             mensaje = "Usuario Admin no existía. CREADO exitosamente."
         else:
-            # Si existe, LO FORZAMOS a ser Tipo 0
-            c.execute("UPDATE Usuarios SET Tipo = 0, Activo = 1 WHERE CI = '9999999999'")
-            mensaje = "Usuario 9999999999 actualizado: AHORA ES ADMIN (Tipo 0)."
+            # Actualizar existente y resetear clave a admin123 (encriptada)
+            c.execute("""
+                UPDATE Usuarios 
+                SET Tipo = 0, Activo = 1, Password = %s 
+                WHERE CI = '9999999999'
+            """, (pass_admin_hash,))
+            mensaje = "Usuario 9999999999 actualizado: ES ADMIN y clave reseteada."
             
         conn.commit()
         conn.close()
