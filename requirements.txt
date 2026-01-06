@@ -12,3 +12,5 @@ pillow-avif-plugin
 requests
 psycopg2-binary
 passlib[bcrypt]
+passlib
+bcrypt==4.0.1
