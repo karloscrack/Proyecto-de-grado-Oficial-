@@ -2921,6 +2921,46 @@ async def actualizar_tabla_usuarios():
     except Exception as e:
         return {"error": str(e)}
 
+@app.get("/migrar_seguridad")
+async def migrar_seguridad():
+    """
+    Encripta todas las contraseñas que están en texto plano.
+    Ejecutar una sola vez.
+    """
+    try:
+        conn = get_db_connection()
+        c = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # 1. Obtener todos los usuarios
+        c.execute("SELECT CI, Password FROM Usuarios")
+        usuarios = c.fetchall()
+        
+        actualizados = 0
+        
+        for u in usuarios:
+            cedula = u['ci'] # O u['CI'] dependiendo de tu base de datos
+            password_actual = u['password'] # O u['Password']
+            
+            # 2. Verificar si ya está encriptada (Los hash de bcrypt empiezan con $2b$)
+            if password_actual and not password_actual.startswith("$2b$"):
+                # Si no empieza con $2b$, es texto plano. ¡A encriptar!
+                nuevo_hash = get_password_hash(password_actual)
+                
+                # Guardamos la versión segura
+                c.execute("UPDATE Usuarios SET Password = %s WHERE CI = %s", (nuevo_hash, cedula))
+                actualizados += 1
+        
+        conn.commit()
+        conn.close()
+        
+        return JSONResponse({
+            "status": "ok", 
+            "mensaje": f"Se han encriptado {actualizados} contraseñas antiguas exitosamente."
+        })
+        
+    except Exception as e:
+        return JSONResponse({"error": str(e)})
+
 if __name__ == "__main__":
     import uvicorn
     
