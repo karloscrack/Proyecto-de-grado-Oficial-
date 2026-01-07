@@ -11,7 +11,9 @@
     
     <link rel="icon" type="image/png" href="Img/Logo_pestaña.png">
     
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600&display=swap" rel="stylesheet">
 
@@ -705,7 +707,7 @@
     </div>
 
     <section class="hero">
-        <video id="bgVideo" class="video-background" autoplay muted loop playsinline preload="auto" poster="Img/black_placeholder.jpg">
+        <video id="bgVideo" class="video-background" autoplay muted loop playsinline preload="auto" style="background-color: black;">
             <source src="https://proyecto-grado-karlos-2025.s3.us-east-005.backblazeb2.com/evidencias/manual_174860-852215326.mp4" type="video/mp4">
             Tu navegador no soporta videos HTML5.
         </video>
@@ -759,7 +761,16 @@
             </div>
             
             <div class="book-frame-wrapper">
-                <iframe width="100%" height="640" style="width: 100%; height: 640px; border: none; max-width: 100%;" allow="xr-spatial-tracking; vr; gyroscope; accelerometer; fullscreen; autoplay; xr" scrolling="no" allowfullscreen="true" frameborder="0" src="https://webobook.com/public/657e44fc1340d73a46388f52,en?ap=true&si=true&sm=true&sp=true&sfr=true&sl=true&sop=false&" allowvr="yes"></iframe>
+                <iframe 
+                width="100%" 
+                height="640" 
+                style="width: 100%; height: 640px; border: none; max-width: 100%;" 
+                loading="lazy"
+                scrolling="no" 
+                frameborder="0" 
+                allow="autoplay; fullscreen; xr-spatial-tracking; gyroscope; accelerometer; clipboard-write; encrypted-media; microphone; camera"
+                src="https://webobook.com/public/657e44fc1340d73a46388f52,en?ap=true&si=true&sm=true&sp=true&sfr=true&sl=true&sop=false&">
+                </iframe>
             </div>
             
             <div class="book-footer">
