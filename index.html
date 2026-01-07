@@ -625,41 +625,71 @@
         }
 
         /* ==========================================================================
-           12. RESPONSIVE PARA MÓVILES
+           12. RESPONSIVE PARA MÓVILES (CORREGIDO)
            ========================================================================== */
         @media (max-width: 768px) {
+            /* AJUSTES GENERALES */
             .main-header { height: var(--header-height-mobile); padding: 0 15px; }
-            .header-actions { gap: 8px; }
+            .header-actions { gap: 10px; }
             
             .logo-container img { height: 40px; }
             
+            /* Ocultar texto "Ingresar" en celular para ahorrar espacio */
             .btn-logout-header span { display: none; }
             .btn-logout-header { padding: 0 15px; }
 
-            .hero-content h1 { font-size: 2.2rem; }
+            /* HERO VIDEO (Arreglo para que se centre bien) */
+            .hero {
+                min-height: 100vh;
+                padding: 0 15px;
+            }
+            
+            .video-background {
+                /* Esto centra el video perfectamente en el celular */
+                object-fit: cover; 
+                width: 100%; height: 100%;
+                top: 50%; left: 50%;
+                transform: translate(-50%, -50%);
+            }
+
+            .hero-content h1 { font-size: 2rem; line-height: 1.3; }
             .hero-content p { font-size: 1.1rem; }
             
             #toggleSoundBtn { 
-                bottom: 90px; right: 20px; 
-                padding: 10px 18px; font-size: 0.9rem; 
+                bottom: 80px; right: 20px; 
+                padding: 8px 15px; font-size: 0.9rem; 
             }
             
+            /* SECCIÓN DE INFORMACIÓN (Tarjetas una debajo de otra) */
             .info-section { padding: 60px 15px; }
             .section-title { font-size: 2rem; }
-            .info-grid { grid-template-columns: 1fr; gap: 20px; }
+            .info-grid { grid-template-columns: 1fr; gap: 25px; }
             .info-card { padding: 30px 20px; }
             
-            .digital-book-section { padding: 50px 15px; }
+            /* LIBRO DIGITAL (Altura automática para no estirar la pantalla) */
+            .digital-book-section { padding: 40px 15px; }
+            .book-container { padding: 20px 15px; }
             .book-header h2 { font-size: 1.8rem; }
-            .book-header p { font-size: 1rem; }
-            .book-frame-wrapper iframe { height: 400px; }
-            .book-container { padding: 30px 20px; }
             
+            .book-frame-wrapper iframe { 
+                height: auto !important;
+                aspect-ratio: 3/4; /* Proporción ideal para leer en celular */
+                max-height: 65vh;  /* Evita que sea eterno de bajar */
+            }
+            
+            /* CONTACTO MODAL */
             .contact-item { font-size: 0.95rem; }
+
+            /* FOOTER (Mantenemos tu diseño original casi intacto) */
+            footer {
+                padding: 30px 15px; /* Mismo alto vertical que en PC (30px) */
+            }
+            /* Solo reducimos un poco el logo para que no se vea gigante en pantallas angostas */
+            .footer-logo img { height: 50px; } 
         }
 
         @media (max-width: 480px) {
-            .book-frame-wrapper iframe { height: 300px; }
+            .hero-content h1 { font-size: 1.8rem; }
             .book-header h2 { font-size: 1.6rem; }
         }
     </style>

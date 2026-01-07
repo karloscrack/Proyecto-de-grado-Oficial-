@@ -584,57 +584,108 @@
         }
 
         /* ==========================================================================
-           6. RESPONSIVE (MEJORADO)
+           5.1. ESTILOS PARA ZOOM EN LIGHTBOX (NUEVO)
+           ========================================================================== */
+        .lb-content-wrapper {
+            overflow: auto; /* Permite scroll si la imagen es gigante */
+            scrollbar-width: none; -ms-overflow-style: none; /* Ocultar barras */
+            display: flex; justify-content: center; align-items: center;
+        }
+        .lb-content-wrapper::-webkit-scrollbar { display: none; }
+
+        .lb-media-item {
+            transition: transform 0.3s ease;
+            cursor: zoom-in; cursor: -webkit-zoom-in;
+        }
+        
+        .lb-media-item.zoomed {
+            transform: scale(2.5); /* Nivel de Zoom */
+            cursor: zoom-out; cursor: -webkit-zoom-out;
+            max-width: initial !important; max-height: initial !important;
+            transform-origin: center center;
+        }
+
+        /* ==========================================================================
+           6. RESPONSIVE (TRANSFORMACIÓN TOTAL MÓVIL)
            ========================================================================== */
         @media (max-width: 992px) {
-            .sidebar-container { transform: translateX(-100%); width: 280px; }
-            .sidebar-container.active { transform: translateX(0); }
-            .main-content { margin-left: 0; padding: 20px 15px; }
-            .menu-toggle { display: flex; }
-            
-            .main-header { padding: 0 15px; height: var(--header-height-mobile); }
+            /* --- HEADER IGUAL AL INDEX --- */
+            .main-header { height: var(--header-height-mobile); padding: 0 15px; }
             .logo-container img { height: 40px; }
+            .header-actions { gap: 10px; }
+            
+            /* Botones header */
             .btn-logout-header span { display: none; }
-            .btn-logout-header { padding: 0 15px; }
+            .btn-logout-header { padding: 0 15px; height: 36px; font-size: 0.85rem; }
+            .btn-icon-header { width: 36px; height: 36px; font-size: 1rem; }
+            .menu-toggle { display: flex; width: 36px; height: 36px; font-size: 1.4rem; }
+
+            /* --- SIDEBAR (MENÚ LATERAL) --- */
+            .sidebar-container { transform: translateX(-100%); width: 280px; box-shadow: 5px 0 15px rgba(0,0,0,0.2); }
+            .sidebar-container.active { transform: translateX(0); }
             
-            .stat-card { flex-direction: column; text-align: center; padding: 15px; }
-            .stat-details h3 { font-size: 1.5rem; }
+            /* --- CONTENIDO PRINCIPAL --- */
+            .main-content { margin-left: 0; padding: 20px 15px; width: 100%; overflow-x: hidden; }
+
+            /* --- DASHBOARD STATS --- */
+            .dashboard-grid { grid-template-columns: 1fr; gap: 15px; }
+            .stat-card { padding: 20px; }
             
-            .btn-primary { padding: 10px 18px; font-size: 0.9rem; }
-            .action-btn { width: 36px; height: 36px; margin-right: 3px; }
-            .form-grid { grid-template-columns: 1fr; }
-            .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
-            .cost-display { flex-direction: column; gap: 10px; }
-            
-            /* Tablas responsivas */
-            .table-responsive {
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
+            /* --- TRANSFORMACIÓN DE TABLA A TARJETAS (MAGIA) --- */
+            .modern-table thead { display: none; } /* Ocultar encabezados */
+            .modern-table, .modern-table tbody, .modern-table tr, .modern-table td { 
+                display: block; width: 100%; 
             }
-            .modern-table { min-width: 800px; }
+            .modern-table tr {
+                background: var(--bg-card);
+                margin-bottom: 15px;
+                border: 1px solid var(--border-color);
+                border-radius: 12px;
+                padding: 15px;
+                box-shadow: var(--shadow-soft);
+            }
+            .modern-table td {
+                padding: 10px 0;
+                border: none;
+                border-bottom: 1px solid var(--border-color);
+                text-align: left;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .modern-table td:last-child { border-bottom: none; flex-direction: column; align-items: stretch; gap: 10px; }
             
-            /* Lightbox móvil */
-            .lb-nav-btn { display: none; } 
-            .lb-close-fixed { top: 15px; right: 15px; padding: 8px 15px; font-size: 0.9rem; }
-            .lb-media-item { max-width: 100%; border-radius: 0; }
-            .lb-actions-panel { flex-direction: column; width: 90%; gap: 12px; }
+            /* Etiquetas para las tarjetas */
+            .modern-table td::before {
+                content: attr(data-label); /* Usa el atributo data-label del HTML */
+                font-weight: 700;
+                color: var(--primary);
+                font-size: 0.85rem;
+            }
+
+            /* --- GRID DE EVIDENCIAS --- */
+            .gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            
+            /* --- LIGHTBOX (VISOR) --- */
+            .lb-nav-btn { display: none; } /* Usar Swipe */
+            .lb-close-fixed { top: 15px; right: 15px; padding: 8px 15px; font-size: 0.9rem; background: rgba(0,0,0,0.6); }
+            .lb-content-wrapper { width: 100%; height: 100%; }
+            .lb-media-item { max-width: 100%; max-height: 80vh; } 
+            
+            .lb-actions-panel { flex-direction: column; width: 90%; gap: 12px; margin-bottom: 20px; }
             .btn-lb-action { width: 100%; justify-content: center; }
+
+            /* --- FOOTER IGUAL AL INDEX --- */
+            footer { padding: 30px 15px; }
+            .footer-logo img { height: 50px; }
             
-            /* Barra flotante móvil */
-            .floating-bar { 
-                flex-direction: column; width: 100%; border-radius: 20px 20px 0 0;
-                padding: 20px; gap: 15px; bottom: 0; left: 0; transform: translateY(100%); max-width: 100%;
-            }
-            .floating-bar.active { transform: translateY(0); }
-            .floating-bar div { text-align: center; width: 100%; margin-bottom: 5px; }
-            .btn-float { width: 100%; justify-content: center; }
-            .btn-float-cancel { align-self: flex-end; margin-top: 10px; }
-            
-            /* Botón de retroceso en móvil */
-            .btn-back.desktop-only { display: none; }
-            
-            /* Mostrar dropdown de acciones en móvil */
-            .mobile-actions-dropdown { display: block; }
+            /* Botones de acción en tabla móviles */
+            .action-btn { width: 100%; height: 40px; margin: 0; justify-content: center; font-weight: 600; border-radius: 8px;}
+            .btn-edit::after { content: " Editar"; }
+            .btn-delete::after { content: " Eliminar"; }
+            .btn-view::after { content: " Ver Detalles"; }
+            .btn-activate::after { content: " Activar"; }
+            .btn-deactivate::after { content: " Desactivar"; }
         }
 
         @media (max-width: 480px) {
@@ -1987,7 +2038,7 @@
         if(!tbody) return;
 
         tbody.innerHTML = usuarios.map(u => {
-            const esAdmin = parseInt(u.tipo) === 0; // Asegúrate que coincida con tu dato (Tipo o tipo)
+            const esAdmin = parseInt(u.tipo) === 0;
             const rol = esAdmin ? 'Administrador' : 'Estudiante';
             const claseRol = esAdmin ? 'tipo-contrasena' : 'tipo-subida';
             
@@ -1997,27 +2048,30 @@
 
             return `
                 <tr id="user-row-${u.cedula}">
-                    <td>
-                        <strong>${u.nombre} ${u.apellido}</strong><br>
-                        <small style="color:#888;">${u.contrasena || '***'}</small>
+                    <td data-label="Usuario">
+                        <div>
+                            <strong>${u.nombre} ${u.apellido}</strong><br>
+                            <small style="color:#888;">${u.contrasena || '***'}</small>
+                        </div>
                     </td>
-                    <td>${u.cedula}</td>
-                    <td><span class="solicitud-tipo ${claseRol}">${rol}</span></td>
-                    <td><span id="user-status-${u.cedula}" class="request-badge ${claseEstado}">${estadoTexto}</span></td>
-                    <td>
-                        <button class="action-btn" onclick="verUsuario('${u.cedula}')" style="background:#e3f2fd; color:#2196f3;" title="Ver Detalles">
-                            <i class="fas fa-eye"></i>
-                        </button>
+                    <td data-label="Cédula">${u.cedula}</td>
+                    <td data-label="Rol"><span class="solicitud-tipo ${claseRol}">${rol}</span></td>
+                    <td data-label="Estado"><span id="user-status-${u.cedula}" class="request-badge ${claseEstado}">${estadoTexto}</span></td>
+                    <td data-label="Acciones">
+                        <div style="display:flex; gap:5px; width:100%; flex-direction:column;">
+                            <button class="action-btn btn-view" onclick="verUsuario('${u.cedula}')" title="Ver Detalles">
+                                <i class="fas fa-eye"></i>
+                            </button>
 
-                        ${esActivo ? 
-                            `<button class="action-btn btn-deactivate" onclick="cambiarEstadoUsuario('${u.cedula}', 0)" title="Desactivar">
-                                <i class="fas fa-user-slash"></i>
-                             </button>` : 
-                            `<button class="action-btn btn-activate" onclick="cambiarEstadoUsuario('${u.cedula}', 1)" title="Activar">
-                                <i class="fas fa-user-check"></i>
-                             </button>`
-                        }
-                        </button>
+                            ${esActivo ? 
+                                `<button class="action-btn btn-deactivate" onclick="cambiarEstadoUsuario('${u.cedula}', 0)" title="Desactivar">
+                                    <i class="fas fa-user-slash"></i>
+                                 </button>` : 
+                                `<button class="action-btn btn-activate" onclick="cambiarEstadoUsuario('${u.cedula}', 1)" title="Activar">
+                                    <i class="fas fa-user-check"></i>
+                                 </button>`
+                            }
+                        </div>
                     </td>
                 </tr>
             `;
@@ -2866,7 +2920,11 @@ async function enviarGestion(id, accion) {
 // 7. FUNCIONES DE LIGHTBOX Y VISOR (CORREGIDO FINAL)
 // ==========================================
 
+let touchStartX = 0;
+let touchEndX = 0;
+
 function configurarEventosTeclado() {
+    // Teclado
     document.addEventListener('keydown', (e) => {
         const lightbox = document.getElementById('lightbox');
         if (!lightbox.classList.contains('active')) return;
@@ -2878,6 +2936,28 @@ function configurarEventosTeclado() {
             case 'Delete': eliminarEvidenciaActual(); break;
         }
     });
+
+    // --- SWIPE TÁCTIL ---
+    const lbContent = document.getElementById('lightbox');
+    
+    lbContent.addEventListener('touchstart', e => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, {passive: true});
+
+    lbContent.addEventListener('touchend', e => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    }, {passive: true});
+}
+
+function handleSwipe() {
+    const SWIPE_THRESHOLD = 50;
+    if (touchEndX < touchStartX - SWIPE_THRESHOLD) {
+        imagenSiguiente(); // Deslizar izquierda -> Siguiente
+    }
+    if (touchEndX > touchStartX + SWIPE_THRESHOLD) {
+        imagenAnterior(); // Deslizar derecha -> Anterior
+    }
 }
 
 function abrirVisor(indice) {
@@ -2926,18 +3006,36 @@ function actualizarVisor() {
     
     const url = evidencia.Url_Archivo || evidencia.url_archivo;
     enlaceDescarga.href = url;
-    enlaceDescarga.download = url.split('/').pop();
     
     const esVideo = url.match(/\.(mp4|avi|mov|webm|mkv)$/i);
     const esImagen = url.match(/\.(jpg|jpeg|png|gif|webp|avif)$/i);
     
-    if (esVideo) {
-        contenido.innerHTML = `<video src="${url}" class="lb-media-item" controls autoplay style="max-height:80vh; max-width:90vw;"></video>`;
-    } else if (esImagen) {
-        contenido.innerHTML = `<img src="${url}" class="lb-media-item" style="max-height:80vh; max-width:90vw; object-fit:contain;" onerror="this.src='Img/Logo_pestaña.png'">`;
-    } else {
-        contenido.innerHTML = `<div style="color:white; text-align:center;"><i class="fas fa-file-alt" style="font-size:5rem;"></i><h3>Documento</h3><p>Descarga para ver.</p></div>`;
-    }
+    contenido.innerHTML = ''; // Limpiar primero
+    
+    // Pequeño retardo para animación
+    contenido.style.opacity = '0';
+    
+    setTimeout(() => {
+        if (esVideo) {
+            contenido.innerHTML = `<video src="${url}" class="lb-media-item" controls autoplay style="max-height:80vh; max-width:90vw;"></video>`;
+        } else if (esImagen) {
+            const img = document.createElement('img');
+            img.src = url;
+            img.className = 'lb-media-item';
+            img.onerror = function() { this.src='Img/Logo_pestaña.png'; };
+            
+            // --- ZOOM ---
+            img.onclick = function(e) {
+                e.stopPropagation();
+                this.classList.toggle('zoomed');
+            };
+            
+            contenido.appendChild(img);
+        } else {
+            contenido.innerHTML = `<div style="color:white; text-align:center;"><i class="fas fa-file-alt" style="font-size:5rem;"></i><h3>Documento</h3><p>Descarga para ver.</p></div>`;
+        }
+        contenido.style.opacity = '1';
+    }, 100);
 }
 
 function imagenSiguiente(e) {

@@ -771,90 +771,80 @@
         }
 
         /* ==========================================================================
-           11. PARA PANTALLAS MUY PEQUEÑAS
+           10. RESPONSIVE PARA MÓVILES (OPTIMIZADO Y UNIFICADO)
            ========================================================================== */
-        @media (max-width: 480px) {
-            .main-header {
-                padding: 0 8px;
+        @media (max-width: 768px) {
+            /* --- HEADER IGUAL AL INDEX --- */
+            .main-header { 
+                height: var(--header-height-mobile); 
+                padding: 0 15px; /* Mismo padding que index.html */
             }
+            .header-actions { gap: 10px; }
             
-            .header-actions {
-                gap: 4px;
-            }
+            .logo-container img { height: 40px; } /* Mismo tamaño que index.html */
             
-            .logo-container img {
-                height: 36px;
-                max-width: 100px;
-            }
+            .btn-logout-header span { display: none; } /* Ocultar texto "Volver" */
+            .btn-logout-header { padding: 0 15px; height: 44px; }
             
-            .btn-icon-header,
-            .btn-logout-header,
             .menu-toggle {
-                width: 34px;
-                height: 34px;
-                font-size: 0.9rem;
+                width: 44px; height: 44px; font-size: 1.4rem;
+            }
+
+            /* --- LOGIN CARD (TARJETA CENTRADA) --- */
+            .login-container { 
+                padding: 20px 15px; 
+                /* Asegura que el footer no se pegue si la pantalla es muy corta */
+                min-height: calc(100vh - var(--header-height-mobile) - 100px); 
             }
             
-            .btn-logout-header {
-                padding: 0 10px;
-            }
-            
-            .login-card {
-                padding: 20px 16px;
-                margin: 5px;
+            .login-card { 
+                padding: 30px 20px; 
+                max-width: 100%;
+                width: 100%;
+                margin: 0;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.05); /* Sombra más suave en móvil */
             }
             
             .login-icon-container i {
-                font-size: 2.2rem;
-                padding: 12px;
+                font-size: 2.5rem;
+                padding: 15px;
             }
             
-            .login-card h2 {
-                font-size: 1.3rem;
-            }
+            .login-card h2 { font-size: 1.5rem; }
             
+            /* Inputs grandes para evitar zoom en iOS (mínimo 16px) */
             .form-control {
-                padding: 11px 13px;
-                font-size: 0.85rem;
+                font-size: 16px !important; 
+                padding: 12px 15px;
             }
             
             .btn-submit {
-                padding: 12px;
-                font-size: 0.85rem;
+                padding: 14px;
+                font-size: 1rem;
+                min-height: 48px; /* Área táctil cómoda */
+            }
+
+            /* --- MODALES AJUSTADOS --- */
+            .modal-overlay {
+                padding: 10px;
+                align-items: center; /* Centrado vertical */
             }
             
-            /* Modal más compacto para pantallas muy pequeñas */
             .modal-card {
-                padding: 20px 16px;
-                border-radius: 14px;
-                max-height: 80vh;
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 25px 20px !important;
+                margin: 0;
             }
             
-            .modal-card h3 {
-                font-size: 1.2rem;
+            /* --- FOOTER IGUAL AL INDEX --- */
+            footer {
+                padding: 30px 15px; /* Mismo padding que index.html */
             }
+            .footer-logo img { height: 50px; } /* Mismo tamaño */
             
-            .modal-card p {
+            .footer-links a, .copyright {
                 font-size: 0.85rem;
-            }
-            
-            .contact-info div {
-                font-size: 0.85rem;
-                padding: 8px 10px;
-            }
-            
-            .footer-social a {
-                width: 34px;
-                height: 34px;
-                margin: 0 3px;
-            }
-            
-            .footer-logo img {
-                height: 40px;
-            }
-            
-            .footer-content h3 {
-                font-size: 0.95rem;
             }
         }
 
