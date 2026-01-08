@@ -853,7 +853,7 @@ body.dark-mode .swal2-html-container {
 /* Arreglar inputs dentro de SweetAlert si los usas */
 body.dark-mode .swal2-input,
 body.dark-mode .swal2-textarea {
-    background: var(--bg-input) !important;
+    background: var(--input-bg) !important; /* <--- CORREGIDO */
     color: var(--text-main) !important;
     border-color: var(--border-color) !important;
 }
@@ -970,7 +970,7 @@ body.dark-mode .swal2-textarea {
         <button class="lb-nav-btn lb-next" onclick="nextImage(event)" title="Siguiente"><i class="fas fa-chevron-right"></i></button>
         <div class="lb-content-wrapper" id="lightboxContent"></div>
         <div class="lb-actions-panel">
-            <a id="lbDownloadLink" href="#" target="_blank" download class="btn-lb-action" style="background:white; color:black;"><i class="fas fa-download"></i> Descargar</a>
+            <a id="lbDownloadLink" href="#" target="_blank" download class="btn-lb-action" style="background:var(--text-inverse); color:var(--bg-card);"><i class="fas fa-download"></i> Descargar</a>
             <button class="btn-lb-action btn-lb-report" onclick="reportarEvidenciaActual()"><i class="fas fa-flag"></i> Reportar / No soy yo</button>
         </div>
     </div>
@@ -1029,7 +1029,7 @@ body.dark-mode .swal2-textarea {
                     <textarea id="descError" class="form-control" rows="4" placeholder="Incluye tu email o teléfono aquí para contactarte." required></textarea>
                 </div>
                 <button type="submit" class="btn-submit" style="background:var(--error);">Enviar Reporte</button>
-                <button type="button" class="btn-submit" onclick="cambiarModal('modalReport', 'modalContactHub')" style="background:transparent; color:#666; border:1px solid #ddd;">Volver</button>
+                <button type="button" class="btn-submit" onclick="cambiarModal('modalReport', 'modalContactHub')" style="background:transparent; color:var(--text-sec); border:1px solid var(--border-color);">Volver</button>
             </form>
         </div>
     </div>
@@ -1296,7 +1296,7 @@ body.dark-mode .swal2-textarea {
                         <div style="font-weight:600; font-size:0.85rem;">${tipo}</div>
                         <div style="font-size:0.75rem; color:${color}; font-weight:700;">${estado}</div>
                         ${respuesta ? 
-                            `<div style="font-size:0.8rem; margin-top:5px; color:var(--text-main); background:rgba(0,0,0,0.03); padding:5px; border-radius:5px;">
+                            `<div style="font-size:0.8rem; margin-top:5px; color:var(--text-main); background:var(--input-bg); padding:5px; border-radius:5px;">
                                 <strong>Admin:</strong> "${respuesta}"
                              </div>` : ''}
                         <div style="font-size:0.65rem; color:#999; margin-top:5px;">${new Date(fecha).toLocaleDateString()}</div>
