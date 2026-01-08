@@ -692,6 +692,12 @@
             .hero-content h1 { font-size: 1.8rem; }
             .book-header h2 { font-size: 1.6rem; }
         }
+
+        /* ACELERACIÓN DE HARDWARE */
+            .video-background, .book-frame-wrapper {
+            will-change: transform;
+            transform: translateZ(0);
+        }
     </style>
 </head>
 
@@ -737,7 +743,10 @@
     </div>
 
     <section class="hero">
-        <video id="bgVideo" class="video-background" autoplay muted loop playsinline preload="none" style="background-color: black;">
+        <video id="bgVideo" class="video-background" autoplay muted loop playsinline 
+               preload="none" 
+               poster="Img/Logo_pestaña.png" 
+               style="background-color: black;">
             <source src="https://proyecto-grado-karlos-2025.s3.us-east-005.backblazeb2.com/evidencias/manual_174860-852215326.mp4" type="video/mp4">
             Tu navegador no soporta videos HTML5.
         </video>
@@ -785,29 +794,42 @@
 
     <!-- NUEVA SECCIÓN: LIBRO DIGITAL INTERACTIVO -->
     <section class="digital-book-section">
-        <div class="book-container">
-            <div class="book-header">
-                <h2>Explora Nuestro Colegio</h2>
-            </div>
+    <div class="book-container">
+        <div class="book-header">
+            <h2>Explora Nuestro Colegio</h2>
+        </div>
+        
+        <div class="book-frame-wrapper" style="
+            height: 640px; 
+            background: linear-gradient(135deg, var(--bg-card) 0%, var(--input-bg) 100%); 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            justify-content: center; 
+            text-align: center; 
+            position: relative;
+            border: 1px solid var(--border-color);">
             
-            <div class="book-frame-wrapper">
-                <iframe 
-                    width="100%" 
-                    height="640" 
-                    style="width: 100%; height: 640px; border: none; max-width: 100%;" 
-                    loading="lazy"
-                    scrolling="no" 
-                    frameborder="0" 
-                    title="Libro Digital Unidad Educativa Despertar"
-                    allow="autoplay; fullscreen; gyroscope; accelerometer; clipboard-write; encrypted-media; microphone; camera"
-                    src="https://webobook.com/public/657e44fc1340d73a46388f52,en?ap=true&si=true&sm=true&sp=true&sfr=true&sl=true&sop=false&">
-                </iframe>
-</div>
+            <i class="fas fa-book-open" style="font-size: 8rem; color: var(--primary); opacity: 0.05; position: absolute;"></i>
             
-            <div class="book-footer">
+            <div style="z-index: 2; padding: 20px;">
+                <i class="fas fa-book-reader" style="font-size: 4rem; color: var(--primary); margin-bottom: 20px;"></i>
+                <h3 style="color: var(--text-main); margin-bottom: 10px; font-size: 1.5rem;">Libro Digital Interactivo</h3>
+                <p style="color: var(--text-sec); margin-bottom: 30px; max-width: 400px; margin-left: auto; margin-right: auto;">
+                    Para una mejor experiencia y evitar errores de carga, visualiza el anuario en pantalla completa.
+                </p>
+                
+                <a href="https://webobook.com/public/657e44fc1340d73a46388f52,en" target="_blank" class="btn-hero" style="text-decoration:none; padding: 15px 40px;">
+                    <i class="fas fa-external-link-alt"></i> Leer Libro Ahora
+                </a>
             </div>
         </div>
-    </section>
+        
+        <div class="book-footer">
+            © Unidad Educativa Despertar - Anuario Digital
+        </div>
+    </div>
+</section>
 
     <div class="modal-overlay" id="modalSoporte">
         <div class="modal-card">
