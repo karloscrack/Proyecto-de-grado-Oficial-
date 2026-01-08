@@ -637,43 +637,101 @@
         }
 
 /* ==========================================================================
-           10.1. ESTILOS PARA ZOOM EN LIGHTBOX (PC Y MÓVIL)
+           CORRECCIÓN ZOOM Y LIGHTBOX (ESTILO DEFINITIVO)
            ========================================================================== */
         .lb-content-wrapper {
-            overflow: auto; /* Permite scroll si la imagen es gigante */
-            
-            /* Ocultar barra de scroll (Estética limpia) */
-            scrollbar-width: none; 
-            -ms-overflow-style: none;
-            
-            /* Centrado perfecto */
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            width: 100%; height: 100%;
+            overflow: auto; /* Permite scroll nativo */
+            display: flex; justify-content: center; align-items: center;
+            -webkit-overflow-scrolling: touch;
         }
-        .lb-content-wrapper::-webkit-scrollbar { display: none; }
 
         .lb-media-item {
-            transition: transform 0.3s ease;
-            
-            /* Cursor de lupa para PC */
-            cursor: zoom-in; 
-            cursor: -webkit-zoom-in;
+            max-width: 100%; max-height: 100%;
+            object-fit: contain;
+            transition: width 0.3s ease, height 0.3s ease; /* Transición suave de tamaño */
+            cursor: zoom-in;
         }
-        
+
         .lb-media-item.zoomed {
-            transform: scale(2.5); /* Nivel de Zoom */
-            
-            /* Cursor de alejar para PC */
+            /* EL TRUCO: Quitar límites y forzar tamaño grande */
+            max-width: none !important;
+            max-height: none !important;
+            width: auto;
+            height: auto;
+            min-width: 150%; /* 150% de la pantalla para obligar el scroll */
             cursor: zoom-out;
-            cursor: -webkit-zoom-out;
+            cursor: grab;
+        }
+
+        /* ==========================================================================
+           6. RESPONSIVE Y TABLAS MÓVILES
+           ========================================================================== */
+        @media (max-width: 992px) {
+            /* --- HEADER Y FOOTER UNIFICADOS --- */
+            .main-header { height: var(--header-height-mobile); padding: 0 15px; }
+            .header-actions { gap: 10px; }
+            .logo-container img { height: 40px; }
+            .btn-logout-header span { display: none; }
+            .btn-logout-header { padding: 0 15px; height: 36px; font-size: 0.85rem; }
+            .btn-icon-header, .menu-toggle { width: 36px; height: 36px; font-size: 1.2rem; }
+            .menu-toggle { display: flex; align-items: center; justify-content: center; }
+
+            /* --- SIDEBAR --- */
+            .sidebar-container { transform: translateX(-100%); width: 280px; box-shadow: 5px 0 15px rgba(0,0,0,0.2); }
+            .sidebar-container.active { transform: translateX(0); }
+            .main-content { margin-left: 0; padding: 20px 15px; width: 100%; }
+
+            /* --- TABLAS TRANSFORMADAS A TARJETAS --- */
+            .modern-table thead { display: none; } 
+            .modern-table, .modern-table tbody, .modern-table tr, .modern-table td { display: block; width: 100%; }
             
-            /* IMPORTANTE: Permitir que la imagen crezca libremente */
-            max-width: initial !important; 
-            max-height: initial !important;
+            .modern-table tr {
+                background: var(--bg-card);
+                margin-bottom: 15px;
+                border: 1px solid var(--border-color);
+                border-radius: 12px;
+                padding: 15px;
+                box-shadow: var(--shadow-soft);
+            }
             
-            /* Arreglo para que el centro del zoom sea natural */
-            transform-origin: center center;
+            .modern-table td {
+                padding: 10px 0;
+                border: none;
+                border-bottom: 1px solid var(--border-color);
+                text-align: right; /* Dato a la derecha */
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .modern-table td:last-child { border-bottom: none; justify-content: flex-end; }
+            
+            /* ETIQUETAS MÁGICAS (Usan data-label del HTML) */
+            .modern-table td::before {
+                content: attr(data-label);
+                float: left;
+                font-weight: 700;
+                color: var(--primary);
+                font-size: 0.85rem;
+                text-transform: uppercase;
+            }
+
+            /* --- GRID GALERÍA --- */
+            .gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            
+            /* --- LIGHTBOX --- */
+            .lb-nav-btn { display: none; } /* Usar Swipe */
+            .lb-close-fixed { top: 15px; right: 15px; background: rgba(0,0,0,0.6); }
+
+            /* --- MENÚ ACCIONES MÓVIL (Corrección Z-Index) --- */
+            .mobile-actions-dropdown { display: block; position: relative; }
+            .mobile-actions-menu { 
+                z-index: 9999; /* Asegurar que flote sobre todo */
+                right: 0; width: 180px; 
+            }
+            .action-btn { display: none; } /* Ocultar botones escritorio */
+            
+            footer { padding: 30px 15px; }
         }
         /* ==========================================================================
            13. RESPONSIVE (OPTIMIZADO Y UNIFICADO)
@@ -778,6 +836,27 @@
             footer { padding: 30px 15px; }
             .footer-logo img { height: 50px; }
         }
+
+        /* FORZAR MODO OSCURO EN SWEETALERT2 */
+body.dark-mode .swal2-popup {
+    background: var(--bg-card) !important;
+    color: var(--text-main) !important;
+    border: 1px solid var(--border-color);
+}
+
+body.dark-mode .swal2-title,
+body.dark-mode .swal2-content, 
+body.dark-mode .swal2-html-container {
+    color: var(--text-main) !important;
+}
+
+/* Arreglar inputs dentro de SweetAlert si los usas */
+body.dark-mode .swal2-input,
+body.dark-mode .swal2-textarea {
+    background: var(--bg-input) !important;
+    color: var(--text-main) !important;
+    border-color: var(--border-color) !important;
+}
     </style>
 </head>
 
@@ -1000,55 +1079,81 @@
     </div>
 </div>
 
-    <script>
-        // URL DE PRODUCCIÓN
-        const API_URL = "https://proyecto-de-grado-oficial-production.up.railway.app";
-        
-        let appState = {
-            galeria: [], 
-            filtrada: [], 
-            seleccionados: [],
-            modoSeleccion: false, 
-            indiceLightbox: 0, 
-            notificaciones: [],
-            solicitudesEstudiante: []
-        };
+ <script>
+    // 1. CONSTANTES Y ESTADO GLOBAL (Primero para que estén disponibles)
+    const API_URL = "https://proyecto-de-grado-oficial-production.up.railway.app";
     
-    // 1. Verificar si hay usuario
+    let appState = {
+        galeria: [], 
+        filtrada: [], 
+        seleccionados: [],
+        modoSeleccion: false, 
+        indiceLightbox: 0, 
+        notificaciones: [],
+        solicitudesEstudiante: []
+    };
+
+    // 2. VARIABLES DE GESTOS (Declaradas una sola vez aquí)
+    let pressTimer;
+    let isPressing = false;
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    // 3. LÓGICA DE AUTENTICACIÓN Y TEMA (Se ejecuta inmediatamente)
     const usuarioLogueado = localStorage.getItem('usuario_cedula');
     if (!usuarioLogueado) {
-        window.location.href = 'biblioteca.html'; // Si no hay usuario, expulsar.
+        window.location.href = 'biblioteca.html'; 
     }
 
-    // 2. Aplicar tema temporal del navegador mientras carga la base de datos
-    // (Esto evita el "pantallazo blanco" antes de que llegue el dato real)
     const temaGuardadoNavegador = localStorage.getItem('global_theme');
     if (temaGuardadoNavegador === 'dark') {
         document.body.classList.add('dark-mode');
         const icon = document.querySelector('#themeBtn i');
         if(icon) icon.className = 'fas fa-sun';
     }
-    
 
-        // Variables para Swipe y Long Press
-        let pressTimer, isPressing = false;
-        let touchStartX = 0;
-        let touchEndX = 0;
+    // 4. FUNCIONES
+    function handleTouchStart(e, id) {
+        // CORRECCIÓN: Usar appState.modoSeleccion
+        if(appState.modoSeleccion) return; 
+        isPressing = true;
+        
+        pressTimer = setTimeout(() => {
+            if(isPressing) {
+                if(navigator.vibrate) navigator.vibrate(50); 
+                toggleModoSeleccion(true); 
+                // Nota: Usamos e.target para buscar la carta específica que tocas
+                let card = e.target.closest('.evidence-card') || document.querySelector(`.evidence-card`);
+                toggleSeleccionEvidencia(id, card); 
+            }
+        }, 600);
+    }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            try {
-                initTheme();
-                verificarAuth();
+    function handleTouchEnd() { clearTimeout(pressTimer); isPressing = false; }
+    function handleTouchMove() { clearTimeout(pressTimer); isPressing = false; }
+
+    function handleSwipe() {
+        const SWIPE_THRESHOLD = 50;
+        if (touchEndX < touchStartX - SWIPE_THRESHOLD) imagenSiguiente();
+        if (touchEndX > touchStartX + SWIPE_THRESHOLD) imagenAnterior();
+    }
+
+    // 5. INICIALIZACIÓN
+    document.addEventListener('DOMContentLoaded', () => {
+        try {
+            // Asegúrate que estas funciones existan en tu archivo o estén importadas
+            if(typeof initTheme === 'function') initTheme();
+            if(typeof verificarAuth === 'function') verificarAuth();
+            if(typeof toggleMenu === 'function') {
                 document.getElementById('menuToggle').onclick = toggleMenu;
                 document.getElementById('closeMenu').onclick = toggleMenu;
                 document.getElementById('overlayMenu').onclick = toggleMenu;
-                window.addEventListener('scroll', handleScroll);
-                
-                // Inicializar navegación del Lightbox
-                setupLightboxNavigation(); 
-            } catch (error) { console.error("Error init:", error); }
-        });
-
+            }
+            if(typeof handleScroll === 'function') window.addEventListener('scroll', handleScroll);
+            if(typeof setupLightboxNavigation === 'function') setupLightboxNavigation(); 
+            
+        } catch (error) { console.error("Error init:", error); }
+    });
         // =========================================================================
         // 1. GESTIÓN DE NOTIFICACIONES Y DATOS - MEJORADO
         // =========================================================================
@@ -1588,6 +1693,9 @@ function marcarTodasLeidas() {
                 card.id = `ev-card-${item.id}`;
                 card.className = `evidence-card ${isSelected ? 'selected' : ''} animate-enter`;
                 card.style.animationDelay = `${idx * 40}ms`;
+                card.addEventListener('touchstart', (e) => handleTouchStart(e, item.id), {passive: true});
+                card.addEventListener('touchend', handleTouchEnd);
+                card.addEventListener('touchmove', handleTouchMove);
                 
                 card.onclick = () => handleClick(item.id, idx);
                 // Eventos Touch para selección (Long Press)

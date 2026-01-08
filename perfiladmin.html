@@ -569,7 +569,7 @@
 
         /* Estilos para SweetAlert modal personalizado */
         .swal2-popup .swal2-content {
-            color: #333 !important;
+            color: var(--text-main) !important; /* Se adapta al tema */
             text-align: left !important;
         }
         
@@ -584,25 +584,101 @@
         }
 
         /* ==========================================================================
-           5.1. ESTILOS PARA ZOOM EN LIGHTBOX (NUEVO)
+           CORRECCIÓN ZOOM Y LIGHTBOX (ESTILO DEFINITIVO)
            ========================================================================== */
         .lb-content-wrapper {
-            overflow: auto; /* Permite scroll si la imagen es gigante */
-            scrollbar-width: none; -ms-overflow-style: none; /* Ocultar barras */
+            width: 100%; height: 100%;
+            overflow: auto; /* Permite scroll nativo */
             display: flex; justify-content: center; align-items: center;
+            -webkit-overflow-scrolling: touch;
         }
-        .lb-content-wrapper::-webkit-scrollbar { display: none; }
 
         .lb-media-item {
-            transition: transform 0.3s ease;
-            cursor: zoom-in; cursor: -webkit-zoom-in;
+            max-width: 100%; max-height: 100%;
+            object-fit: contain;
+            transition: width 0.3s ease, height 0.3s ease; /* Transición suave de tamaño */
+            cursor: zoom-in;
         }
-        
+
         .lb-media-item.zoomed {
-            transform: scale(2.5); /* Nivel de Zoom */
-            cursor: zoom-out; cursor: -webkit-zoom-out;
-            max-width: initial !important; max-height: initial !important;
-            transform-origin: center center;
+            /* EL TRUCO: Quitar límites y forzar tamaño grande */
+            max-width: none !important;
+            max-height: none !important;
+            width: auto;
+            height: auto;
+            min-width: 150%; /* 150% de la pantalla para obligar el scroll */
+            cursor: zoom-out;
+            cursor: grab;
+        }
+
+        /* ==========================================================================
+           6. RESPONSIVE Y TABLAS MÓVILES
+           ========================================================================== */
+        @media (max-width: 992px) {
+            /* --- HEADER Y FOOTER UNIFICADOS --- */
+            .main-header { height: var(--header-height-mobile); padding: 0 15px; }
+            .header-actions { gap: 10px; }
+            .logo-container img { height: 40px; }
+            .btn-logout-header span { display: none; }
+            .btn-logout-header { padding: 0 15px; height: 36px; font-size: 0.85rem; }
+            .btn-icon-header, .menu-toggle { width: 36px; height: 36px; font-size: 1.2rem; }
+            .menu-toggle { display: flex; align-items: center; justify-content: center; }
+
+            /* --- SIDEBAR --- */
+            .sidebar-container { transform: translateX(-100%); width: 280px; box-shadow: 5px 0 15px rgba(0,0,0,0.2); }
+            .sidebar-container.active { transform: translateX(0); }
+            .main-content { margin-left: 0; padding: 20px 15px; width: 100%; }
+
+            /* --- TABLAS TRANSFORMADAS A TARJETAS --- */
+            .modern-table thead { display: none; } 
+            .modern-table, .modern-table tbody, .modern-table tr, .modern-table td { display: block; width: 100%; }
+            
+            .modern-table tr {
+                background: var(--bg-card);
+                margin-bottom: 15px;
+                border: 1px solid var(--border-color);
+                border-radius: 12px;
+                padding: 15px;
+                box-shadow: var(--shadow-soft);
+            }
+            
+            .modern-table td {
+                padding: 10px 0;
+                border: none;
+                border-bottom: 1px solid var(--border-color);
+                text-align: right; /* Dato a la derecha */
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .modern-table td:last-child { border-bottom: none; justify-content: flex-end; }
+            
+            /* ETIQUETAS MÁGICAS (Usan data-label del HTML) */
+            .modern-table td::before {
+                content: attr(data-label);
+                float: left;
+                font-weight: 700;
+                color: var(--primary);
+                font-size: 0.85rem;
+                text-transform: uppercase;
+            }
+
+            /* --- GRID GALERÍA --- */
+            .gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            
+            /* --- LIGHTBOX --- */
+            .lb-nav-btn { display: none; } /* Usar Swipe */
+            .lb-close-fixed { top: 15px; right: 15px; background: rgba(0,0,0,0.6); }
+
+            /* --- MENÚ ACCIONES MÓVIL (Corrección Z-Index) --- */
+            .mobile-actions-dropdown { display: block; position: relative; }
+            .mobile-actions-menu { 
+                z-index: 9999; /* Asegurar que flote sobre todo */
+                right: 0; width: 180px; 
+            }
+            .action-btn { display: none; } /* Ocultar botones escritorio */
+            
+            footer { padding: 30px 15px; }
         }
 
         /* ==========================================================================
@@ -811,22 +887,26 @@
     }
 
     /* ESTILO PARA SELECCIONAR VARIOS USUARIOS */
-    .usuario-item {
-        padding: 10px;
-        border-bottom: 1px solid #eee;
-        cursor: pointer;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        transition: background 0.2s;
-    }
-    .usuario-item:hover {
-        background-color: #f5f5f5;
-    }
-    .usuario-item.seleccionado {
-        background-color: #e0f7fa; /* Azul claro cuando está seleccionado */
-        border-left: 4px solid var(--info);
-    }
+    /* ESTILO CORREGIDO (PÉGALO) */
+.usuario-item {
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color); /* Usar variable de borde */
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.2s;
+    color: var(--text-main); /* Asegura que el texto responda al tema */
+}
+
+.usuario-item:hover {
+    background-color: var(--bg-input); /* Se adapta a gris oscuro en Dark Mode */
+}
+
+.usuario-item.seleccionado {
+    background-color: var(--primary-soft); /* Usa tu color morado transparente */
+    border-left: 4px solid var(--info);
+}
 
     /* ==========================================
            FIX: ALERTAS SIEMPRE AL FRENTE (SOLUCIÓN Z-INDEX)
@@ -842,6 +922,27 @@
             z-index: 10000 !important; 
         }
         
+        /* FORZAR MODO OSCURO EN SWEETALERT2 */
+body.dark-mode .swal2-popup {
+    background: var(--bg-card) !important;
+    color: var(--text-main) !important;
+    border: 1px solid var(--border-color);
+}
+
+body.dark-mode .swal2-title,
+body.dark-mode .swal2-content, 
+body.dark-mode .swal2-html-container {
+    color: var(--text-main) !important;
+}
+
+/* Arreglar inputs dentro de SweetAlert si los usas */
+body.dark-mode .swal2-input,
+body.dark-mode .swal2-textarea {
+    background: var(--bg-input) !important;
+    color: var(--text-main) !important;
+    border-color: var(--border-color) !important;
+}
+
     </style>
 </head>
 
@@ -1408,7 +1509,7 @@
         <div class="lb-content-wrapper" id="lightboxContent"></div>
         <div class="lb-actions-panel">
             <a id="lbDownloadLink" href="#" target="_blank" download class="btn-lb-action" 
-               style="background:white; color:#333;">
+                style="background:var(--text-inverse); color:var(--bg-body);">
                 <i class="fas fa-download"></i> Descargar
             </a>
             <button class="btn-lb-action btn-lb-delete" onclick="eliminarEvidenciaActual()">
@@ -1488,6 +1589,52 @@
     </div>
 
     <script>
+// ==========================================
+    // 0. VARIABLES Y FUNCIONES PARA GESTOS (FALTABA ESTO)
+    // ==========================================
+    let pressTimer;
+    let isPressing = false;
+
+    function handleTouchStart(e, id) {
+        // Si ya estamos en modo selección, ignoramos el long-press
+        if (modoSeleccion) return; 
+
+        isPressing = true;
+        
+        // Esperar 600ms para considerar que es un "toque mantenido"
+        pressTimer = setTimeout(() => {
+            if (isPressing) {
+                if (navigator.vibrate) navigator.vibrate(50); // Vibrar
+                
+                // Activar el modo selección visualmente
+                toggleModoSeleccion(); 
+                
+                // Marcar la carta que se está tocando
+                const card = e.target.closest('.evidence-card');
+                if (card) {
+                    toggleSeleccionEvidencia(id, card);
+                }
+            }
+        }, 600);
+    }
+
+    function handleTouchEnd() {
+        // Si suelta el dedo antes de 600ms, cancelamos (es un click normal)
+        clearTimeout(pressTimer);
+        isPressing = false;
+    }
+
+    function handleTouchMove() {
+        // Si mueve el dedo, cancelamos (es un scroll, no una selección)
+        clearTimeout(pressTimer);
+        isPressing = false;
+    }
+    // --- FUNCION SWIPE PARA LIGHTBOX ---
+    function handleSwipe() {
+        const SWIPE_THRESHOLD = 50;
+        if (touchEndX < touchStartX - SWIPE_THRESHOLD) imagenSiguiente();
+        if (touchEndX > touchStartX + SWIPE_THRESHOLD) imagenAnterior();
+    }
     // ==========================================
     // 1. CONFIGURACIÓN E INICIALIZACIÓN
     // ==========================================
@@ -1510,18 +1657,23 @@
     // Inicializar al cargar
     document.addEventListener('DOMContentLoaded', function() {
     // 1. Verificar Admin
-    const tipoUsuario = localStorage.getItem('usuario_tipo');
-    if (tipoUsuario !== "0") {
-        Swal.fire({
-            title: 'Acceso restringido',
-            text: 'Solo administradores pueden acceder a esta sección',
-            icon: 'error',
-            confirmButtonColor: '#6A0DAD'
-        }).then(() => {
-            window.location.href = "index.html";
+    const mobileActionsBtn = document.querySelector('.mobile-actions-btn');
+    const mobileActionsMenu = document.querySelector('.mobile-actions-menu');
+
+    if(mobileActionsBtn && mobileActionsMenu) {
+        mobileActionsBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Evita que se cierre inmediatamente
+            mobileActionsMenu.classList.toggle('active');
         });
-        return;
+
+        // Cerrar al hacer clic fuera
+        document.addEventListener('click', (e) => {
+            if (!mobileActionsBtn.contains(e.target)) {
+                mobileActionsMenu.classList.remove('active');
+            }
+        });
     }
+
 
     // =========================================================
     // 2. NUEVA LÓGICA DE TEMA (BD > NAVEGADOR) - AGREGADO
@@ -2034,49 +2186,47 @@
     }
 
     function renderizarUsuarios() {
-        const tbody = document.getElementById('userTableBody');
-        if(!tbody) return;
+    const tbody = document.getElementById('userTableBody');
+    if(!tbody) return;
 
-        tbody.innerHTML = usuarios.map(u => {
-            const esAdmin = parseInt(u.tipo) === 0;
-            const rol = esAdmin ? 'Administrador' : 'Estudiante';
-            const claseRol = esAdmin ? 'tipo-contrasena' : 'tipo-subida';
-            
-            const esActivo = parseInt(u.activo) === 1;
-            const estadoTexto = esActivo ? 'Activo' : 'Inactivo';
-            const claseEstado = esActivo ? 'badge-resolved' : 'badge-rejected';
+    tbody.innerHTML = usuarios.map(u => {
+        const esAdmin = parseInt(u.tipo) === 0;
+        const rol = esAdmin ? 'Administrador' : 'Estudiante';
+        const claseRol = esAdmin ? 'tipo-contrasena' : 'tipo-subida';
+        
+        const esActivo = parseInt(u.activo) === 1;
+        const estadoTexto = esActivo ? 'Activo' : 'Inactivo';
+        const claseEstado = esActivo ? 'badge-resolved' : 'badge-rejected';
 
-            return `
-                <tr id="user-row-${u.cedula}">
-                    <td data-label="Usuario">
+        // AQUÍ ESTÁ EL ARREGLO: Agregamos data-label a cada TD
+        return `
+            <tr id="user-row-${u.cedula}">
+                <td data-label="Usuario">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <img src="${u.foto || 'Img/Logo_pestaña.png'}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">
                         <div>
                             <strong>${u.nombre} ${u.apellido}</strong><br>
                             <small style="color:#888;">${u.contrasena || '***'}</small>
                         </div>
-                    </td>
-                    <td data-label="Cédula">${u.cedula}</td>
-                    <td data-label="Rol"><span class="solicitud-tipo ${claseRol}">${rol}</span></td>
-                    <td data-label="Estado"><span id="user-status-${u.cedula}" class="request-badge ${claseEstado}">${estadoTexto}</span></td>
-                    <td data-label="Acciones">
-                        <div style="display:flex; gap:5px; width:100%; flex-direction:column;">
-                            <button class="action-btn btn-view" onclick="verUsuario('${u.cedula}')" title="Ver Detalles">
-                                <i class="fas fa-eye"></i>
-                            </button>
-
-                            ${esActivo ? 
-                                `<button class="action-btn btn-deactivate" onclick="cambiarEstadoUsuario('${u.cedula}', 0)" title="Desactivar">
-                                    <i class="fas fa-user-slash"></i>
-                                 </button>` : 
-                                `<button class="action-btn btn-activate" onclick="cambiarEstadoUsuario('${u.cedula}', 1)" title="Activar">
-                                    <i class="fas fa-user-check"></i>
-                                 </button>`
-                            }
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-    }
+                    </div>
+                </td>
+                <td data-label="Cédula">${u.cedula}</td>
+                <td data-label="Rol"><span class="solicitud-tipo ${claseRol}">${rol}</span></td>
+                <td data-label="Estado"><span id="user-status-${u.cedula}" class="request-badge ${claseEstado}">${estadoTexto}</span></td>
+                <td data-label="Acciones">
+                    <div style="display:flex; gap:5px; width:100%; justify-content:flex-end;">
+                        <button class="action-btn btn-view" onclick="verUsuario('${u.cedula}')" title="Ver Detalles"><i class="fas fa-eye"></i></button>
+                        ${esActivo ? 
+                            `<button class="action-btn btn-deactivate" onclick="cambiarEstadoUsuario('${u.cedula}', 0)" title="Desactivar"><i class="fas fa-user-slash"></i></button>` : 
+                            `<button class="action-btn btn-activate" onclick="cambiarEstadoUsuario('${u.cedula}', 1)" title="Activar"><i class="fas fa-user-check"></i></button>`
+                        }
+                        <button class="action-btn btn-delete" onclick="eliminarUsuario('${u.cedula}')" title="Eliminar"><i class="fas fa-trash"></i></button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
 
     function filterUsers() {
         const busqueda = document.getElementById('searchUser').value.toLowerCase();
@@ -2479,7 +2629,7 @@ function procesarSolicitudDesdeCard(tipoRaw, solicitudId) {
     else if (tipoRaw === 'RECUPERACION_CONTRASENA') {
         // ... (El código de recuperación se mantiene igual que antes) ...
         html += `
-            <div style="background:#e8f8f5; padding:10px; border-radius:8px; margin-bottom:15px; border-left:4px solid var(--info);">
+            <div style="background:var(--primary-soft); padding:10px; border-radius:8px; margin-bottom:15px; border-left:4px solid var(--info);">
                 <p style="font-size:0.9rem;"><strong><i class="fas fa-envelope"></i> Acción Automática:</strong> Se enviará un correo con la clave.</p>
                 <p style="font-size:0.85rem;">Email destino: <strong>${solicitud.Email || solicitud.email || 'No registrado'}</strong></p>
             </div>
@@ -2838,10 +2988,14 @@ async function enviarGestion(id, accion) {
         evidenciasEstudianteActual.forEach((evidencia, index) => {
             const tarjeta = document.createElement('div');
             tarjeta.className = `evidence-card ${modoSeleccion ? 'selection-mode-active' : ''}`;
+            tarjeta.addEventListener('touchstart', (e) => handleTouchStart(e, idEvidencia), {passive: true});
+            tarjeta.addEventListener('touchend', handleTouchEnd);
+            tarjeta.addEventListener('touchmove', handleTouchMove);
             
             // Lógica robusta para obtener URL (soporta mayúsculas/minúsculas de DB)
             const urlArchivo = evidencia.Url_Archivo || evidencia.url_archivo || '';
             const idEvidencia = evidencia.id || evidencia.ID;
+            
 
             // Detectar tipo de archivo
             const esVideo = urlArchivo.match(/\.(mp4|avi|mov|webm|mkv)$/i);
@@ -3133,9 +3287,9 @@ async function eliminarEvidenciaActual() {
     }
 
     function renderizarLogs() {
-        const tbody = document.getElementById('logsTableBody');
-        if (!tbody) return;
-        
+    const tbody = document.getElementById('logsTableBody');
+    if (!tbody) return;
+    
         tbody.innerHTML = logs.map(log => {
             // Compatibilidad de nombres
             const fechaRaw = log.fecha || log.Fecha;
@@ -3161,15 +3315,15 @@ async function eliminarEvidenciaActual() {
             else if(accion.includes('REGISTRO') || accion.includes('SUBIDA')) color = '#2E8B57'; // Verde
             
             return `
-                <tr>
-                    <td style="font-size:0.85rem; white-space:nowrap;">${fechaFormateada}</td>
-                    <td><strong style="color:${color}">${accion}</strong></td>
-                    <td style="font-size:0.9rem;">${detalle}</td>
-                    <td><span class="badge-user">${usuario}</span></td>
-                </tr>
-            `;
-        }).join('');
-    }
+            <tr>
+                <td data-label="Fecha" style="font-size:0.85rem; white-space:nowrap;">${formatearFecha(log.fecha)}</td>
+                <td data-label="Acción"><strong style="color:${obtenerColorAccion(log.accion)}">${log.accion}</strong></td>
+                <td data-label="Detalle" style="font-size:0.9rem;">${log.detalle}</td>
+                <td data-label="Usuario"><span class="badge-user">${log.usuario}</span></td>
+            </tr>
+        `;
+    }).join('');
+}
 
     function obtenerColorAccion(accion) {
         if (!accion) return 'var(--text-main)';
