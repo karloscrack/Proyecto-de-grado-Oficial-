@@ -394,17 +394,21 @@
            7. SECCIÓN DE INFORMACIÓN
            ========================================================================== */
         .info-section {
-            padding: 100px 20px;
-            text-align: center;
-            /* CORRECCIÓN: Usamos solo RGBA transparente para que se vea el fondo del body */
-            /* Un degradado suave de arriba hacia abajo que conecta con la siguiente sección */
-            background: linear-gradient(to bottom, 
-                rgba(106, 13, 173, 0.05) 0%,   /* Morado muy suave arriba */
-                rgba(106, 13, 173, 0.02) 100%  /* Casi transparente abajo */
-            );
-            /* Para suavizar el borde con la siguiente sección */
-            border-bottom: 1px solid rgba(106, 13, 173, 0.05); 
-        }
+    padding-top: 100px;
+    padding-bottom: 60px; /* Reducimos un poco abajo para acercarlo al libro */
+    padding-left: 20px;
+    padding-right: 20px;
+    text-align: center;
+    
+    /* FONDO: Degradado transparente suave (Sin border-bottom) */
+    background: linear-gradient(to bottom, 
+        rgba(106, 13, 173, 0.05) 0%, 
+        rgba(106, 13, 173, 0.02) 100%
+    );
+    
+    /* IMPORTANTE: Quitamos el borde que causaba la línea */
+    border: none; 
+}
 
         .section-title {
             color: var(--primary);
@@ -487,14 +491,20 @@
            8. SECCIÓN LIBRO DIGITAL INTERACTIVO
            ========================================================================== */
         .digital-book-section {
-            padding: 80px 20px;
-            /* CORRECCIÓN: Continuamos el degradado donde terminó el anterior */
-            background: linear-gradient(to bottom, 
-             rgba(106, 13, 173, 0.02) 0%,   /* Empieza igual que terminó el de arriba */
-             rgba(46, 139, 87, 0.05) 100%   /* Termina con un toque verdoso suave (tu color secundario) */
-         );
-            text-align: center;
-        }
+    padding-top: 20px; /* Menos espacio arriba para que parezca conectado */
+    padding-bottom: 80px;
+    padding-left: 20px;
+    padding-right: 20px;
+    
+    /* FONDO: Continúa exactamente donde terminó el anterior */
+    background: linear-gradient(to bottom, 
+        rgba(106, 13, 173, 0.02) 0%, 
+        rgba(46, 139, 87, 0.05) 100%
+    );
+    
+    text-align: center;
+    border: none;
+}
 
         .book-container {
             max-width: 1200px;
