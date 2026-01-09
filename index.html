@@ -849,9 +849,9 @@
                     Para una mejor experiencia y evitar errores de carga, visualiza el anuario en pantalla completa.
                 </p>
                 
-                <a href="https://webobook.com/public/657e44fc1340d73a46388f52,en" target="_blank" class="btn-hero" style="text-decoration:none; padding: 15px 40px;">
-                    <i class="fas fa-external-link-alt"></i> Leer Libro Ahora
-                </a>
+                <button onclick="abrirLibro()" class="btn-hero" style="border:none; padding: 15px 40px; box-shadow: 0 10px 30px rgba(106, 13, 173, 0.3);">
+                    <i class="fas fa-book-open"></i> Abrir Libro Digital
+                </button>
             </div>
         </div>
         
@@ -885,6 +885,27 @@
             <button class="btn-hero" onclick="cerrarSoporte()" style="margin-top:10px; background:var(--primary);">
                 Cerrar
             </button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalLibro" style="z-index: 9999;">
+        <div class="modal-card" style="width: 95%; max-width: 1400px; height: 90vh; padding: 0; background: #000; overflow: hidden; display: flex; flex-direction: column;">
+            
+            <div style="padding: 10px 20px; background: var(--primary); display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="color: white; margin: 0; font-size: 1.2rem;"><i class="fas fa-school"></i> Recorrido Virtual</h3>
+                <button onclick="cerrarLibro()" style="background: rgba(0,0,0,0.2); border: none; color: white; width: 35px; height: 35px; border-radius: 50%; cursor: pointer; font-size: 1.2rem;">&times;</button>
+            </div>
+
+            <div style="flex: 1; width: 100%; position: relative;">
+                <iframe id="frameLibro" 
+                        src="" 
+                        width="100%" 
+                        height="100%" 
+                        frameborder="0" 
+                        allow="autoplay; fullscreen; gyroscope; accelerometer" 
+                        style="border: none; width: 100%; height: 100%;">
+                </iframe>
+            </div>
         </div>
     </div>
 
@@ -956,6 +977,29 @@
                 event.target.classList.remove('active');
             }
         }
+
+        // --- LÓGICA DEL LIBRO VIRTUAL ---
+    function abrirLibro() {
+        const modal = document.getElementById('modalLibro');
+        const frame = document.getElementById('frameLibro');
+        // Cargamos la URL solo al abrir para que no consuma internet antes
+        frame.src = "https://webobook.com/public/657e44fc1340d73a46388f52,en?ap=true&si=true&sm=true&sp=true&sfr=true&sl=true&sop=false&";
+        
+        // Usamos la misma clase 'active' que usa tu modal de soporte
+        modal.classList.add('active'); 
+        document.body.style.overflow = 'hidden';
+    }
+
+    function cerrarLibro() {
+        const modal = document.getElementById('modalLibro');
+        const frame = document.getElementById('frameLibro');
+        
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+        
+        // Borramos el src para detener el libro y liberar memoria
+        setTimeout(() => { frame.src = ""; }, 300);
+    }
     </script>
 </body>
 </html>
