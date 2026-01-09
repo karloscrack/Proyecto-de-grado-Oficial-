@@ -300,15 +300,22 @@
         }
 
         .hero-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-    /* Degradado oscuro para que el texto resalte sobre las fotos */
-            background: linear-gradient(135deg, rgba(106, 13, 173, 0.75) 0%, rgba(0, 0, 0, 0.85) 100%);
-            z-index: 0;
-        }
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    
+    /* HEMOS BAJADO LA OPACIDAD:
+       - De 0.75 (75%) bajamos a 0.35 (35%) en el morado.
+       - De 0.85 (85%) bajamos a 0.55 (55%) en el negro.
+    */
+    background: linear-gradient(135deg, rgba(106, 13, 173, 0.35) 0%, rgba(0, 0, 0, 0.55) 100%);
+    
+    z-index: 0;
+    /* Opcional: Esto añade un desenfoque sutil solo al fondo para que el texto destaque más sin oscurecer tanto */
+    backdrop-filter: blur(2px); 
+}
 
         .hero-content {
             position: relative;
