@@ -22,6 +22,7 @@
            1. SISTEMA DE DISEÑO & VARIABLES (DESIGN TOKENS) - COPIADO DE PERFIL.HTML
            ========================================================================== */
         :root {
+            --hero-bg-image: url('Img/collage_claro.jpg');
             /* --- IDENTIDAD CORPORATIVA --- */
             --primary: #6A0DAD;       /* Morado Institucional */
             --primary-dark: #4a0072;  /* Morado Profundo (Hover) */
@@ -84,6 +85,7 @@
            2. MODO OSCURO (DARK MODE)
            ========================================================================== */
         body.dark-mode {
+            --hero-bg-image: url('Img/collage_oscuro.jpg');
             --bg-image: url('Img/Oscuro.png');
             --bg-body: #121212;
             --bg-card: #1e1e1e;
@@ -270,9 +272,20 @@
             text-align: center;
             color: white;
             padding: 0 20px;
-            overflow: hidden;
             margin-top: calc(var(--header-height) * -1);
             padding-top: var(--header-height);
+    
+    /* AQUÍ USAMOS LA VARIABLE MÁGICA */
+            background-image: var(--hero-bg-image);
+    
+    /* Configuración para que se vea perfecto */
+            background-size: cover;       
+            background-position: center;  
+            background-attachment: fixed; /* Efecto Parallax elegante */
+            background-repeat: no-repeat;
+    
+    /* Transición suave al cambiar de tema */
+            transition: background-image 0.5s ease-in-out;
         }
 
         .video-background {
@@ -292,7 +305,8 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.6);
+    /* Degradado oscuro para que el texto resalte sobre las fotos */
+            background: linear-gradient(135deg, rgba(106, 13, 173, 0.75) 0%, rgba(0, 0, 0, 0.85) 100%);
             z-index: 0;
         }
 
@@ -743,28 +757,16 @@
     </div>
 
     <section class="hero">
-        <video id="bgVideo" class="video-background" autoplay muted loop playsinline 
-               preload="none" 
-               poster="Img/Logo_pestaña.png" 
-               style="background-color: black;">
-            <source src="https://proyecto-grado-karlos-2025.s3.us-east-005.backblazeb2.com/evidencias/manual_174860-852215326.mp4" type="video/mp4">
-            Tu navegador no soporta videos HTML5.
-        </video>
-        
         <div class="hero-overlay"></div>
         
         <div class="hero-content">
             <h1>Conservación de Evidencia Escolar</h1>
-            <p>Plataforma inteligente para construir tu Portafolio de Salida con Reconocimiento Facial.</p>
+            <p>Tu historia académica segura y organizada. Construye tu Portafolio de Salida con el poder de la IA.</p>
             
             <a href="biblioteca.html" class="btn-hero">
                 Ingresar al Portafolio <i class="fas fa-arrow-right"></i>
             </a>
         </div>
-
-        <button id="toggleSoundBtn">
-            <i class="fas fa-volume-mute"></i> Sonido
-        </button>
     </section>
 
     <section class="info-section">
@@ -925,25 +927,6 @@
             if (event.target.classList.contains('modal-overlay')) {
                 event.target.classList.remove('active');
             }
-        }
-
-        // --- SONIDO VIDEO ---
-        const video = document.getElementById('bgVideo');
-        const soundBtn = document.getElementById('toggleSoundBtn');
-        
-        if(video && soundBtn) {
-            video.muted = true;
-            soundBtn.addEventListener('click', function() {
-                if (video.muted) {
-                    video.muted = false;
-                    soundBtn.innerHTML = '<i class="fas fa-volume-up"></i> Sonido';
-                    soundBtn.classList.add('sound-on');
-                } else {
-                    video.muted = true;
-                    soundBtn.innerHTML = '<i class="fas fa-volume-mute"></i> Sonido';
-                    soundBtn.classList.remove('sound-on');
-                }
-            });
         }
     </script>
 </body>
