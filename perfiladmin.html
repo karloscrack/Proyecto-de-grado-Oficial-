@@ -33,7 +33,7 @@
             --warning: #f9a825;       
             --info: #0288d1;          
             
-            --bg-image: url('Img/Claro.png'); 
+            --bg-image: url('Img/Claro.webp'); 
             --bg-body: #f4f6f9;
             --bg-card: #ffffff;
             --bg-header: rgba(255, 255, 255, 0.95);
@@ -63,7 +63,7 @@
            MODO OSCURO (Faltaba esto en Admin)
            ========================================================================== */
         body.dark-mode {
-            --bg-image: url('Img/Oscuro.png'); /* Asegúrate de tener esta imagen o quita esta línea */
+            --bg-image: url('Img/Oscuro.webp'); /* Asegúrate de tener esta imagen o quita esta línea */
             --bg-body: #121212;
             --bg-card: #1e1e1e;
             --bg-header: rgba(30, 30, 30, 0.95);
@@ -2220,7 +2220,7 @@ body.dark-mode .swal2-textarea {
                             `<button class="action-btn btn-deactivate" onclick="cambiarEstadoUsuario('${u.cedula}', 0)" title="Desactivar"><i class="fas fa-user-slash"></i></button>` : 
                             `<button class="action-btn btn-activate" onclick="cambiarEstadoUsuario('${u.cedula}', 1)" title="Activar"><i class="fas fa-user-check"></i></button>`
                         }
-                        <button class="action-btn btn-delete" onclick="eliminarUsuario('${u.cedula}')" title="Eliminar"><i class="fas fa-trash"></i></button>
+
                     </div>
                 </td>
             </tr>
