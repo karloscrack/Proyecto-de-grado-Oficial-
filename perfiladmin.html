@@ -1829,12 +1829,6 @@ body.dark-mode .swal2-textarea {
 
         const stats = await res.json();
 
-        const valSolicitudes = document.getElementById('statReqs'); 
-        if (valSolicitudes) {
-          // Usamos el dato que viene del servidor (o 0 si no llega)
-            valSolicitudes.textContent = stats.solicitudes_pendientes || 0;
-        }
-
         // 2. ACTUALIZAR CONTADORES BÁSICOS (Con tu animación original)
         // Verificamos si existe tu función de animación para usarla
         if (typeof actualizarContador === 'function') {
