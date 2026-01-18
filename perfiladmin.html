@@ -1829,6 +1829,12 @@ body.dark-mode .swal2-textarea {
 
         const stats = await res.json();
 
+        const valSolicitudes = document.getElementById('statReqs'); 
+        if (valSolicitudes) {
+          // Usamos el dato que viene del servidor (o 0 si no llega)
+            valSolicitudes.textContent = stats.solicitudes_pendientes || 0;
+        }
+
         // 2. ACTUALIZAR CONTADORES BÁSICOS (Con tu animación original)
         // Verificamos si existe tu función de animación para usarla
         if (typeof actualizarContador === 'function') {
@@ -1977,54 +1983,61 @@ body.dark-mode .swal2-textarea {
             const res = await fetch(`${API_URL}/obtener_solicitudes?limit=50`);
             const todasSolicitudes = await res.json();
             
+            // Filtramos las que son PENDIENTE
             const solicitudesPendientes = todasSolicitudes.filter(s => {
                 const estado = (s.Estado || '').toUpperCase();
                 return estado === 'PENDIENTE' || estado === '';
             });
             
+            // 1. Actualizamos la campana de notificaciones (ESTO SE MANTIENE)
             actualizarNotificaciones(solicitudesPendientes);
-            document.getElementById('statReqs').textContent = solicitudesPendientes.length;
+
+            // 2. LÍNEA DESACTIVADA: 
+            // Ya no dejamos que esta función toque el número grande del Dashboard.
+            // Dejamos que 'actualizarDatosDashboard()' se encargue de eso con el dato exacto del servidor.
             
+            // document.getElementById('statReqs').textContent = solicitudesPendientes.length; 
+
         } catch (error) {
             console.error("Error cargando solicitudes pendientes:", error);
         }
     }
 
     function actualizarNotificaciones(todasLasSolicitudes) {
-    const list = document.getElementById('notisList'); // ✅ Definimos 'list' aquí para evitar el ReferenceError
-    const badge = document.getElementById('notisBadge');
-    
-    if (!list || !badge) return;
-
-    // Filtramos solo las pendientes
-    const pendientes = todasLasSolicitudes.filter(s => 
-        (s.Estado || s.estado || '').toUpperCase() === 'PENDIENTE'
-    );
-
-    if (pendientes.length > 0) {
-        badge.style.display = 'flex';
-        badge.textContent = pendientes.length;
+        const list = document.getElementById('notisList'); 
+        const badge = document.getElementById('notisBadge');
         
-        list.innerHTML = pendientes.map(sol => {
-            const usuario = usuarios.find(u => (u.cedula || u.CI) == sol.CI_Solicitante);
-            const nombre = usuario ? `${usuario.nombre} ${usuario.apellido}` : 'Usuario';
-            const tipo = (sol.Tipo || sol.tipo || 'Solicitud').replace(/_/g, ' ');
+        if (!list || !badge) return;
+
+        // Filtramos solo las pendientes para la campana
+        const pendientes = todasLasSolicitudes.filter(s => 
+            (s.Estado || s.estado || '').toUpperCase() === 'PENDIENTE'
+        );
+
+        if (pendientes.length > 0) {
+            badge.style.display = 'flex';
+            badge.textContent = pendientes.length;
             
-            return `
-                <div class="noti-item unread" onclick="navTo('solicitudes')">
-                    <i class="fas fa-bell" style="color:var(--warning);"></i>
-                    <div style="flex:1;">
-                        <div style="font-weight:600; font-size:0.9rem;">${tipo}</div>
-                        <div style="font-size:0.75rem; color:#666;">De: ${nombre}</div>
+            list.innerHTML = pendientes.map(sol => {
+                const usuario = usuarios.find(u => (u.cedula || u.CI) == sol.CI_Solicitante);
+                const nombre = usuario ? `${usuario.nombre} ${usuario.apellido}` : 'Usuario';
+                const tipo = (sol.Tipo || sol.tipo || 'Solicitud').replace(/_/g, ' ');
+                
+                return `
+                    <div class="noti-item unread" onclick="navTo('solicitudes')">
+                        <i class="fas fa-bell" style="color:var(--warning);"></i>
+                        <div style="flex:1;">
+                            <div style="font-weight:600; font-size:0.9rem;">${tipo}</div>
+                            <div style="font-size:0.75rem; color:#666;">De: ${nombre}</div>
+                        </div>
                     </div>
-                </div>
-            `;
-        }).join('');
-    } else {
-        badge.style.display = 'none';
-        list.innerHTML = '<div style="padding:15px; text-align:center; color:#888;">No hay tareas pendientes</div>';
+                `;
+            }).join('');
+        } else {
+            badge.style.display = 'none';
+            list.innerHTML = '<div style="padding:15px; text-align:center; color:#888;">No hay tareas pendientes</div>';
+        }
     }
-}
 
     function formatearFecha(fechaStr) {
         if (!fechaStr) return 'Fecha no disponible';
