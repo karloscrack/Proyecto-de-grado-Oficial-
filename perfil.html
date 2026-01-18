@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="description" content="Perfil Estudiantil - Plataforma de Evidencias Digitales">
     <meta name="theme-color" content="#6A0DAD">
@@ -856,6 +856,41 @@ body.dark-mode .swal2-textarea {
     background: var(--input-bg) !important; /* <--- CORREGIDO */
     color: var(--text-main) !important;
     border-color: var(--border-color) !important;
+}
+
+/* --- RESPONSIVE TABLES: Convierte filas en tarjetas en móvil --- */
+@media screen and (max-width: 768px) {
+    .modern-table, .modern-table tbody, .modern-table tr, .modern-table td {
+        display: block;
+        width: 100%;
+    }
+    .modern-table thead { display: none; } /* Oculta títulos superiores */
+    
+    .modern-table tr {
+        margin-bottom: 15px;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        overflow: hidden;
+    }
+
+    .modern-table td {
+        display: flex;
+        justify-content: space-between;
+        text-align: right;
+        padding: 10px 15px;
+        border-bottom: 1px solid #eee;
+        font-size: 0.95rem;
+    }
+
+    .modern-table td::before {
+        content: attr(data-label); /* Usa el título de la columna */
+        font-weight: bold;
+        text-align: left;
+        color: #444;
+        margin-right: 20px;
+    }
 }
     </style>
 </head>

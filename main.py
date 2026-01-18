@@ -2961,6 +2961,18 @@ async def migrar_seguridad():
     except Exception as e:
         return JSONResponse({"error": str(e)})
 
+        # --- Endpoint para limpiar solicitudes viejas (Ahorrar espacio) ---
+@app.delete("/limpiar_historial_solicitudes")
+async def limpiar_historial():
+    try:
+        # Borra todo lo que sea RESUELTO o RECHAZADO
+        resultado = mongo.db.solicitudes.delete_many({
+            "estado": {"$in": ["RESUELTO", "RECHAZADO"]}
+        })
+        return {"mensaje": f"Se eliminaron {resultado.deleted_count} solicitudes antiguas."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
     
