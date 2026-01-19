@@ -2977,6 +2977,31 @@ async def confirmar_lectura(id_solicitud: int):
         return {"status": "ok", "mensaje": "Solicitud eliminada para ahorrar espacio."}
     except Exception as e:
         return JSONResponse(status_code=500, content={"status": "error", "mensaje": str(e)})
+    
+    # --- NUEVO: Limpieza masiva cuando el estudiante marca "Leído" ---
+@app.post("/limpiar_notificaciones_resueltas")
+async def limpiar_notificaciones_resueltas(cedula: str = Form(...)):
+    """
+    Borra de la BD todas las solicitudes que ya no son PENDIENTES.
+    Esto libera espacio en Supabase garantizando que el usuario ya las vio.
+    """
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        # Borramos solo las que están APROBADA o RECHAZADA (Dejamos las PENDIENTES)
+        c.execute("""
+            DELETE FROM Solicitudes 
+            WHERE CI_Solicitante = %s AND Estado != 'PENDIENTE'
+        """, (cedula,))
+        
+        filas_borradas = c.rowcount
+        conn.commit()
+        conn.close()
+        
+        return {"status": "ok", "mensaje": f"Se eliminaron {filas_borradas} notificaciones antiguas."}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "mensaje": str(e)})
 
 if __name__ == "__main__":
     import uvicorn

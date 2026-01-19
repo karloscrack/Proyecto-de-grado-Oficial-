@@ -1365,7 +1365,7 @@ async function cargarNotificacionesEstudiante(cedula) {
 }
 
 async function borrarSolicitud(id) {
-        if(!confirm("¿Ya leíste la respuesta? Al confirmar, esto se borrará para ahorrar espacio.")) return;
+        if(!confirm("¿Ya leíste esto? Se borrará permanentemente para ahorrar espacio.")) return;
 
         try {
             const res = await fetch(`${API_URL}/confirmar_lectura_solicitud/${id}`, {
@@ -1374,10 +1374,17 @@ async function borrarSolicitud(id) {
             const data = await res.json();
 
             if (data.status === 'ok') {
-                // Recargamos la lista para que desaparezca visualmente
-                cargarSolicitudes();
-                // Opcional: Actualizar dashboard si tienes contadores
-                if(typeof actualizarDatosDashboard === 'function') actualizarDatosDashboard();
+                // --- CORRECCIÓN AQUÍ: Usamos la función correcta y pasamos la cédula ---
+                const cedula = localStorage.getItem('usuario_cedula');
+                cargarNotificacionesEstudiante(cedula); 
+                // -----------------------------------------------------------------------
+                
+                // Actualizar contador del menú
+                const badge = document.getElementById('notisBadge');
+                if(badge) {
+                    let count = parseInt(badge.textContent || 0);
+                    if(count > 0) badge.textContent = count - 1;
+                }
             } else {
                 alert("Error al borrar: " + data.mensaje);
             }
@@ -1388,22 +1395,41 @@ async function borrarSolicitud(id) {
     }
 
 // NUEVA FUNCIÓN PARA MARCAR LEÍDAS Y RECORDARLO
-function marcarTodasLeidas() {
-    const cedula = localStorage.getItem('usuario_cedula');
-    
-    // Si no se han cargado solicitudes, no hacemos nada
-    if (!appState.solicitudesCache) return;
+async function marcarTodasLeidas() {
+        const cedula = localStorage.getItem('usuario_cedula');
+        
+        // Confirmación para asegurar que el estudiante entendió
+        if(!confirm("¿Confirmar que has leído todas las respuestas?\n\nSe borrarán del historial para liberar espacio en el sistema.")) return;
 
-    // 1. Obtenemos todos los IDs de las solicitudes actuales
-    const idsParaMarcar = appState.solicitudesCache.map(s => s.id || s.ID);
-    
-    // 2. Guardamos estos IDs en la memoria del navegador como "leídos"
-    localStorage.setItem(`notis_leidas_${cedula}`, JSON.stringify(idsParaMarcar));
-    
-    // 3. Ocultamos el badge rojo visualmente al instante
-    const badge = document.getElementById('notisBadge');
-    if(badge) badge.style.display = 'none';
-}
+        try {
+            const formData = new FormData();
+            formData.append('cedula', cedula);
+
+            // Llamamos al nuevo endpoint de limpieza masiva
+            const res = await fetch(`${API_URL}/limpiar_notificaciones_resueltas`, {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await res.json();
+
+            if(data.status === 'ok') {
+                // Limpieza visual inmediata
+                const list = document.getElementById('notisList');
+                const badge = document.getElementById('notisBadge');
+                
+                if(badge) badge.style.display = 'none';
+                if(list) list.innerHTML = '<div style="padding:15px; text-align:center; color:#888;">No tienes peticiones registradas</div>';
+                
+                // Limpiar memoria local
+                localStorage.removeItem(`notis_leidas_${cedula}`);
+                
+                alert("✅ Historial limpiado. Gracias por ayudar a ahorrar espacio.");
+            }
+        } catch (e) {
+            console.error("Error limpiando:", e);
+        }
+    }
 
         function generarNotificacionesDesdeSolicitudes(solicitudes) {
             appState.notificaciones = [];
