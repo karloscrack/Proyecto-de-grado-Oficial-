@@ -1279,7 +1279,7 @@ body.dark-mode .swal2-textarea {
     }
 }
 
-        async function cargarNotificacionesEstudiante(cedula) {
+async function cargarNotificacionesEstudiante(cedula) {
     const list = document.getElementById('notisList');
     const badge = document.getElementById('notisBadge');
     if(!list) return;
@@ -1289,11 +1289,9 @@ body.dark-mode .swal2-textarea {
         const data = await res.json();
         
         // --- MEMORIA PERSISTENTE ---
-        // Recuperamos los IDs que el usuario ya marcó como leídos en este navegador
         const leidasLocal = JSON.parse(localStorage.getItem(`notis_leidas_${cedula}`)) || [];
 
         // 1. FILTRADO PARA EL NÚMERO ROJO
-        // Solo contamos las que NO son pendiente Y cuyo ID NO está en la lista de leídas
         const nuevas = data.filter(sol => {
             const estado = (sol.estado || sol.Estado || 'PENDIENTE').toUpperCase();
             const id = sol.id || sol.ID;
@@ -1301,13 +1299,15 @@ body.dark-mode .swal2-textarea {
         });
         
         if (nuevas.length > 0) {
-            badge.style.display = 'flex';
-            badge.textContent = nuevas.length;
+            if(badge) {
+                badge.style.display = 'flex';
+                badge.textContent = nuevas.length;
+            }
         } else {
-            badge.style.display = 'none';
+            if(badge) badge.style.display = 'none';
         }
 
-        // 2. MOSTRAR EL HISTORIAL COMPLETO (Incluidas las leídas)
+        // 2. MOSTRAR EL HISTORIAL COMPLETO
         if (data.length === 0) {
             list.innerHTML = '<div style="padding:15px; text-align:center; color:#888;">No tienes peticiones registradas</div>';
             return;
@@ -1318,18 +1318,21 @@ body.dark-mode .swal2-textarea {
             const tipo = rawTipo.replace(/_/g, ' ');
             const rawEstado = sol.estado || sol.Estado || 'PENDIENTE';
             const estado = rawEstado.toUpperCase();
-            const respuesta = sol.respuesta || sol.Respuesta;
-            const fecha = sol.fecha || sol.Fecha;
-
-            const color = estado === 'PENDIENTE' ? '#f9a825' : (estado === 'APROBADA' ? '#2E8B57' : '#d32f2f');
-            const icono = estado === 'PENDIENTE' ? 'fa-clock' : 'fa-reply';
             
-            // Dentro de cargarSolicitudes(), reemplaza el return del .map con esto:
+            // --- ESTO ES LO QUE FALTABA (HE RESTAURADO ESTAS LÍNEAS) ---
+            const esRecuperacion = rawTipo === 'RECUPERACION_CONTRASENA';
+            const respuestaTexto = sol.Respuesta || sol.respuesta || 'En espera de revisión';
+            
+            const msgEstudiante = esRecuperacion ? 
+                'Petición de recuperación de contraseña realizada' : 
+                respuestaTexto;
+            // -----------------------------------------------------------
+
             return `
                 <div style="padding:15px; border-bottom:1px solid #eee; margin-bottom:10px; background:var(--bg-input); border-radius:8px; position:relative;">
                     
                     <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <strong style="font-size:0.85rem;">${sol.Tipo.replace(/_/g, ' ')}</strong>
+                        <strong style="font-size:0.85rem;">${tipo}</strong>
                         <span style="font-size:0.7rem; padding:2px 6px; border-radius:4px; color:white; background:${estado === 'PENDIENTE' ? 'orange' : (estado === 'APROBADA' ? 'var(--secondary)' : 'var(--error)')}">${estado}</span>
                     </div>
 
@@ -1349,12 +1352,15 @@ body.dark-mode .swal2-textarea {
                 </div>
             `;
         }).join('');
-        
-        // Guardamos las solicitudes en memoria para usar al marcar leídas
-        appState.solicitudesCache = data;
+
+        // Guardamos en memoria para otras funciones
+        if(typeof appState !== 'undefined') {
+            appState.solicitudesCache = data;
+        }
 
     } catch (e) { 
         console.error("Error notis:", e);
+        list.innerHTML = '<p style="color:red; text-align:center;">Error cargando notificaciones</p>';
     }
 }
 
