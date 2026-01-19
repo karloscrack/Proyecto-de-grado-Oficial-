@@ -1324,17 +1324,27 @@ body.dark-mode .swal2-textarea {
             const color = estado === 'PENDIENTE' ? '#f9a825' : (estado === 'APROBADA' ? '#2E8B57' : '#d32f2f');
             const icono = estado === 'PENDIENTE' ? 'fa-clock' : 'fa-reply';
             
+            // Dentro de cargarSolicitudes(), reemplaza el return del .map con esto:
             return `
-                <div class="noti-item ${estado !== 'PENDIENTE' ? 'unread' : ''}" style="border-left: 4px solid ${color};">
-                    <i class="fas ${icono}" style="color:${color}; margin-top:5px;"></i>
-                    <div style="flex:1;">
-                        <div style="font-weight:600; font-size:0.85rem;">${tipo}</div>
-                        <div style="font-size:0.75rem; color:${color}; font-weight:700;">${estado}</div>
-                        ${respuesta ? 
-                            `<div style="font-size:0.8rem; margin-top:5px; color:var(--text-main); background:var(--input-bg); padding:5px; border-radius:5px;">
-                                <strong>Admin:</strong> "${respuesta}"
-                             </div>` : ''}
-                        <div style="font-size:0.65rem; color:#999; margin-top:5px;">${new Date(fecha).toLocaleDateString()}</div>
+                <div style="padding:15px; border-bottom:1px solid #eee; margin-bottom:10px; background:var(--bg-input); border-radius:8px; position:relative;">
+                    
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <strong style="font-size:0.85rem;">${sol.Tipo.replace(/_/g, ' ')}</strong>
+                        <span style="font-size:0.7rem; padding:2px 6px; border-radius:4px; color:white; background:${estado === 'PENDIENTE' ? 'orange' : (estado === 'APROBADA' ? 'var(--secondary)' : 'var(--error)')}">${estado}</span>
+                    </div>
+
+                    <p style="font-size:0.9rem; color:var(--text-main); margin:5px 0;">
+                        <strong>Respuesta:</strong> ${msgEstudiante}
+                    </p>
+                    
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                        <small style="color:#888; font-size:0.75rem;">${new Date(sol.Fecha || sol.fecha).toLocaleDateString()}</small>
+                        
+                        ${estado !== 'PENDIENTE' ? `
+                            <button onclick="borrarSolicitud(${sol.ID || sol.id})" style="background:var(--text-sec); color:white; border:none; padding:5px 10px; border-radius:5px; font-size:0.75rem; cursor:pointer;">
+                                <i class="fas fa-check"></i> Entendido (Borrar)
+                            </button>
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -1347,6 +1357,29 @@ body.dark-mode .swal2-textarea {
         console.error("Error notis:", e);
     }
 }
+
+async function borrarSolicitud(id) {
+        if(!confirm("¿Ya leíste la respuesta? Al confirmar, esto se borrará para ahorrar espacio.")) return;
+
+        try {
+            const res = await fetch(`${API_URL}/confirmar_lectura_solicitud/${id}`, {
+                method: 'DELETE'
+            });
+            const data = await res.json();
+
+            if (data.status === 'ok') {
+                // Recargamos la lista para que desaparezca visualmente
+                cargarSolicitudes();
+                // Opcional: Actualizar dashboard si tienes contadores
+                if(typeof actualizarDatosDashboard === 'function') actualizarDatosDashboard();
+            } else {
+                alert("Error al borrar: " + data.mensaje);
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Error de conexión");
+        }
+    }
 
 // NUEVA FUNCIÓN PARA MARCAR LEÍDAS Y RECORDARLO
 function marcarTodasLeidas() {
