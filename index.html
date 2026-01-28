@@ -748,10 +748,10 @@
 
     <header class="main-header">
         <div class="logo-container">
-            <a href="index.html">
-                <img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
-            </a>
-        </div>
+    <a href="index.html">
+        <img id="appLogo" src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
+    </a>
+</div>
         <div class="header-actions">
             <button onclick="toggleTheme()" class="btn-icon-header" id="themeBtn" title="Cambiar Tema">
                 <i class="fas fa-moon"></i>
@@ -913,7 +913,7 @@
     <footer>
         <div class="footer-content">
             <div class="footer-logo">
-                <Img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
+                <Img src="Img/Logo-Despertar (Oscuro).png" alt="Logo">
                 <h3>Unidad Educativa Particular Despertar</h3>
             </div>
             <div class="footer-links" style="margin-bottom:20px;">
@@ -949,16 +949,34 @@
         }
         
         function initTheme() {
-            const saved = localStorage.getItem('global_theme');
-            const icon = document.querySelector('#themeBtn i');
-            if(saved === 'dark') { 
-                document.body.classList.add('dark-mode'); 
-                icon.className = 'fas fa-sun'; 
-            } else { 
-                document.body.classList.remove('dark-mode'); 
-                icon.className = 'fas fa-moon'; 
-            }
+        // 1. Detectar si hay modo oscuro guardado o activo
+        const saved = localStorage.getItem('global_theme');
+        const esOscuro = saved === 'dark';
+        
+        // 2. Elementos del botón de tema (sol/luna)
+        const icon = document.querySelector('#themeBtn i') || document.querySelector('#themeToggle i');
+        
+        // 3. Definir las rutas de tus logos
+        const logoClaro = 'Img/Logo-Despertar-SKAS-Unidad-Educativa23.png';
+        const logoOscuro = 'Img/Logo-Despertar (Oscuro).png'; 
+
+        // 4. Aplicar la clase al body
+        if (esOscuro) {
+            document.body.classList.add('dark-mode');
+            if(icon) icon.className = 'fas fa-sun'; // Icono de sol en modo oscuro
+        } else {
+            document.body.classList.remove('dark-mode');
+            if(icon) icon.className = 'fas fa-moon'; // Icono de luna en modo claro
         }
+
+        // 5. CAMBIO DE LOGOS (Solo Header)
+        // Solo seleccionamos el logo del menú superior (.logo-container img)
+        const logos = document.querySelectorAll('.logo-container img');
+        
+        logos.forEach(img => {
+            img.src = esOscuro ? logoOscuro : logoClaro;
+        });
+    }
         
         function toggleMenu() { 
             document.getElementById('sideMenu').classList.toggle('active'); 

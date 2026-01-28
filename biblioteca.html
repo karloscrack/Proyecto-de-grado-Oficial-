@@ -82,7 +82,7 @@
            2. MODO OSCURO (DARK MODE)
            ========================================================================== */
         body.dark-mode {
-            --bg-image: url('Img/Gemini_Generated_Image_pv6zv4pv6zv4pv6z~2.jpg');
+            --bg-image: url('Img/Gemini_Generated_Image_pv6zv4pv6zv4pv6z~2.webp');
             --bg-body: #121212;
             --bg-card: #1e1e1e;
             --bg-header: rgba(30, 30, 30, 0.95);
@@ -891,10 +891,10 @@
 
     <header class="main-header">
         <div class="logo-container">
-            <a href="index.html">
-                <img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
-            </a>
-        </div>
+    <a href="index.html">
+        <img id="appLogo" src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
+    </a>
+</div>
         <div class="header-actions">
             <button onclick="toggleTheme()" class="btn-icon-header" id="themeBtn" title="Cambiar Tema">
                 <i class="fas fa-moon"></i>
@@ -1020,7 +1020,7 @@
     <footer>
         <div class="footer-content">
             <div class="footer-logo">
-                <img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
+                <img src="Img/Logo-Despertar (Oscuro).png" alt="Logo">
                 <h3>Unidad Educativa Particular Despertar</h3>
             </div>
             <div class="footer-links" style="margin-bottom:20px;">
@@ -1069,15 +1069,33 @@
     }
     
     function initTheme() {
+        // 1. Detectar si hay modo oscuro guardado o activo
         const saved = localStorage.getItem('global_theme');
-        const icon = document.querySelector('#themeBtn i');
-        if(saved === 'dark') { 
-            document.body.classList.add('dark-mode'); 
-            icon.className = 'fas fa-sun'; 
-        } else { 
-            document.body.classList.remove('dark-mode'); 
-            icon.className = 'fas fa-moon'; 
+        const esOscuro = saved === 'dark';
+        
+        // 2. Elementos del botón de tema (sol/luna)
+        const icon = document.querySelector('#themeBtn i') || document.querySelector('#themeToggle i');
+        
+        // 3. Definir las rutas de tus logos
+        const logoClaro = 'Img/Logo-Despertar-SKAS-Unidad-Educativa23.png';
+        const logoOscuro = 'Img/Logo-Despertar (Oscuro).png'; 
+
+        // 4. Aplicar la clase al body
+        if (esOscuro) {
+            document.body.classList.add('dark-mode');
+            if(icon) icon.className = 'fas fa-sun'; // Icono de sol en modo oscuro
+        } else {
+            document.body.classList.remove('dark-mode');
+            if(icon) icon.className = 'fas fa-moon'; // Icono de luna en modo claro
         }
+
+        // 5. CAMBIO DE LOGOS (Solo Header)
+        // Solo seleccionamos el logo del menú superior, ignorando el footer
+        const logos = document.querySelectorAll('.logo-container img');
+        
+        logos.forEach(img => {
+            img.src = esOscuro ? logoOscuro : logoClaro;
+        });
     }
     
     function toggleMenu() { 
