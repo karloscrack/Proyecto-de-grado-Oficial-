@@ -2529,12 +2529,12 @@ from urllib.parse import urlparse
 
 def limpieza_duplicados_startup():
     """
-    V8.0 - MANTENIMIENTO INTEGRAL Y SEGURO
-    Incluye Fases 0, 1, 2, 3 y 4.
-    Corrección Crítica FASE 4: Cambiada lógica a 'Conservar por defecto'.
-    Solo borra si recibe un error 404 confirmado.
+    V8.1 - MANTENIMIENTO MODO SEGURO (PROTECCIÓN CONTRA BORRADO ACCIDENTAL)
+    - Fases 0, 1, 2, 3: Funcionan igual (limpian basura interna).
+    - FASE 4 (MODIFICADA): Ya NO borra evidencias de la BD aunque la nube de error 404.
+      Solo reporta en consola para evitar pérdidas por errores de conexión.
     """
-    print("🧹 INICIANDO PROTOCOLO DE LIMPIEZA Y MANTENIMIENTO...")
+    print("🧹 INICIANDO PROTOCOLO DE LIMPIEZA Y MANTENIMIENTO (MODO SEGURO)...")
     
     conn = None
     try:
@@ -2684,7 +2684,7 @@ def limpieza_duplicados_startup():
         if eliminados_3 > 0: print(f"   ✨ Fase 3: {eliminados_3} archivos eliminados por nombre.")
 
         # =========================================================
-        # FASE 4: SINCRONIZACIÓN SEGURA CON NUBE (BLINDADA)
+        # FASE 4: SINCRONIZACIÓN SEGURA (SOLO LECTURA / ACTUALIZAR PESO)
         # =========================================================
         print("☁️ FASE 4: Auditando existencia real en la nube...")
         conn.commit() 
@@ -2692,7 +2692,7 @@ def limpieza_duplicados_startup():
         evidencias = c.fetchall()
         
         actualizados_peso = 0
-        eliminados_nube = 0
+        fantasmas_detectados = 0
         
         for ev in evidencias:
             url = ev.get('Url_Archivo') or ev.get('url_archivo')
@@ -2700,7 +2700,8 @@ def limpieza_duplicados_startup():
             
             if not url: continue
 
-            # --- LÓGICA SEGURA: Por defecto NO borramos nada ---
+            # --- LÓGICA SEGURA: Por defecto NUNCA borramos ---
+            # Si hay un error 404, solo avisamos en consola, no borramos de la DB.
             debe_borrarse = False 
             peso_kb = 0
             
@@ -2711,7 +2712,7 @@ def limpieza_duplicados_startup():
                         parsed = urlparse(url)
                         key = parsed.path.lstrip('/')
                         
-                        # Intentar obtener metadatos (esto falla si el archivo no existe)
+                        # Intentar obtener metadatos
                         meta = s3_client.head_object(Bucket=BUCKET_NAME, Key=key)
                         peso_kb = meta['ContentLength'] / 1024
                         
@@ -2721,29 +2722,29 @@ def limpieza_duplicados_startup():
                         
                     except Exception as e:
                         error_msg = str(e)
-                        # SOLO marcamos para borrar si el error es explícitamente "404 Not Found"
                         if "404" in error_msg or "Not Found" in error_msg:
-                            print(f"🗑️ Archivo fantasma confirmado (404): {url}")
-                            debe_borrarse = True
+                            # 🛑 CAMBIO CRÍTICO: SOLO AVISAR, NO BORRAR
+                            print(f"⚠️ Alerta: Archivo no detectado en nube (404): {url}")
+                            print("   👉 Se mantiene en base de datos por seguridad.")
+                            fantasmas_detectados += 1
+                            debe_borrarse = False # <--- FORZADO A FALSE PARA QUE NO SE BORRE
                         else:
-                            # Si es error de red, credenciales o permisos, NO HACEMOS NADA
-                            # El registro se conserva por seguridad
                             pass
                 else:
-                    pass # Si no hay cliente S3, no podemos verificar, así que no borramos nada.
+                    pass 
 
             # CASO B: Archivos Locales
             elif "/local/" in url:
-                # Lógica para local si aplica, sino ignorar
                 pass
             
-            # EJECUTAR BORRADO SOLO SI ESTAMOS 100% SEGUROS
+            # EJECUTAR BORRADO (En este modo seguro, debe_borrarse siempre es False)
             if debe_borrarse:
                 c.execute("DELETE FROM Evidencias WHERE id = %s", (ev_id,))
-                eliminados_nube += 1
         
         conn.commit()
-        print(f"✅ FASE 4 COMPLETADA: {actualizados_peso} pesos actualizados, {eliminados_nube} fantasmas eliminados.")
+        print(f"✅ FASE 4 COMPLETADA: {actualizados_peso} pesos actualizados.")
+        if fantasmas_detectados > 0:
+            print(f"⚠️ OJO: Se detectaron {fantasmas_detectados} archivos que la nube no encuentra, pero NO se eliminaron.")
         
         # Actualizar métricas finales
         try:
