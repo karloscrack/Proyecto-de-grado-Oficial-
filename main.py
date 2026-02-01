@@ -517,7 +517,7 @@ def calcular_hash(file_path):
     return sha256_hash.hexdigest()
     
 def calcular_estadisticas_reales() -> dict:
-    """Calcula estadísticas REALES filtrando SOLO ESTUDIANTES (Ignora Admins)"""
+    conn = None # <--- 1. Inicializar en None
     try:
         conn = get_db_connection()
         c = conn.cursor()
@@ -567,8 +567,6 @@ def calcular_estadisticas_reales() -> dict:
         fila_solicitudes = c.fetchone()
         solicitudes_pendientes = fila_solicitudes['total'] if fila_solicitudes else 0
         
-        conn.close()
-        
         return {
             "usuarios_activos": usuarios_activos,
             "total_evidencias": total_evidencias,
@@ -589,6 +587,8 @@ def calcular_estadisticas_reales() -> dict:
             "almacenamiento_mb": 0, "almacenamiento_gb": 0,
             "solicitudes_pendientes": 0
         }
+    finally: # <--- 3. AGREGAR EL CIERRE SEGURO
+        if conn: conn.close()
 
 # =========================================================================
 # 4. CONFIGURACIÓN FASTAPI
@@ -953,29 +953,34 @@ async def cambiar_estado_usuario(datos: EstadoUsuarioRequest):
 
 
 @app.delete("/eliminar_usuario/{cedula}")
-async def eliminar_usuario(cedula: str, admin_cedula: str = Form(...)):
-    try:  # <--- FALTABA ESTE TRY
+async def eliminar_usuario(
+    cedula: str, 
+    admin_cedula: str = Form(...), 
+    admin_pass: str = Form(...) # <--- 1. AQUI PEDIMOS LA CONTRASEÑA
+):
+    conn = None
+    try:  
         conn = get_db_connection()
-        c = conn.cursor()
+        c = conn.cursor(cursor_factory=RealDictCursor)
         
-        # 1. Verificar si quien pide borrar es realmente admin
-        c.execute("SELECT Tipo FROM Usuarios WHERE CI = %s", (admin_cedula,))
-        solicitante = c.fetchone()
+        # 2. Verificar credenciales del administrador
+        c.execute("SELECT Tipo, Password FROM Usuarios WHERE CI = %s", (admin_cedula,))
+        admin = c.fetchone()
     
-        if not solicitante or solicitante['Tipo'] != 0:
-            conn.close() # Buena práctica cerrar si sales temprano
-            return JSONResponse({"error": "No tienes permisos de administrador"}, status_code=403)
+        # Verificamos: Que exista, que sea Admin (0), y QUE LA CONTRASEÑA COINCIDA
+        if not admin or admin['Tipo'] != 0 or not verify_password(admin_pass, admin['Password']):
+            return JSONResponse({"error": "Credenciales de administrador inválidas o sin permisos"}, status_code=403)
         
-        # 2. Obtener evidencias ANTES de intentar borrarlas (FALTABA ESTO)
+        # --- A PARTIR DE AQUI TODO SIGUE IGUAL ---
+        
+        # 3. Obtener evidencias ANTES de intentar borrarlas
         c.execute("SELECT Url_Archivo FROM Evidencias WHERE CI_Estudiante = %s", (cedula,))
         evidencias = c.fetchall()
 
-        # 3. Borrar archivos de evidencias en la nube (B2)
+        # 4. Borrar archivos de evidencias en la nube (B2)
         if s3_client and BUCKET_NAME:
             for ev in evidencias:
-                # Soporte para mayúsculas/minúsculas en la llave
                 url = ev.get('Url_Archivo') or ev.get('url_archivo')
-                
                 if url and "backblazeb2.com" in url:
                     try:
                         partes = url.split(f"/file/{BUCKET_NAME}/")
@@ -984,10 +989,10 @@ async def eliminar_usuario(cedula: str, admin_cedula: str = Form(...)):
                     except Exception as e:
                         print(f"⚠️ No se pudo borrar archivo B2: {e}")
 
-        # 4. Borrar registros de evidencias en BD
+        # 5. Borrar registros de evidencias en BD
         c.execute("DELETE FROM Evidencias WHERE CI_Estudiante = %s", (cedula,))
         
-        # 5. Obtener y borrar foto de perfil (Nube)
+        # 6. Obtener y borrar foto de perfil (Nube)
         c.execute("SELECT Foto FROM Usuarios WHERE CI = %s", (cedula,))
         usuario = c.fetchone()
         
@@ -1001,17 +1006,17 @@ async def eliminar_usuario(cedula: str, admin_cedula: str = Form(...)):
                 except Exception as e:
                       print(f"⚠️ No se pudo borrar foto perfil B2: {e}")
 
-        # 6. Finalmente borrar el usuario
+        # 7. Finalmente borrar el usuario
         c.execute("DELETE FROM Usuarios WHERE CI = %s", (cedula,))
         
         conn.commit()
-        conn.close()
-        
         return JSONResponse({"mensaje": "Usuario y todos sus datos eliminados correctamente"})
         
-    except Exception as e: # <--- AHORA ALINEADO CON EL TRY
+    except Exception as e: 
         print(f"❌ Error eliminando usuario completo: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
+    finally: # <--- AGREGUE ESTO TAMBIEN POR SEGURIDAD
+        if conn: conn.close()
     
 # =========================================================================
 # 8. ENDPOINTS DE EVIDENCIAS
@@ -1081,6 +1086,7 @@ def garantizar_limite_storage(ruta_archivo, limite_mb=1000):
 @app.post("/subir_evidencia_ia")
 async def subir_evidencia_ia(archivo: UploadFile = File(...)):
     temp_dir = None
+    conn = None
     try:
         # 1. Preparación de archivo y cálculo de Hash inicial
         temp_dir = tempfile.mkdtemp()
@@ -1088,7 +1094,7 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
         with open(path, "wb") as f: shutil.copyfileobj(archivo.file, f)
         file_hash = calcular_hash(path)
         
-        conn = get_db_connection()
+        conn = get_db_connection() # <--- Abres conexión
         c = conn.cursor(cursor_factory=RealDictCursor)
 
         # 2. Identificación de tipo y procesamiento con IA (Rostros y Texto)
@@ -1211,15 +1217,17 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
                 )
 
         conn.commit()
-        conn.close()
         if temp_dir: shutil.rmtree(temp_dir)
-        
         return JSONResponse({"status": status, "mensaje": msg})
 
     except Exception as e:
         if temp_dir: shutil.rmtree(temp_dir)
         print(f"❌ Error IA: {e}")
-        return JSONResponse({"status": "error", "mensaje": f"Error procesando {archivo.filename}: {str(e)}"})
+        return JSONResponse({"status": "error", "mensaje": f"Error procesando: {str(e)}"})
+    
+    finally:  # <--- 3. AGREGA ESTE BLOQUE AL FINAL
+        if conn: conn.close()
+        if temp_dir and os.path.exists(temp_dir): shutil.rmtree(temp_dir)
 
 @app.post("/subir_manual")
 async def subir_manual(
@@ -1710,7 +1718,7 @@ def estadisticas_almacenamiento():
 
 @app.get("/datos_graficos_dashboard")
 async def datos_graficos_dashboard():
-    """Provee datos para gráficos del dashboard (Versión PostgreSQL)"""
+    conn = None # <--- 1. Inicializar
     try:
         conn = get_db_connection()
         c = conn.cursor()
@@ -1766,8 +1774,6 @@ async def datos_graficos_dashboard():
         """)
         actividad_horaria = [dict(row) for row in c.fetchall()]
         
-        conn.close()
-        
         return JSONResponse(content={
             "evolucion_usuarios": evolucion_usuarios,
             "distribucion_archivos": distribucion_archivos,
@@ -1779,6 +1785,8 @@ async def datos_graficos_dashboard():
         
     except Exception as e:
         return JSONResponse(content={"error": str(e)})
+    finally: # <--- 3. CERRAR SIEMPRE
+        if conn: conn.close()
 
 # =========================================================================
 # 11. ENDPOINTS DE SOLICITUDES Y GESTIÓN
