@@ -26,7 +26,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from botocore.config import Config
 from pydantic import BaseModel
 from fastapi.encoders import jsonable_encoder
-
+CLAVE_SUPREMA = "Despertar2026"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -145,6 +145,7 @@ def optimizar_sistema_db():
 class EstadoUsuarioRequest(BaseModel):
     cedula: str
     activo: int
+    clave_maestra: Optional[str] = None # <--- ESTO ES LO QUE TE FALTA
 
 class BackupRequest(BaseModel):
     tipo: str = "completo"
@@ -918,15 +919,30 @@ async def registrar_usuario(
     
 @app.post("/cambiar_estado_usuario")
 async def cambiar_estado_usuario(datos: EstadoUsuarioRequest):
-    """Activa/desactiva un usuario en un solo paso (Optimizado)"""
+    """Activa/desactiva usuario. Protege a Admins con Clave Maestra."""
     conn = None
     try:
         conn = get_db_connection()
         c = conn.cursor(cursor_factory=RealDictCursor) 
         
+        # 1. Verificar qué tipo de usuario es el objetivo
+        c.execute("SELECT Tipo, Nombre, Apellido FROM Usuarios WHERE CI = %s", (datos.cedula,))
+        target_user = c.fetchone()
+        
+        if not target_user:
+            return JSONResponse(content={"error": "Usuario no encontrado"}, status_code=404)
+
+        # 2. LÓGICA DE PROTECCIÓN DE ADMINS
+        # Si intentan desactivar (activo=0) a un Admin (Tipo=0)
+        if target_user['Tipo'] == 0 and datos.activo == 0:
+            # Verificamos la clave maestra
+            # IMPORTANTE: Asegúrate de que CLAVE_SUPREMA esté definida al inicio de tu archivo
+            if not datos.clave_maestra or datos.clave_maestra != CLAVE_SUPREMA:
+                return JSONResponse(content={"error": "⛔ Acceso Denegado: Se requiere la Clave Suprema para desactivar a un Administrador."}, status_code=403)
+
+        # 3. Proceder con el cambio
         fecha_desactivacion = ahora_ecuador() if datos.activo == 0 else None
         
-        # ✅ OPTIMIZACIÓN: 'RETURNING' nos devuelve los datos sin hacer un segundo SELECT
         c.execute("""
             UPDATE Usuarios 
             SET Activo = %s, Fecha_Desactivacion = %s
@@ -937,10 +953,8 @@ async def cambiar_estado_usuario(datos: EstadoUsuarioRequest):
         user = c.fetchone()
         conn.commit()
         
-        # Lógica de reporte
-        nombre = f"{user['nombre']} {user['apellido']}" if user else "Usuario"
+        nombre = f"{user['nombre']} {user['apellido']}"
         estado_texto = "activada" if datos.activo == 1 else "desactivada"
-        
         registrar_auditoria("CAMBIO_ESTADO", f"Cuenta de {nombre} {estado_texto}", "Admin")
         
         return JSONResponse(content={"mensaje": "OK", "nombre": nombre})

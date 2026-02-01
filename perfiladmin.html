@@ -985,10 +985,10 @@ body.dark-mode .swal2-textarea {
     <!-- HEADER IDÉNTICO AL PERFIL ESTUDIANTE -->
     <header class="main-header">
         <div class="logo-container">
-            <a href="perfiladmin.html">
-                <img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
-            </a>
-        </div>
+    <a href="perfiladmin.html" class="logo-container">
+    <img id="appLogo" src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo Despertar" class="logo">
+</a>
+</div>
         <div class="header-actions">
             <button class="btn-icon-header" id="themeBtn" onclick="toggleTheme()" title="Cambiar Tema">
     <i class="fas fa-moon"></i>
@@ -1197,11 +1197,6 @@ body.dark-mode .swal2-textarea {
             <!-- TABLA USUARIOS MEJORADA CON RESPONSIVE -->
             <div class="table-responsive">
                 <div class="modern-table-wrapper">
-                    <div style="margin-bottom: 15px; text-align: right;">
-    <button onclick="limpiarSolicitudesAntiguas()" style="background-color: #d32f2f; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold;">
-        <i class="fas fa-trash"></i> Limpiar Solicitudes Resueltas
-    </button>
-</div>
                     <table class="modern-table">
                         <thead>
                             <tr>
@@ -1518,7 +1513,7 @@ body.dark-mode .swal2-textarea {
     <footer>
         <div class="footer-content">
             <div class="footer-logo">
-                <img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
+                <img src="Img/Logo-Despertar (Oscuro).png" alt="Logo">
                 <h3>Unidad Educativa Particular Despertar</h3>
             </div>
             <div class="footer-links" style="margin-bottom:20px;">
@@ -2069,67 +2064,95 @@ body.dark-mode .swal2-textarea {
     }
 
     function inicializarTema() {
-        const temaGuardado = localStorage.getItem('tema');
-        const iconoTema = document.querySelector('#themeBtn i');
+        // 1. Detectar si hay modo oscuro
+        const esOscuro = document.body.classList.contains('dark-mode') || localStorage.getItem('theme') === 'dark';
         
-        if (temaGuardado === 'oscuro') {
+        // 2. Buscar el logo por su NUEVO ID
+        const logo = document.getElementById('appLogo');
+        const icon = document.querySelector('#themeBtn i');
+
+        // 3. Rutas de las imágenes (AJUSTADO A TUS ARCHIVOS)
+        const rutaClaro = 'Img/Logo-Despertar-SKAS-Unidad-Educativa23.png';
+        const rutaOscuro = 'Img/Logo-Despertar (Oscuro).png'; // <-- Aquí puse .jpg porque así subiste el archivo
+
+        // 4. Aplicar cambios
+        if (esOscuro) {
             document.body.classList.add('dark-mode');
-            iconoTema.className = 'fas fa-sun';
+            if(icon) icon.className = 'fas fa-sun';
+            if(logo) logo.src = rutaOscuro; // Cambia a blanco
         } else {
             document.body.classList.remove('dark-mode');
-            iconoTema.className = 'fas fa-moon';
+            if(icon) icon.className = 'fas fa-moon';
+            if(logo) logo.src = rutaClaro; // Cambia a normal
         }
     }
 
     async function toggleTheme() {
         const body = document.body;
         
-        // 1. CAMBIO DE COLOR (Ahora sí funcionará porque agregamos el CSS)
-        body.classList.toggle('dark-mode'); 
+        // 1. CAMBIO DE CLASE (Oscuro/Claro)
+        body.classList.toggle('dark-mode');
         const esOscuro = body.classList.contains('dark-mode');
-        const nuevoTema = esOscuro ? 'dark' : 'light';
-        
-        // 2. ANIMACIÓN Y CAMBIO DE ICONO
-        // Buscamos el botón por cualquiera de sus nombres posibles
+
+        // 2. CAMBIO DEL LOGO (Inmediato)
+        const logo = document.getElementById('appLogo');
+        if (logo) {
+            // Ajusta las rutas si es necesario
+            const rutaClaro = 'Img/Logo-Despertar-SKAS-Unidad-Educativa23.png';
+            const rutaOscuro = 'Img/Logo-Despertar (Oscuro).png';
+            logo.src = esOscuro ? rutaOscuro : rutaClaro;
+        }
+
+        // 3. ANIMACIÓN DEL ICONO (Suave y sin bugs)
         let btn = document.querySelector('#themeBtn');
         if (!btn) btn = document.querySelector('#themeToggle');
-        
+
         if (btn) {
             const icon = btn.querySelector('i');
             if (icon) {
-                // Efecto de rotación divertido
-                icon.style.transform = 'rotate(360deg) scale(1.2)';
-                
-                // Cambiar el dibujo (Sol / Luna)
+                // Paso A: Rotar y ocultar ligeramente
+                icon.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+                icon.style.transform = 'rotate(90deg) scale(0.5)';
+                icon.style.opacity = '0.5';
+
+                // Paso B: Cambiar el icono a mitad de la animación
                 setTimeout(() => {
+                    // Cambiamos la clase (Sol o Luna)
                     icon.className = esOscuro ? 'fas fa-sun' : 'fas fa-moon';
-                    icon.style.transform = 'rotate(0deg) scale(1)'; // Regresar a normal
-                }, 300);
+                    
+                    // Paso C: Restaurar tamaño y rotación final
+                    icon.style.transform = 'rotate(180deg) scale(1)';
+                    icon.style.opacity = '1';
+                }, 250);
+
+                // Paso D: Limpiar estilos inline después de que termine todo (opcional)
+                setTimeout(() => {
+                    icon.style.transform = '';
+                    icon.style.opacity = '';
+                }, 500);
             }
         }
 
-        // 3. GUARDAR EN EL NAVEGADOR
-        localStorage.setItem('theme', nuevoTema);
+        // 4. GUARDAR PREFERENCIA (LocalStorage - Rápido)
+        localStorage.setItem('theme', esOscuro ? 'dark' : 'light');
 
-        // 4. GUARDAR EN LA BASE DE DATOS (Si hay usuario)
-        if(typeof usuarioLogueado !== 'undefined' && usuarioLogueado && usuarioLogueado.cedula) {
-            try {
-                // Actualizar memoria
-                usuarioLogueado.tema = esOscuro ? 1 : 0;
-                sessionStorage.setItem('usuario', JSON.stringify(usuarioLogueado));
-                
-                // Enviar al servidor
-                await fetch(`${API_URL}/actualizar_tema`, {
+        // 5. GUARDAR EN BASE DE DATOS (Silencioso - No bloquea la UI)
+        try {
+             const cedula = localStorage.getItem('usuario_cedula');
+             if (cedula) {
+                // No usamos 'await' para que la UI no se congele esperando al servidor
+                fetch(`${API_URL}/actualizar_tema`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
-                        cedula: usuarioLogueado.cedula, 
-                        tema: usuarioLogueado.tema 
+                        cedula: cedula, 
+                        tema: esOscuro ? 1 : 0 
                     })
-                });
-            } catch (e) { console.error("Error guardando tema en nube:", e); }
-        }
+                }).catch(e => console.log("Guardado en background"));
+             }
+        } catch (e) { console.log("Error guardando tema"); }
     }
+
 
     function cerrarSesion() {
         if (intervaloActualizaciones) {
@@ -2290,47 +2313,78 @@ body.dark-mode .swal2-textarea {
     if (!usuario) return;
 
     const accion = nuevoEstado == 1 ? 'activar' : 'desactivar';
-    
-    const confirmacion = await Swal.fire({
-        title: `¿${accion.charAt(0).toUpperCase() + accion.slice(1)} usuario?`,
-        text: `¿Estás seguro de querer ${accion} a ${usuario.nombre} ${usuario.apellido}?`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: nuevoEstado == 1 ? '#2E8B57' : '#d32f2f',
-        cancelButtonColor: '#5f6368',
-        confirmButtonText: `Sí, ${accion}`,
-        cancelButtonText: 'Cancelar'
-    });
+    // Verificamos si el usuario objetivo es administrador (tipo 0)
+    const esAdminObjetivo = parseInt(usuario.tipo) === 0; 
+    let claveMaestraIngresada = null;
 
-    if (!confirmacion.isConfirmed) return;
+    // CASO ESPECIAL: Si vamos a DESACTIVAR a un ADMIN
+    if (esAdminObjetivo && nuevoEstado == 0) {
+        const { value: password } = await Swal.fire({
+            title: '🔒 SEGURIDAD SUPREMA',
+            text: `Estás intentando desactivar a un Administrador (${usuario.nombre}). Ingresa la Clave Suprema para continuar:`,
+            input: 'password',
+            inputPlaceholder: 'Clave Suprema...',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d32f2f',
+            confirmButtonText: 'Autorizar Desactivación',
+            cancelButtonText: 'Cancelar'
+        });
 
+        if (!password) return; // Si cancela o no pone nada, salimos
+        claveMaestraIngresada = password;
+    } 
+    // CASO NORMAL (Estudiantes o Activar Admin)
+    else {
+        const confirmacion = await Swal.fire({
+            title: `¿${accion.charAt(0).toUpperCase() + accion.slice(1)} usuario?`,
+            text: `¿Estás seguro de querer ${accion} a ${usuario.nombre} ${usuario.apellido}?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: nuevoEstado == 1 ? '#2E8B57' : '#d32f2f',
+            cancelButtonColor: '#5f6368',
+            confirmButtonText: `Sí, ${accion}`,
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (!confirmacion.isConfirmed) return;
+    }
+
+    // ENVIAR AL SERVIDOR
     try {
-        // 🔄 Feedback inmediato: Mostramos que el sistema está trabajando
         Swal.fire({
             title: 'Procesando...',
             allowOutsideClick: false,
             didOpen: () => { Swal.showLoading(); }
         });
 
+        const payload = { 
+            cedula: cedula, 
+            activo: nuevoEstado 
+        };
+
+        // Si pedimos la clave, la agregamos al envío
+        if (claveMaestraIngresada) {
+            payload.clave_maestra = claveMaestraIngresada;
+        }
+
         const respuesta = await fetch(`${API_URL}/cambiar_estado_usuario`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cedula: cedula, activo: nuevoEstado })
+            body: JSON.stringify(payload)
         });
 
         const resultado = await respuesta.json();
 
         if (resultado.mensaje === "OK") {
-            // Actualizar la interfaz (el código que ya tienes)
             const usuarioIndex = usuarios.findIndex(u => u.cedula === cedula);
             if (usuarioIndex !== -1) usuarios[usuarioIndex].activo = nuevoEstado;
             
-            renderizarUsuarios(); // Refresca la tabla
-            
-            // ✅ Cerramos el cargando y mostramos el éxito
+            renderizarUsuarios(); 
             Swal.fire('¡Listo!', `Usuario ${nuevoEstado == 1 ? 'activado' : 'desactivado'}`, 'success');
         } else {
-            Swal.fire('Error', 'No se pudo cambiar el estado', 'error');
+            // Aquí mostramos el error si la clave maestra era incorrecta
+            Swal.fire('Acceso Denegado', resultado.error || 'No se pudo completar la acción', 'error');
         }
     } catch (error) {
         Swal.fire('Error', 'Error de conexión con el servidor', 'error');
@@ -2563,15 +2617,60 @@ body.dark-mode .swal2-textarea {
     `;
 }
 
-    // ==========================================
-    // 5. GESTIÓN COMPLETA DE SOLICITUDES
-    // ==========================================
-    // ==========================================
-    // 12. GESTIÓN DE SOLICITUDES (CON VISOR DE FOTOS Y EMAIL)
-    // ==========================================
-    
-    // Variable global para guardar la solicitud actual
+// ==========================================
+// 5. GESTIÓN DE SOLICITUDES (BLOQUE UNIFICADO Y CORREGIDO)
+// ==========================================
+
+// Variable global para guardar la solicitud actual
 let solicitudActualId = null;
+
+async function enviarGestion(id, accion) {
+    const mensajeInput = document.getElementById('mensajeAdmin');
+    const mensaje = mensajeInput ? mensajeInput.value : '';
+
+    // Si es "rechazar" (borrar), pedimos confirmación extra
+    if (accion === 'rechazar') {
+        const confirmacion = await Swal.fire({
+            title: '¿Estás seguro?',
+            text: "Esta acción rechazará la solicitud y borrará los archivos relacionados si existen.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d32f2f',
+            confirmButtonText: 'Sí, rechazar',
+            cancelButtonText: 'Cancelar'
+        });
+        if (!confirmacion.isConfirmed) return;
+    }
+
+    try {
+        Swal.fire({ title: 'Procesando...', didOpen: () => Swal.showLoading() });
+
+        const respuesta = await fetch(`${API_URL}/gestionar_solicitud`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: id,
+                accion: accion, // 'aprobar' o 'rechazar'
+                admin_cedula: localStorage.getItem('usuario_cedula'),
+                respuesta: mensaje
+            })
+        });
+
+        const data = await respuesta.json();
+
+        if (data.status === 'ok' || data.mensaje) {
+            Swal.fire('Éxito', 'Solicitud procesada correctamente', 'success');
+            cerrarModal('modalResponderSolicitud');
+            await cargarSolicitudes(); // Recargar la lista
+            await actualizarDatosDashboard(); // Actualizar contadores
+        } else {
+            throw new Error(data.error || 'Error desconocido');
+        }
+    } catch (error) {
+        console.error(error);
+        Swal.fire('Error', 'No se pudo procesar la solicitud: ' + error.message, 'error');
+    }
+}
 
 function procesarSolicitudDesdeCard(tipoRaw, solicitudId) {
     // 1. Buscar solicitud en memoria
@@ -2582,7 +2681,7 @@ function procesarSolicitudDesdeCard(tipoRaw, solicitudId) {
     const ci = solicitud.ci_solicitante || solicitud.CI_Solicitante;
     const detalle = solicitud.detalle || solicitud.Detalle || 'Sin detalles';
     
-    // Datos de la evidencia (Ahora sí llegarán gracias al cambio en main.py)
+    // Datos de la evidencia
     const evidenciaUrl = solicitud.Url_Archivo || solicitud.url_archivo || solicitud.evidencia_url;
     const tipoArchivo = (solicitud.Tipo_Archivo || solicitud.tipo_archivo || 'imagen').toLowerCase();
 
@@ -2596,14 +2695,12 @@ function procesarSolicitudDesdeCard(tipoRaw, solicitudId) {
     
     if (evidenciaUrl) {
         if (tipoArchivo.includes('video') || evidenciaUrl.endsWith('.mp4')) {
-            // ES VIDEO
             htmlPrevisualizacion = `
                 <video controls style="width:100%; max-height:250px; border-radius:8px; background:#000;">
                     <source src="${evidenciaUrl}" type="video/mp4">
                     Tu navegador no soporta videos.
                 </video>`;
         } else if (tipoArchivo.includes('doc') || tipoArchivo.includes('pdf') || evidenciaUrl.endsWith('.pdf')) {
-            // ES DOCUMENTO
             htmlPrevisualizacion = `
                 <div style="padding:20px; background:rgba(0,0,0,0.05); border-radius:8px;">
                     <i class="fas fa-file-alt" style="font-size:3rem; color:var(--primary);"></i>
@@ -2613,7 +2710,6 @@ function procesarSolicitudDesdeCard(tipoRaw, solicitudId) {
                     </a>
                 </div>`;
         } else {
-            // ES IMAGEN (Por defecto)
             htmlPrevisualizacion = `
                 <img src="${evidenciaUrl}" style="max-width:100%; max-height:250px; border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.1);" 
                 onclick="window.open(this.src, '_blank')" style="cursor:pointer;" title="Clic para ampliar">`;
@@ -2622,7 +2718,7 @@ function procesarSolicitudDesdeCard(tipoRaw, solicitudId) {
         htmlPrevisualizacion = '<p style="color:#888; font-style:italic;">(No se encontró archivo adjunto o no aplica)</p>';
     }
 
-    // 5. Construcción del HTML
+    // 5. Construcción del HTML del Modal
     let html = `
         <div class="info-bloque" style="background:var(--bg-input); padding:15px; border-radius:8px; margin-bottom:15px; text-align:left;">
             <p><strong>Usuario:</strong> ${nombreUsuario}</p>
@@ -2631,7 +2727,7 @@ function procesarSolicitudDesdeCard(tipoRaw, solicitudId) {
         </div>
     `;
 
-    // --- LÓGICA ESPECÍFICA POR TIPO ---
+    // --- LÓGICA ESPECÍFICA POR TIPO DE SOLICITUD ---
 
     if (tipoRaw === 'REPORTE_EVIDENCIA') {
         html += `
@@ -2674,7 +2770,6 @@ function procesarSolicitudDesdeCard(tipoRaw, solicitudId) {
         `;
     }
     else if (tipoRaw === 'RECUPERACION_CONTRASENA') {
-        // ... (El código de recuperación se mantiene igual que antes) ...
         html += `
             <div style="background:var(--primary-soft); padding:10px; border-radius:8px; margin-bottom:15px; border-left:4px solid var(--info);">
                 <p style="font-size:0.9rem;"><strong><i class="fas fa-envelope"></i> Acción Automática:</strong> Se enviará un correo con la clave.</p>
@@ -2712,198 +2807,57 @@ function procesarSolicitudDesdeCard(tipoRaw, solicitudId) {
     document.getElementById('modalResponderSolicitud').classList.add('active');
 }
 
-// --- FUNCIÓN DE ENVÍO CORREGIDA (PARA QUE SALGA TU NOMBRE) ---
-async function enviarGestion(id, accion) {
-    const mensajeInput = document.getElementById('mensajeAdmin');
-    const mensaje = mensajeInput.value.trim();
-    
-    // 1. Validación: Que no envíe respuestas vacías
-    if(!mensaje) {
-        Swal.fire('¡Atención!', 'Debes escribir una respuesta.', 'warning');
-        return;
-    }
+// --- FUNCIÓN NUEVA: LIMPIAR HISTORIAL VISUALMENTE ---
+async function limpiarSolicitudesAntiguas() {
+    const confirmacion = await Swal.fire({
+        title: '¿Limpiar historial?',
+        text: "Se ocultarán de la vista las solicitudes que ya fueron resueltas o rechazadas para dejar la bandeja limpia.",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#d32f2f',
+        confirmButtonText: 'Sí, limpiar',
+        cancelButtonText: 'Cancelar'
+    });
 
-    // 2. OBTENER TU NOMBRE REAL (Lo nuevo)
-    const nombreAdmin = localStorage.getItem('usuario_nombre') || 'Administrador';
-
-    // 3. UI: Efecto de carga en el botón
-    // Usamos 'event' global para detectar qué botón se presionó
-    const btn = event ? event.target.closest('button') : null;
-    let originalText = '';
-    
-    if (btn) {
-        originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...'; 
-        btn.disabled = true;
-    }
-
-    const fd = new FormData();
-    fd.append('id_solicitud', id);
-    fd.append('accion', accion === 'aprobar' ? 'APROBADA' : 'RECHAZADA');
-    fd.append('mensaje', mensaje);
-    fd.append('id_admin', nombreAdmin); // <--- AQUÍ VA TU NOMBRE REAL
+    if (!confirmacion.isConfirmed) return;
 
     try {
-        const res = await fetch(`${API_URL}/gestionar_solicitud`, { method: 'POST', body: fd });
-        const data = await res.json();
-
-        if (data.status === 'ok') {
-            // 4. Éxito: Notificar y actualizar todo
-            Swal.fire('Éxito', data.mensaje, 'success');
-            
-            // Cerrar el modal
-            document.getElementById('modalResponderSolicitud').classList.remove('active');
-            
-            // Recargar las listas para que desaparezca la solicitud procesada
-            if (typeof cargarSolicitudes === 'function') cargarSolicitudes(); 
-            if (typeof cargarSolicitudesPendientes === 'function') cargarSolicitudesPendientes();
-            if (typeof actualizarDatosDashboard === 'function') actualizarDatosDashboard();
-            
-        } else {
-            Swal.fire('Error', data.mensaje, 'error');
+        // Simulación de carga
+        Swal.fire({
+            title: 'Limpiando...',
+            timer: 800,
+            didOpen: () => Swal.showLoading()
+        });
+        
+        // Recargamos los datos frescos
+        await cargarSolicitudes();
+        
+        // Filtro visual forzado: Solo mostramos las PENDIENTES
+        const container = document.getElementById('requestsContainer');
+        const pendientes = solicitudes.filter(s => (s.Estado || '').toUpperCase() === 'PENDIENTE');
+        
+        if(container) {
+            container.innerHTML = '';
+            if (pendientes.length > 0) {
+                container.innerHTML += `
+                    <h3 style="color:var(--primary); margin-bottom:15px; border-bottom:2px solid var(--primary); padding-bottom:10px;">
+                        <i class="fas fa-clock"></i> Solicitudes Pendientes (${pendientes.length})
+                    </h3>`;
+                pendientes.forEach(solicitud => {
+                    container.innerHTML += crearCardSolicitud(solicitud);
+                });
+            } else {
+                container.innerHTML = `
+                    <div class="empty-state" style="display:flex;">
+                        <i class="fas fa-check-circle" style="font-size:5rem; opacity:0.2; margin-bottom:25px; color:var(--secondary);"></i>
+                        <h3>Todo limpio</h3>
+                        <p>No hay solicitudes pendientes en pantalla.</p>
+                    </div>`;
+            }
         }
+        
     } catch (e) {
         console.error(e);
-        Swal.fire('Error', 'Error de conexión con el servidor', 'error');
-    } finally {
-        // 5. Restaurar el botón pase lo que pase
-        if(btn) { 
-            btn.innerHTML = originalText; 
-            btn.disabled = false; 
-        }
-    }
-}
-
-    async function enviarGestion(id, accion) {
-        const mensajeInput = document.getElementById('mensajeAdmin');
-        const mensaje = mensajeInput.value.trim();
-        
-        // --- VALIDACIÓN DE CAMPO VACÍO ---
-        if(!mensaje) {
-            // Animación de error (sacudida)
-            mensajeInput.style.border = "2px solid red";
-            mensajeInput.classList.add('shake');
-            setTimeout(() => mensajeInput.classList.remove('shake'), 500);
-            
-            // Alerta visual clara
-            Swal.fire({
-                title: '¡Mensaje Obligatorio!',
-                text: 'Debes escribir una razón o respuesta para el estudiante antes de continuar.',
-                icon: 'warning',
-                confirmButtonColor: '#d32f2f',
-                confirmButtonText: 'Entendido'
-            });
-            return; // DETIENE LA EJECUCIÓN AQUÍ
-        }
-
-        const btn = event.target.closest('button');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...'; 
-        btn.disabled = true;
-
-        const fd = new FormData();
-        fd.append('id_solicitud', id);
-        fd.append('accion', accion);
-        fd.append('mensaje', mensaje);
-        fd.append('id_admin', 'Administrador');
-
-        try {
-            const res = await fetch(`${API_URL}/gestionar_solicitud`, { method: 'POST', body: fd });
-            const data = await res.json();
-
-            if (data.status === 'ok') {
-                Swal.fire('Éxito', data.mensaje, 'success');
-                document.getElementById('modalResponderSolicitud').classList.remove('active');
-                cargarSolicitudes(); 
-                actualizarDatosDashboard();
-            } else {
-                Swal.fire('Error', data.mensaje, 'error');
-            }
-        } catch (e) {
-            Swal.fire('Error', 'Error de conexión', 'error');
-        } finally {
-            if(btn) { btn.innerHTML = originalText; btn.disabled = false; }
-        }
-    }
-
-    async function procesarSolicitud(accion) {
-    // 1. Obtener valores de los campos del modal
-    const id = document.getElementById('solicitudIdRespuesta').value;
-    const tipo = document.getElementById('tipoRespuesta').value;
-    const mensaje = document.getElementById('respuestaAdmin').value.trim();
-    const nombreAdminLogueado = localStorage.getItem('usuario_nombre') || 'Administrador';
-    
-
-    // 2. Validación de mensaje obligatorio (Evita respuestas vacías)
-    if (!mensaje) {
-        Swal.fire({
-            title: 'Campo requerido',
-            text: 'Por favor escribe un mensaje de respuesta para el usuario.',
-            icon: 'warning',
-            confirmButtonColor: '#6A0DAD'
-        });
-        return;
-    }
-
-    // 3. Preparar los datos para el envío
-    const formData = new FormData();
-    formData.append('id_solicitud', document.getElementById('solicitudIdRespuesta').value);
-    formData.append('accion', accion === 'aceptar' ? 'aprobar' : 'rechazar');
-    formData.append('mensaje', mensaje);
-    formData.append('id_admin', miNombre);
-
-    try {
-        // Mostrar estado de carga en el botón
-        const btn = event.target;
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
-        btn.disabled = true;
-
-        const res = await fetch(`${API_URL}/gestionar_solicitud`, {
-            method: 'POST',
-            body: formData
-        });
-        
-        const result = await res.json();
-        
-        if (result.status === 'ok') {
-            // ✅ ÉXITO: La solicitud se guardó y el correo se está enviando
-            Swal.fire({
-                title: '¡Solicitud procesada!',
-                text: result.mensaje, // Muestra quién lo gestionó
-                icon: 'success',
-                confirmButtonColor: '#6A0DAD'
-            });
-            
-            cerrarModal('modalResponderSolicitud');
-            
-            // Recargar datos para que desaparezca de la lista de pendientes
-            await cargarSolicitudes();
-            await cargarSolicitudesPendientes();
-            actualizarDatosDashboard();
-            
-        } else {
-            // ❌ ERROR O BLOQUEO: Muestra si otro admin ya la resolvió
-            Swal.fire({
-                title: 'No se pudo procesar',
-                text: result.mensaje,
-                icon: 'error',
-                confirmButtonColor: '#d32f2f'
-            });
-            
-            // Si el error es por duplicado, refrescamos para limpiar la lista
-            if(result.mensaje.includes('ya fue gestionada')) {
-                cerrarModal('modalResponderSolicitud');
-                cargarSolicitudes();
-            }
-        }
-    } catch (error) {
-        console.error("Error gestionando solicitud:", error);
-        Swal.fire('Error', 'Error de conexión con el servidor', 'error');
-    } finally {
-        // Restaurar botón
-        const btn = document.querySelector('.btn-primary'); // O el botón activo
-        if(btn) { btn.disabled = false; }
     }
 }
 
@@ -3789,7 +3743,7 @@ async function eliminarEvidenciaActual() {
             btn.innerHTML = '<i class="fas fa-times"></i> Cancelar';
             btn.style.background = 'var(--text-sec)';
         } else {
-            cancelarSeleccion(); // Resetea todo si cancelamos
+            cancelarSeleccion(); 
         }
         renderizarEvidenciasEstudiante();
     }
@@ -4061,6 +4015,55 @@ function configurarDragAndDrop() {
     function limpiarCache() { ejecutarMantenimiento('cache'); }
     function limpiarHuerfanos() { ejecutarMantenimiento('huerfanos'); }
     
+    // --- FUNCIONES PARA FOTO DE REFERENCIA ---
+function abrirModalAgregarRef() {
+    // Llenar el select de usuarios
+    const select = document.getElementById('selectUsuarioRef');
+    select.innerHTML = '<option value="">-- Seleccionar --</option>';
+    
+    // Filtramos solo estudiantes (tipo 1)
+    usuarios.filter(u => u.tipo == 1).forEach(u => {
+        const option = document.createElement('option');
+        option.value = u.cedula;
+        option.textContent = `${u.nombre} ${u.apellido} (${u.cedula})`;
+        select.appendChild(option);
+    });
+
+    document.getElementById('modalAgregarRef').classList.add('active');
+}
+
+async function agregarReferencia(e) {
+    e.preventDefault();
+    const cedula = document.getElementById('selectUsuarioRef').value;
+    const foto = document.getElementById('fotoRef').files[0];
+
+    if(!cedula || !foto) return Swal.fire('Error', 'Completa todos los campos', 'warning');
+
+    const formData = new FormData();
+    formData.append('cedula', cedula);
+    formData.append('foto', foto);
+
+    try {
+        Swal.fire({ title: 'Subiendo...', didOpen: () => Swal.showLoading() });
+        
+        const res = await fetch(`${API_URL}/agregar_foto_referencia`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await res.json();
+        
+        if(res.ok) {
+            Swal.fire('Éxito', 'Foto de referencia actualizada', 'success');
+            cerrarModal('modalAgregarRef');
+            document.getElementById('formAgregarRef').reset();
+        } else {
+            throw new Error(data.error || 'Error al subir');
+        }
+    } catch(err) {
+        Swal.fire('Error', err.message, 'error');
+    }
+}
     </script>
 </body>
 </html>
