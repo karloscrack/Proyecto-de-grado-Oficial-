@@ -3470,10 +3470,34 @@ async function eliminarEvidenciaActual() {
             boton.disabled = false;
         }
     }
+// ==========================================
+    // FUNCIÓN DE SUBIDA IA MEJORADA (CON LÍMITE Y PROTECCIÓN)
+    // ==========================================
     async function handleUploadIA(input) {
+        // Obtenemos los archivos (ya sea del input o del drag & drop)
         const archivos = input.files;
-        if (archivos.length === 0) return;
         
+        // 1. VALIDACIÓN INICIAL
+        if (archivos.length === 0) return;
+
+        // 2. LÍMITE DE SEGURIDAD (Para evitar "Failed to fetch")
+        const LIMITE_ARCHIVOS = 50; // Máximo 50 archivos por tanda
+        
+        if (archivos.length > LIMITE_ARCHIVOS) {
+            Swal.fire({
+                title: '⚠️ Demasiados archivos',
+                html: `Estás intentando subir <b>${archivos.length}</b> archivos.<br>
+                       El límite seguro es de <b>${LIMITE_ARCHIVOS}</b> por tanda para evitar errores de conexión.<br>
+                       <small>Por favor, divide la carpeta en partes más pequeñas.</small>`,
+                icon: 'warning',
+                confirmButtonColor: '#6A0DAD'
+            });
+            // Limpiamos el input para que pueda intentar de nuevo
+            if (input.tagName === 'INPUT') input.value = '';
+            return; // DETENEMOS LA EJECUCIÓN AQUÍ
+        }
+        
+        // Configuración visual
         const log = document.getElementById('uploadLog');
         const progreso = document.getElementById('uploadProgress');
         const barra = document.getElementById('progressBar');
@@ -3485,12 +3509,14 @@ async function eliminarEvidenciaActual() {
         let completados = 0;
         const total = archivos.length;
         
+        // 3. PROCESAMIENTO UNO A UNO (Secuencial para estabilidad)
         for (let i = 0; i < total; i++) {
             const archivo = archivos[i];
             const datos = new FormData();
             datos.append('archivo', archivo);
             
-            texto.textContent = `Procesando ${i + 1}/${total}: ${archivo.name}`;
+            // Actualizamos texto de progreso
+            texto.textContent = `Analizando ${i + 1} de ${total}: ${archivo.name}`;
             barra.style.width = ((i / total) * 100) + '%';
             
             try {
@@ -3499,14 +3525,13 @@ async function eliminarEvidenciaActual() {
                     body: datos
                 });
                 
-                // 1. Verificamos primero si la respuesta de red fue OK
                 if (!respuesta.ok) {
-                    throw new Error(`Error del servidor (${respuesta.status})`);
+                    throw new Error(`Error servidor: ${respuesta.status}`);
                 }
 
                 const resultado = await respuesta.json();
                 
-                // 2. BLINDAJE: Verificamos que 'resultado' no sea null y tenga datos
+                // Procesar respuesta
                 if (resultado && resultado.status) {
                     if (resultado.status === 'exito') {
                         log.innerHTML += `<div style="color:var(--secondary); margin-top:5px; padding:5px; border-bottom:1px solid #eee;">
@@ -3518,17 +3543,27 @@ async function eliminarEvidenciaActual() {
                         </div>`;
                     }
                 } else {
-                    // Si resultado es null pero la respuesta fue OK, es que se guardó pero no devolvió JSON
                     log.innerHTML += `<div style="color:var(--secondary); margin-top:5px; padding:5px; border-bottom:1px solid #eee;">
-                        <strong>✅ ${archivo.name}:</strong> Procesado correctamente (verificado).
+                        <strong>✅ ${archivo.name}:</strong> Subido correctamente.
                     </div>`;
                 }
+
             } catch (error) {
-                // Solo mostrar error si realmente falló la subida
+                console.error(error);
+                let mensajeError = error.message;
+                
+                // Mensaje amigable si es error de red
+                if (mensajeError.includes('Failed to fetch')) {
+                    mensajeError = "Error de conexión. Internet inestable o servidor saturado.";
+                }
+
                 log.innerHTML += `<div style="color:var(--error); margin-top:5px; padding:5px; border-bottom:1px solid #eee;">
-                    <strong>❌ ${archivo.name}:</strong> ${error.message}
+                    <strong>❌ ${archivo.name}:</strong> ${mensajeError}
                 </div>`;
             }
+            
+            // Scroll automático hacia abajo del log
+            log.scrollTop = log.scrollHeight;
             
             completados++;
             barra.style.width = ((completados / total) * 100) + '%';
@@ -3536,14 +3571,13 @@ async function eliminarEvidenciaActual() {
         
         texto.textContent = 'Proceso completado ✅';
         if (input.tagName === 'INPUT') {
-        input.value = '';
-    }
+            input.value = '';
+        }
         
         setTimeout(() => {
             cargarDatosIniciales();
         }, 1500);
     }
-
     // ==========================================
     // 11. FUNCIONES DE CAMBIO DE CONTRASEÑA
     // ==========================================
@@ -3935,20 +3969,45 @@ async function enviarReasignacionMasiva() {
 // ==========================================
 // 15. UTILS (DRAG AND DROP)
 // ==========================================
-function configurarDragAndDrop() {
-    const dropZone = document.getElementById('dropZoneIA');
-    if(!dropZone) return;
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
-        document.body.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
-    });
-    ['dragenter', 'dragover'].forEach(eventName => dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false));
-    ['dragleave', 'drop'].forEach(eventName => dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false));
-    dropZone.addEventListener('drop', (e) => {
-        const dt = e.dataTransfer;
-        if (typeof handleUploadIA === 'function') handleUploadIA({ files: dt.files, value: '' });
-    }, false);
-}
+// ==========================================
+    // CONFIGURACIÓN DRAG & DROP (ARRASTRAR CARPETAS)
+    // ==========================================
+    function configurarDragAndDrop() {
+        const dropZone = document.getElementById('dropZoneIA');
+        if(!dropZone) return;
+
+        // Prevenir comportamientos por defecto
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, e => { 
+                e.preventDefault(); 
+                e.stopPropagation(); 
+            }, false);
+            document.body.addEventListener(eventName, e => { 
+                e.preventDefault(); 
+                e.stopPropagation(); 
+            }, false);
+        });
+
+        // Efectos visuales
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false);
+        });
+
+        // Manejar el Drop (Soltar archivos)
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+
+            // Llamamos a la función mejorada pasando la lista de archivos
+            if (typeof handleUploadIA === 'function') {
+                handleUploadIA({ files: files, value: '' }); 
+            }
+        }, false);
+    }
 
 // ==========================================
     // FUNCIONES DE MANTENIMIENTO (GLOBALES)
