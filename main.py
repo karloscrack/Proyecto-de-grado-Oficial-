@@ -47,7 +47,7 @@ def ahora_ecuador():
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 465  # <--- Asegúrate de que sea 465
 SMTP_EMAIL = "karlos.ayala.lopez.1234@gmail.com"
-SMTP_PASSWORD = "mzjg jvxj mruk qgeb"
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
 
 # --- 1. CONFIGURACIÓN Y CREDENCIALES AWS/B2 ---
 AWS_ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY")
@@ -614,23 +614,20 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
-    """
-    V8.1 - INICIO LIMPIO CORREGIDO
-    Se cambió 'init_db' por 'init_db_completa' para que coincida con tu código.
-    """
     print("\n" + "="*50)
-    print("🚀 INICIANDO SERVIDOR - MODO PRODUCCIÓN LIMPIO")
+    print("🚀 INICIANDO SERVIDOR - MODO PRODUCCIÓN")
     print("="*50)
     
     try:
-        # ✅ CORRECCIÓN: El nombre correcto de tu función es init_db_completa
-        init_db_completa() 
-        print("✅ Base de datos conectada y estructura verificada.")
-
-        # Protocolo de mantenimiento silenciado para evitar restauraciones automáticas
+        init_db_completa()
+        print("✅ Base de datos verificada.")
         
-        print("✅ Servidor listo. No se restauraron evidencias antiguas.")
-        print("="*50 + "\n")
+        # AGREGAR ESTO AQUÍ para que se ejecute en la nube
+        # Lo envolvemos en un try/except para que no tumbe el servidor si falla
+        try:
+            limpieza_duplicados_startup() 
+        except Exception as e_limpieza:
+            print(f"⚠️ Advertencia: La limpieza inicial falló: {e_limpieza}")
 
     except Exception as e:
         print(f"❌ Error crítico en el inicio: {e}")
