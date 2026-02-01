@@ -2529,17 +2529,22 @@ from urllib.parse import urlparse
 
 def limpieza_duplicados_startup():
     """
-    V5.5 - CORREGIDA: Usa RealDictCursor para evitar errores de índice.
+    V8.0 - MANTENIMIENTO INTEGRAL Y SEGURO
+    Incluye Fases 0, 1, 2, 3 y 4.
+    Corrección Crítica FASE 4: Cambiada lógica a 'Conservar por defecto'.
+    Solo borra si recibe un error 404 confirmado.
     """
     print("🧹 INICIANDO PROTOCOLO DE LIMPIEZA Y MANTENIMIENTO...")
     
+    conn = None
     try:
         conn = get_db_connection()
-        # CORRECCIÓN AQUÍ: Usar RealDictCursor para poder acceder por nombre (row['Url_Archivo'])
+        # Usamos RealDictCursor para acceder por nombres de columna (soportando mayús/minús)
         c = conn.cursor(cursor_factory=RealDictCursor) 
         
-        # ... (Resto del código igual) ...
-        # FASE 0: LIMPIEZA POR URL EXACTA
+        # =========================================================
+        # FASE 0: LIMPIEZA POR URL EXACTA (Registros repetidos idénticos)
+        # =========================================================
         print("🔍 FASE 0: Buscando URLs idénticas...")
         c.execute("""
             SELECT Url_Archivo, COUNT(*) as cantidad FROM Evidencias 
@@ -2549,35 +2554,35 @@ def limpieza_duplicados_startup():
         
         eliminados_0 = 0
         for row in urls_repetidas:
-            # PostgreSQL devuelve claves en minúscula: row['url_archivo']
-            url = row['url_archivo'] if 'url_archivo' in row else row['Url_Archivo']
+            # Obtener URL con seguridad de mayúsculas/minúsculas
+            url = row.get('Url_Archivo') or row.get('url_archivo')
             
             c.execute("SELECT id FROM Evidencias WHERE Url_Archivo = %s ORDER BY id ASC", (url,))
             copias = c.fetchall()
-            for copia in copias[1:]: # Borrar todos menos el primero
+            # Dejar el primero (original), borrar el resto
+            for copia in copias[1:]: 
                 c.execute("DELETE FROM Evidencias WHERE id = %s", (copia['id'],))
                 eliminados_0 += 1
         
-        if eliminados_0 > 0: print(f"   ✨ Fase 0: {eliminados_0} registros eliminados.")
+        if eliminados_0 > 0: print(f"   ✨ Fase 0: {eliminados_0} registros duplicados eliminados.")
 
-        # ---------------------------------------------------------
-        # FASE 1: REPARAR ARCHIVOS ANTIGUOS
-        # ---------------------------------------------------------
-        print("⏳ FASE 1: Verificando huellas digitales...")
+        # =========================================================
+        # FASE 1: REPARAR ARCHIVOS ANTIGUOS (Generar Hash faltante)
+        # =========================================================
+        print("⏳ FASE 1: Verificando huellas digitales (Hashes)...")
         c.execute("SELECT id, Url_Archivo FROM Evidencias WHERE Hash = 'PENDIENTE' OR Hash IS NULL")
         pendientes = c.fetchall()
         
         count_hashed = 0
         for row in pendientes:
             try:
-                # Soporte para minúsculas/mayúsculas
                 url = row.get('Url_Archivo') or row.get('url_archivo')
                 id_ev = row.get('id')
-                
                 temp_path = None
                 file_hash = None
                 
-                if "http" in url and s3_client:
+                # Descargar temporalmente para calcular hash
+                if url and "http" in url and s3_client:
                     try:
                         parsed = urlparse(url)
                         key = parsed.path.lstrip('/')
@@ -2586,7 +2591,7 @@ def limpieza_duplicados_startup():
                             temp_path = tmp.name
                         file_hash = calcular_hash(temp_path)
                     except: pass 
-                elif "/local/" in url:
+                elif url and "/local/" in url:
                     ruta_local = url.replace("/local/", "./")
                     if not os.path.exists(ruta_local):
                          ruta_local = os.path.join(BASE_DIR, url.replace("/local/", "").lstrip("/"))
@@ -2600,37 +2605,35 @@ def limpieza_duplicados_startup():
                 if temp_path and os.path.exists(temp_path): os.remove(temp_path)
             except: pass
             
-        conn.commit() 
+        conn.commit()
+        if count_hashed > 0: print(f"   ✨ Fase 1: {count_hashed} archivos reparados.")
 
-        # (Mantén el resto de las fases igual, el error crítico era la Fase 0)
-        # ... Para ahorrar espacio, asumo que dejas las Fases 2, 3 y 4 como estaban
-        # pero recuerda que si acceden a columnas deben buscar la versión en minúscula.
-        
-        conn.close()
-        print(f"✅ MANTENIMIENTO FINALIZADO (Fase 0 y 1 completas).")
-
-    except Exception as e:
-        print(f"❌ Error en limpieza startup: {e}")
-
-        # ---------------------------------------------------------
-        # FASE 2: ELIMINAR POR HASH
-        # ---------------------------------------------------------
+        # =========================================================
+        # FASE 2: ELIMINAR POR HASH (Contenido idéntico)
+        # =========================================================
         print("🔍 FASE 2: Buscando contenido idéntico (Hash)...")
         c.execute("""
             SELECT Hash, COUNT(*) as cantidad FROM Evidencias 
-            WHERE Hash NOT IN ('PENDIENTE', '', 'RECUPERADO') GROUP BY Hash HAVING cantidad > 1
+            WHERE Hash NOT IN ('PENDIENTE', '', 'RECUPERADO') GROUP BY Hash HAVING COUNT(*) > 1
         """)
         grupos_hash = c.fetchall()
         
         eliminados_2 = 0
         for grupo in grupos_hash:
-            c.execute("SELECT id, Url_Archivo FROM Evidencias WHERE Hash = %s ORDER BY id ASC", (grupo['Hash'],))
+            hash_val = grupo.get('Hash') or grupo.get('hash')
+            c.execute("SELECT id, Url_Archivo FROM Evidencias WHERE Hash = %s ORDER BY id ASC", (hash_val,))
             copias = c.fetchall()
             original = copias[0]
+            
+            # Borrar copias extra
             for copia in copias[1:]:
-                if s3_client and copia['Url_Archivo'] != original['Url_Archivo'] and BUCKET_NAME in copia['Url_Archivo']:
+                url_copia = copia.get('Url_Archivo') or copia.get('url_archivo')
+                url_orig = original.get('Url_Archivo') or original.get('url_archivo')
+                
+                # Intentar borrar el archivo físico de la copia si es diferente al original
+                if s3_client and url_copia != url_orig and BUCKET_NAME in url_copia:
                     try:
-                        parsed = urlparse(copia['Url_Archivo'])
+                        parsed = urlparse(url_copia)
                         key = parsed.path.lstrip('/')
                         s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
                     except: pass
@@ -2640,18 +2643,21 @@ def limpieza_duplicados_startup():
         
         if eliminados_2 > 0: print(f"   ✨ Fase 2: {eliminados_2} duplicados exactos eliminados.")
 
-        # ---------------------------------------------------------
+        # =========================================================
         # FASE 3: ELIMINAR POR NOMBRE + ESTUDIANTE
-        # ---------------------------------------------------------
+        # =========================================================
         print("🔍 FASE 3: Buscando duplicados por nombre de archivo...")
         c.execute("SELECT id, CI_Estudiante, Url_Archivo FROM Evidencias")
         todas = c.fetchall()
         agrupados = {}
         
         for ev in todas:
-            url = ev['Url_Archivo']
-            cedula = ev['CI_Estudiante']
+            url = ev.get('Url_Archivo') or ev.get('url_archivo')
+            cedula = ev.get('CI_Estudiante') or ev.get('ci_estudiante')
+            if not url: continue
+            
             filename = os.path.basename(url)
+            # Limpiar prefijos numéricos (timestamps) para comparar nombres reales
             clean_name = re.sub(r'^\d+_', '', filename)
             clave = f"{cedula}|{clean_name}"
             
@@ -2661,13 +2667,15 @@ def limpieza_duplicados_startup():
         eliminados_3 = 0
         for clave, lista in agrupados.items():
             if len(lista) > 1:
-                lista.sort(key=lambda x: x['id'])
+                lista.sort(key=lambda x: x['id']) # El más antiguo se queda
                 duplicados = lista[1:] 
                 for dup in duplicados:
                     c.execute("DELETE FROM Evidencias WHERE id = %s", (dup['id'],))
-                    if s3_client and BUCKET_NAME in dup['Url_Archivo']:
+                    url_dup = dup.get('Url_Archivo') or dup.get('url_archivo')
+                    
+                    if s3_client and BUCKET_NAME in url_dup:
                         try:
-                            parsed = urlparse(dup['Url_Archivo'])
+                            parsed = urlparse(url_dup)
                             key = parsed.path.lstrip('/')
                             s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
                         except: pass
@@ -2675,11 +2683,11 @@ def limpieza_duplicados_startup():
 
         if eliminados_3 > 0: print(f"   ✨ Fase 3: {eliminados_3} archivos eliminados por nombre.")
 
-        # ---------------------------------------------------------
-        # FASE 4: SINCRONIZACIÓN SEGURA CON NUBE
-        # ---------------------------------------------------------
+        # =========================================================
+        # FASE 4: SINCRONIZACIÓN SEGURA CON NUBE (BLINDADA)
+        # =========================================================
         print("☁️ FASE 4: Auditando existencia real en la nube...")
-        conn.commit()
+        conn.commit() 
         c.execute("SELECT id, Url_Archivo FROM Evidencias")
         evidencias = c.fetchall()
         
@@ -2687,34 +2695,57 @@ def limpieza_duplicados_startup():
         eliminados_nube = 0
         
         for ev in evidencias:
-            url = ev['Url_Archivo']
-            existe = False
+            url = ev.get('Url_Archivo') or ev.get('url_archivo')
+            ev_id = ev.get('id')
+            
+            if not url: continue
+
+            # --- LÓGICA SEGURA: Por defecto NO borramos nada ---
+            debe_borrarse = False 
             peso_kb = 0
             
-            if s3_client and BUCKET_NAME in url:
-                try:
-                    parsed = urlparse(url)
-                    key = parsed.path.lstrip('/')
-                    meta = s3_client.head_object(Bucket=BUCKET_NAME, Key=key)
-                    peso_kb = meta['ContentLength'] / 1024
-                    existe = True
-                except Exception as e:
-                    if "404" in str(e) or "Not Found" in str(e): existe = False
-                    else: existe = True 
+            # CASO A: Archivos en la Nube (S3/Backblaze)
+            if "backblazeb2.com" in url or "s3" in url:
+                if s3_client: # Solo si hay cliente S3 conectado
+                    try:
+                        parsed = urlparse(url)
+                        key = parsed.path.lstrip('/')
+                        
+                        # Intentar obtener metadatos (esto falla si el archivo no existe)
+                        meta = s3_client.head_object(Bucket=BUCKET_NAME, Key=key)
+                        peso_kb = meta['ContentLength'] / 1024
+                        
+                        # Si llegamos aquí, el archivo EXISTE. Actualizamos peso.
+                        c.execute("UPDATE Evidencias SET Tamanio_KB = %s WHERE id = %s", (peso_kb, ev_id))
+                        actualizados_peso += 1
+                        
+                    except Exception as e:
+                        error_msg = str(e)
+                        # SOLO marcamos para borrar si el error es explícitamente "404 Not Found"
+                        if "404" in error_msg or "Not Found" in error_msg:
+                            print(f"🗑️ Archivo fantasma confirmado (404): {url}")
+                            debe_borrarse = True
+                        else:
+                            # Si es error de red, credenciales o permisos, NO HACEMOS NADA
+                            # El registro se conserva por seguridad
+                            pass
+                else:
+                    pass # Si no hay cliente S3, no podemos verificar, así que no borramos nada.
+
+            # CASO B: Archivos Locales
             elif "/local/" in url:
-                existe = True 
+                # Lógica para local si aplica, sino ignorar
+                pass
             
-            if existe:
-                c.execute("UPDATE Evidencias SET Tamanio_KB = %s WHERE id = %s", (peso_kb, ev['id']))
-                actualizados_peso += 1
-            else:
-                c.execute("DELETE FROM Evidencias WHERE id = %s", (ev['id'],))
+            # EJECUTAR BORRADO SOLO SI ESTAMOS 100% SEGUROS
+            if debe_borrarse:
+                c.execute("DELETE FROM Evidencias WHERE id = %s", (ev_id,))
                 eliminados_nube += 1
         
         conn.commit()
-        print(f"✅ FASE 4 COMPLETADA: {actualizados_peso} actualizados, {eliminados_nube} eliminados.")
+        print(f"✅ FASE 4 COMPLETADA: {actualizados_peso} pesos actualizados, {eliminados_nube} fantasmas eliminados.")
         
-        # Actualizar métricas
+        # Actualizar métricas finales
         try:
             stats = calcular_estadisticas_reales()
             fecha_hoy = ahora_ecuador().date().isoformat()
@@ -2737,12 +2768,12 @@ def limpieza_duplicados_startup():
             conn_metricas.close()
         except Exception as e:
             print(f"⚠️ Error menor actualizando métricas: {e}")
-        
-        conn.close()
-        print(f"✅ MANTENIMIENTO TOTAL FINALIZADO.")
-
+            
     except Exception as e:
-        print(f"❌ Error en limpieza startup: {e}")
+        print(f"❌ Error general en limpieza startup: {e}")
+    finally:
+        if conn: conn.close()
+        print(f"✅ MANTENIMIENTO TOTAL FINALIZADO.")
 
 @app.post("/recuperar_evidencias_nube")
 async def recuperar_evidencias_nube(background_tasks: BackgroundTasks):
