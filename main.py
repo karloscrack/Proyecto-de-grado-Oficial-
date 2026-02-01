@@ -73,7 +73,7 @@ except Exception as e:
 ENDPOINT_B2 = "https://s3.us-east-005.backblazeb2.com"
 KEY_ID_B2 = "00508884373dab40000000001"
 APP_KEY_B2 = "K005jvkLLmLdUKhhVis1qLcnU4flx0g"
-BUCKET_NAME = "Proyecto-Grado-Karlos-2025"
+BUCKET_NAME = "Proyecto-Grado-Karlos-2026"
 
 try:
     my_config = Config(signature_version='s3v4', region_name='us-east-005')
@@ -269,7 +269,7 @@ def registrar_auditoria(accion: str, detalle: str, usuario: str = "Sistema", ip:
         fecha_obj = ahora_ecuador()
         
         # 2. TRUCO DE ORO: Convertirla a texto simple AQUI en Python
-        # Así la base de datos guarda "2025-01-01 10:00" tal cual, sin sumar 5 horas.
+        # Así la base de datos guarda "2026-01-01 10:00" tal cual, sin sumar 5 horas.
         fecha_str = fecha_obj.strftime("%Y-%m-%d %H:%M:%S")
         
         conn = get_db_connection()
@@ -932,11 +932,13 @@ async def cambiar_estado_usuario(datos: EstadoUsuarioRequest):
         if not target_user:
             return JSONResponse(content={"error": "Usuario no encontrado"}, status_code=404)
 
+        # --- CORRECCIÓN CLAVE AQUÍ: Usamos .get() para leer sin importar mayúsculas/minúsculas ---
+        tipo_usuario = target_user.get('Tipo') if target_user.get('Tipo') is not None else target_user.get('tipo')
+        
         # 2. LÓGICA DE PROTECCIÓN DE ADMINS
         # Si intentan desactivar (activo=0) a un Admin (Tipo=0)
-        if target_user['Tipo'] == 0 and datos.activo == 0:
+        if tipo_usuario == 0 and datos.activo == 0:
             # Verificamos la clave maestra
-            # IMPORTANTE: Asegúrate de que CLAVE_SUPREMA esté definida al inicio de tu archivo
             if not datos.clave_maestra or datos.clave_maestra != CLAVE_SUPREMA:
                 return JSONResponse(content={"error": "⛔ Acceso Denegado: Se requiere la Clave Suprema para desactivar a un Administrador."}, status_code=403)
 
@@ -953,14 +955,20 @@ async def cambiar_estado_usuario(datos: EstadoUsuarioRequest):
         user = c.fetchone()
         conn.commit()
         
-        nombre = f"{user['nombre']} {user['apellido']}"
-        estado_texto = "activada" if datos.activo == 1 else "desactivada"
-        registrar_auditoria("CAMBIO_ESTADO", f"Cuenta de {nombre} {estado_texto}", "Admin")
+        # Leemos el resultado con seguridad también
+        u_nombre = user.get('Nombre') or user.get('nombre')
+        u_apellido = user.get('Apellido') or user.get('apellido')
         
-        return JSONResponse(content={"mensaje": "OK", "nombre": nombre})
+        nombre_completo = f"{u_nombre} {u_apellido}"
+        estado_texto = "activada" if datos.activo == 1 else "desactivada"
+        registrar_auditoria("CAMBIO_ESTADO", f"Cuenta de {nombre_completo} {estado_texto}", "Admin")
+        
+        return JSONResponse(content={"mensaje": "OK", "nombre": nombre_completo})
         
     except Exception as e:
         if conn: conn.rollback()
+        # Imprimimos el error en la consola del servidor para que sepas qué pasó
+        print(f"❌ Error cambiando estado: {e}")
         return JSONResponse(content={"error": str(e)}, status_code=500)
     finally:
         if conn: conn.close()
