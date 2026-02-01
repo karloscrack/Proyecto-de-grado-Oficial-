@@ -1229,7 +1229,11 @@ async def subir_manual(
     cedulas: str = Form(...), 
     archivo: UploadFile = File(...)
 ):
-    """Sube una evidencia manualmente asignada a una lista de cédulas."""
+    """
+    Sube una evidencia manualmente.
+    CORRECCIÓN: Si el archivo ya existe (asignado a otro alumno), 
+    RECICLA la URL y asigna el permiso al nuevo alumno sin dar error de duplicado.
+    """
     temp_dir = None
     conn = None
     try:
@@ -1238,7 +1242,7 @@ async def subir_manual(
         if not lista_cedulas:
             return JSONResponse(content={"status": "error", "mensaje": "Debe especificar al menos una cédula"})
         
-        # 2. Guardar archivo temporalmente
+        # 2. Guardar archivo temporalmente para calcular Hash
         temp_dir = tempfile.mkdtemp()
         path = os.path.join(temp_dir, archivo.filename)
         with open(path, "wb") as f:
@@ -1246,44 +1250,78 @@ async def subir_manual(
         
         file_hash = calcular_hash(path)
         conn = get_db_connection()
-        c = conn.cursor(cursor_factory=RealDictCursor) # Cursor obligatorio para Postgres
+        c = conn.cursor(cursor_factory=RealDictCursor) 
         
-        # 3. Verificar si el archivo ya existe globalmente
-        c.execute("SELECT id FROM Evidencias WHERE Hash = %s LIMIT 1", (file_hash,))
-        if c.fetchone():
-            return JSONResponse({"status": "error", "mensaje": "⚠️ ARCHIVO DUPLICADO: Esta evidencia ya existe en el sistema."})
+        # --- LÓGICA INTELIGENTE DE REUTILIZACIÓN ---
+        # 3. Verificar si el archivo ya existe físicamente en el sistema
+        c.execute("SELECT Url_Archivo, Tamanio_KB FROM Evidencias WHERE Hash = %s LIMIT 1", (file_hash,))
+        evidencia_existente = c.fetchone()
+
+        url_final = ""
+        tamanio_kb = 0
+        reutilizado = False
+
+        if evidencia_existente:
+            # CASO A: El archivo YA EXISTE (Ej: Lo tiene el estudiante A)
+            # No lo subimos de nuevo. Reutilizamos la URL y el peso.
+            url_final = evidencia_existente.get('Url_Archivo') or evidencia_existente.get('url_archivo')
+            tamanio_kb = evidencia_existente.get('Tamanio_KB') or evidencia_existente.get('tamanio_kb') or 0
+            reutilizado = True
+            print(f"♻️ Archivo existente detectado. Reutilizando URL: {url_final}")
+        else:
+            # CASO B: El archivo es NUEVO. Lo subimos a la nube.
+            path_procesado = garantizar_limite_storage(path)
+            tamanio_kb = os.path.getsize(path_procesado) / 1024
+            url_final = f"/local/{archivo.filename}"
             
-        # 4. Procesar y subir a la nube
-        path_procesado = garantizar_limite_storage(path)
-        tamanio_kb = os.path.getsize(path_procesado) / 1024
-        url_final = f"/local/{archivo.filename}"
-        
-        if s3_client:
-            try:
-                nombre_nube = f"evidencias/manual_{int(ahora_ecuador().timestamp())}_{archivo.filename}"
-                s3_client.upload_file(path_procesado, BUCKET_NAME, nombre_nube, ExtraArgs={'ACL': 'public-read'})
-                url_final = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nombre_nube}"
-            except: pass
+            if s3_client:
+                try:
+                    nombre_nube = f"evidencias/manual_{int(ahora_ecuador().timestamp())}_{archivo.filename}"
+                    s3_client.upload_file(path_procesado, BUCKET_NAME, nombre_nube, ExtraArgs={'ACL': 'public-read'})
+                    url_final = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nombre_nube}"
+                except Exception as e_upload:
+                    print(f"⚠️ Error subiendo a S3: {e_upload}")
             
-        # 5. Asignar a cada estudiante de la lista
+        # 4. Asignar a cada estudiante de la lista (Verificando que ESE estudiante no lo tenga ya)
         count = 0
+        omitidos = 0
+        
+        # Detectar tipo archivo
+        ext = os.path.splitext(archivo.filename)[1].lower()
+        es_video = ext in ['.mp4', '.avi', '.mov', '.mkv']
+        tipo_archivo = "video" if es_video else "imagen"
+        if ext in ['.pdf', '.doc', '.docx']: tipo_archivo = "documento"
+
         for ced in lista_cedulas:
-            c.execute("SELECT CI FROM Usuarios WHERE CI=%s", (ced,))
-            if c.fetchone():
-                c.execute("""
-                    INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
-                    VALUES (%s, %s, %s, 1, 'documento', %s, 0)
-                """, (ced, url_final, file_hash, tamanio_kb))
-                count += 1
+            # Verificamos si ESTE estudiante ya tiene ESTE archivo
+            c.execute("SELECT id FROM Evidencias WHERE CI_Estudiante=%s AND Hash=%s", (ced, file_hash))
+            ya_lo_tiene = c.fetchone()
+
+            if not ya_lo_tiene:
+                # Verificamos que el estudiante exista
+                c.execute("SELECT CI FROM Usuarios WHERE CI=%s", (ced,))
+                if c.fetchone():
+                    c.execute("""
+                        INSERT INTO Evidencias (CI_Estudiante, Url_Archivo, Hash, Estado, Tipo_Archivo, Tamanio_KB, Asignado_Automaticamente)
+                        VALUES (%s, %s, %s, 1, %s, %s, 0)
+                    """, (ced, url_final, file_hash, tipo_archivo, tamanio_kb))
+                    count += 1
+            else:
+                omitidos += 1
         
         conn.commit()
-        registrar_auditoria(
-            "SUBIDA_MANUAL", 
-            f"El Admin subió el archivo '{archivo.filename}' y lo asignó a {count} estudiantes.", 
-            "Administrador"
-        )
-
-        return JSONResponse({"status": "ok", "mensaje": f"✅ Éxito: Archivo asignado a {count} estudiantes."})
+        
+        # Mensaje de respuesta
+        if count > 0:
+            msg = f"✅ Éxito: Archivo asignado a {count} estudiante(s)."
+            if reutilizado: msg += " (Archivo reutilizado sin resubir)."
+            registrar_auditoria("SUBIDA_MANUAL", f"Admin asignó '{archivo.filename}' a {count} usuarios.", "Administrador")
+            return JSONResponse({"status": "ok", "mensaje": msg})
+        else:
+            if omitidos > 0:
+                return JSONResponse({"status": "alerta", "mensaje": f"⚠️ Los estudiantes seleccionados ya tenían este archivo asignado."})
+            else:
+                return JSONResponse({"status": "error", "mensaje": "No se pudo asignar a ningún estudiante válido."})
 
     except Exception as e:
         if conn: conn.rollback()
