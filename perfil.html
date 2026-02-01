@@ -899,10 +899,10 @@ body.dark-mode .swal2-textarea {
 
     <header class="main-header">
         <div class="logo-container">
-            <a href="index.html">
-                <img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
-            </a>
-        </div>
+    <a href="perfil.html">
+        <img id="appLogo" src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
+    </a>
+</div>
         <div class="header-actions">
             <button onclick="toggleTheme()" class="btn-icon-header" id="themeBtn" title="Cambiar Tema">
                 <i class="fas fa-moon"></i>
@@ -1995,38 +1995,87 @@ async function marcarTodasLeidas() {
         // =========================================================================
 
         async function toggleTheme() {
-            // 1. Cambiar visualmente (Rápido)
-            document.body.classList.toggle('dark-mode');
-            const esOscuro = document.body.classList.contains('dark-mode');
-            const nuevoTema = esOscuro ? 'dark' : 'light';
-            
-            // 2. Actualizar icono del sol/luna
-            const icon = document.querySelector('#themeBtn i');
-            if(icon) icon.className = esOscuro ? 'fas fa-sun' : 'fas fa-moon';
-            
-            // 3. Guardar en el navegador (por si acaso)
-            localStorage.setItem('global_theme', nuevoTema);
-
-            // 4. GUARDAR EN LA NUBE (Base de Datos)
-            const cedula = localStorage.getItem('usuario_cedula');
-            if(cedula) {
-                try {
-                    // 1 = Oscuro, 0 = Claro
-                    const temaNum = esOscuro ? 1 : 0;
-                    await fetch(`${API_URL}/actualizar_tema`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ cedula: cedula, tema: temaNum })
-                    });
-                } catch (e) { console.error("Error guardando tema:", e); }
+        const body = document.body;
+        
+        // 1. CAMBIO DE CLASE
+        body.classList.toggle('dark-mode'); 
+        const esOscuro = body.classList.contains('dark-mode');
+        
+        // 2. ANIMACIÓN DEL ICONO
+        let btn = document.querySelector('#themeBtn');
+        // Soporte para ambos tipos de botones por si acaso
+        if (!btn) btn = document.querySelector('#themeToggle');
+        
+        if (btn) {
+            const icon = btn.querySelector('i');
+            if (icon) {
+                icon.style.transform = 'rotate(360deg) scale(1.2)';
+                setTimeout(() => {
+                    icon.className = esOscuro ? 'fas fa-sun' : 'fas fa-moon';
+                    icon.style.transform = 'rotate(0deg) scale(1)';
+                }, 300);
             }
         }
-        function initTheme() {
-            const saved = localStorage.getItem('global_theme');
-            const icon = document.querySelector('#themeBtn i');
-            if(saved === 'dark') { document.body.classList.add('dark-mode'); icon.className = 'fas fa-sun'; }
-            else { document.body.classList.remove('dark-mode'); icon.className = 'fas fa-moon'; }
+
+        // 3. GUARDAR EN EL NAVEGADOR (Importante: usar 'global_theme' para coincidir con tu código existente)
+        localStorage.setItem('global_theme', esOscuro ? 'dark' : 'light');
+
+        // 4. INTENTAR GUARDAR EN LA BASE DE DATOS (Solo si existe usuarioLogueado)
+        // En index/biblioteca esto suele ser undefined, así que usamos un try/catch silencioso
+        try {
+             // Verificamos si hay datos de usuario en localStorage (común en tu app)
+             const cedula = localStorage.getItem('usuario_cedula');
+             
+             if (cedula) {
+                await fetch(`${API_URL}/actualizar_tema`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        cedula: cedula, 
+                        tema: esOscuro ? 1 : 0 
+                    })
+                });
+             }
+        } catch (e) { 
+            console.log("No se pudo guardar tema en nube (usuario no logueado o error red)"); 
         }
+
+        // 5. LLAMADA A LA FUNCIÓN CORRECTA
+        // En index.html y biblioteca.html tu función se llama initTheme
+        if (typeof initTheme === "function") {
+            initTheme(); 
+        }
+    }
+        function initTheme() {
+        // 1. Detectar si hay modo oscuro guardado o activo
+        const saved = localStorage.getItem('global_theme');
+        const esOscuro = saved === 'dark';
+        
+        // 2. Elementos del botón de tema (sol/luna)
+        const icon = document.querySelector('#themeBtn i') || document.querySelector('#themeToggle i');
+        
+        // 3. Definir las rutas de tus logos
+        const logoClaro = 'Img/Logo-Despertar-SKAS-Unidad-Educativa23.png';
+        const logoOscuro = 'Img/Logo-Despertar (Oscuro).png'; 
+
+        // 4. Aplicar la clase al body
+        if (esOscuro) {
+            document.body.classList.add('dark-mode');
+            if(icon) icon.className = 'fas fa-sun'; // Icono de sol en modo oscuro
+        } else {
+            document.body.classList.remove('dark-mode');
+            if(icon) icon.className = 'fas fa-moon'; // Icono de luna en modo claro
+        }
+
+        // 5. CAMBIO DE LOGOS (Header y Footer)
+        // Buscamos todas las imágenes que estén en contenedores de logo
+        const logos = document.querySelectorAll('.logo-container img, .footer-logo img');
+        
+        logos.forEach(img => {
+            // Si es oscuro usamos el logo blanco, si no, el original
+            img.src = esOscuro ? logoOscuro : logoClaro;
+        });
+    }
         function toggleMenu() { document.getElementById('sideMenu').classList.toggle('active'); document.getElementById('overlayMenu').classList.toggle('active'); }
         function cerrarSesion() { localStorage.clear(); window.location.href = 'index.html'; }
         
