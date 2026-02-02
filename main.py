@@ -2526,12 +2526,12 @@ from urllib.parse import urlparse
 
 def limpieza_duplicados_startup():
     """
-    V8.1 - MANTENIMIENTO MODO SEGURO (PROTECCIÓN CONTRA BORRADO ACCIDENTAL)
-    - Fases 0, 1, 2, 3: Funcionan igual (limpian basura interna).
-    - FASE 4 (MODIFICADA): Ya NO borra evidencias de la BD aunque la nube de error 404.
-      Solo reporta en consola para evitar pérdidas por errores de conexión.
+    V9.0 - MANTENIMIENTO INTELIGENTE (MULTI-USUARIO)
+    - Fases 0 y 2 corregidas: Solo borran duplicados si pertenecen AL MISMO ESTUDIANTE.
+      (Permite que varios alumnos compartan la misma evidencia/URL sin que se borre).
+    - Fase 4: Modo Seguro (No borra, solo avisa).
     """
-    print("🧹 INICIANDO PROTOCOLO DE LIMPIEZA Y MANTENIMIENTO (MODO SEGURO)...")
+    print("🧹 INICIANDO PROTOCOLO DE LIMPIEZA Y MANTENIMIENTO (MODO COMPARTIDO)...")
     
     conn = None
     try:
@@ -2540,28 +2540,38 @@ def limpieza_duplicados_startup():
         c = conn.cursor(cursor_factory=RealDictCursor) 
         
         # =========================================================
-        # FASE 0: LIMPIEZA POR URL EXACTA (Registros repetidos idénticos)
+        # FASE 0: LIMPIEZA POR URL (SÓLO SI ES EL MISMO DUEÑO)
         # =========================================================
-        print("🔍 FASE 0: Buscando URLs idénticas...")
+        print("🔍 FASE 0: Buscando URLs duplicadas en el mismo perfil...")
+        # CAMBIO CLAVE: Agrupamos por URL *Y* CI_Estudiante
         c.execute("""
-            SELECT Url_Archivo, COUNT(*) as cantidad FROM Evidencias 
-            GROUP BY Url_Archivo HAVING COUNT(*) > 1
+            SELECT Url_Archivo, CI_Estudiante, COUNT(*) as cantidad 
+            FROM Evidencias 
+            WHERE Url_Archivo != ''
+            GROUP BY Url_Archivo, CI_Estudiante 
+            HAVING COUNT(*) > 1
         """)
-        urls_repetidas = c.fetchall()
+        duplicados_url = c.fetchall()
         
         eliminados_0 = 0
-        for row in urls_repetidas:
-            # Obtener URL con seguridad de mayúsculas/minúsculas
+        for row in duplicados_url:
             url = row.get('Url_Archivo') or row.get('url_archivo')
+            ci = row.get('CI_Estudiante') or row.get('ci_estudiante')
             
-            c.execute("SELECT id FROM Evidencias WHERE Url_Archivo = %s ORDER BY id ASC", (url,))
+            # Borramos las copias extra DE ESE ESTUDIANTE
+            c.execute("""
+                SELECT id FROM Evidencias 
+                WHERE Url_Archivo = %s AND CI_Estudiante = %s 
+                ORDER BY id ASC
+            """, (url, ci))
             copias = c.fetchall()
-            # Dejar el primero (original), borrar el resto
+            
+            # Dejamos el primero (original), borrar el resto
             for copia in copias[1:]: 
                 c.execute("DELETE FROM Evidencias WHERE id = %s", (copia['id'],))
                 eliminados_0 += 1
         
-        if eliminados_0 > 0: print(f"   ✨ Fase 0: {eliminados_0} registros duplicados eliminados.")
+        if eliminados_0 > 0: print(f"   ✨ Fase 0: {eliminados_0} registros repetidos corregidos.")
 
         # =========================================================
         # FASE 1: REPARAR ARCHIVOS ANTIGUOS (Generar Hash faltante)
@@ -2606,35 +2616,36 @@ def limpieza_duplicados_startup():
         if count_hashed > 0: print(f"   ✨ Fase 1: {count_hashed} archivos reparados.")
 
         # =========================================================
-        # FASE 2: ELIMINAR POR HASH (Contenido idéntico)
+        # FASE 2: ELIMINAR POR HASH (SÓLO SI ES EL MISMO DUEÑO)
         # =========================================================
-        print("🔍 FASE 2: Buscando contenido idéntico (Hash)...")
+        print("🔍 FASE 2: Buscando contenido duplicado en el mismo perfil...")
+        # CAMBIO CLAVE: Agrupamos por Hash *Y* CI_Estudiante
         c.execute("""
-            SELECT Hash, COUNT(*) as cantidad FROM Evidencias 
-            WHERE Hash NOT IN ('PENDIENTE', '', 'RECUPERADO') GROUP BY Hash HAVING COUNT(*) > 1
+            SELECT Hash, CI_Estudiante, COUNT(*) as cantidad 
+            FROM Evidencias 
+            WHERE Hash NOT IN ('PENDIENTE', '', 'RECUPERADO') 
+            GROUP BY Hash, CI_Estudiante 
+            HAVING COUNT(*) > 1
         """)
         grupos_hash = c.fetchall()
         
         eliminados_2 = 0
         for grupo in grupos_hash:
             hash_val = grupo.get('Hash') or grupo.get('hash')
-            c.execute("SELECT id, Url_Archivo FROM Evidencias WHERE Hash = %s ORDER BY id ASC", (hash_val,))
+            ci = grupo.get('CI_Estudiante') or grupo.get('ci_estudiante')
+
+            c.execute("""
+                SELECT id, Url_Archivo FROM Evidencias 
+                WHERE Hash = %s AND CI_Estudiante = %s 
+                ORDER BY id ASC
+            """, (hash_val, ci))
+            
             copias = c.fetchall()
-            original = copias[0]
+            # original = copias[0] -> No necesitamos tocar el original
             
             # Borrar copias extra
             for copia in copias[1:]:
-                url_copia = copia.get('Url_Archivo') or copia.get('url_archivo')
-                url_orig = original.get('Url_Archivo') or original.get('url_archivo')
-                
-                # Intentar borrar el archivo físico de la copia si es diferente al original
-                if s3_client and url_copia != url_orig and BUCKET_NAME in url_copia:
-                    try:
-                        parsed = urlparse(url_copia)
-                        key = parsed.path.lstrip('/')
-                        s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
-                    except: pass
-                
+                # Solo borramos de la DB, NO de la nube (porque el original la usa)
                 c.execute("DELETE FROM Evidencias WHERE id = %s", (copia['id'],))
                 eliminados_2 += 1
         
@@ -2654,8 +2665,10 @@ def limpieza_duplicados_startup():
             if not url: continue
             
             filename = os.path.basename(url)
-            # Limpiar prefijos numéricos (timestamps) para comparar nombres reales
+            # Limpiar prefijos numéricos para comparar nombres reales
             clean_name = re.sub(r'^\d+_', '', filename)
+            
+            # CLAVE ÚNICA: Cédula + Nombre Archivo (Para que no mezcle alumnos)
             clave = f"{cedula}|{clean_name}"
             
             if clave not in agrupados: agrupados[clave] = []
@@ -2667,15 +2680,8 @@ def limpieza_duplicados_startup():
                 lista.sort(key=lambda x: x['id']) # El más antiguo se queda
                 duplicados = lista[1:] 
                 for dup in duplicados:
+                    # Aquí borramos de DB. NO borramos de nube por precaución en start-up.
                     c.execute("DELETE FROM Evidencias WHERE id = %s", (dup['id'],))
-                    url_dup = dup.get('Url_Archivo') or dup.get('url_archivo')
-                    
-                    if s3_client and BUCKET_NAME in url_dup:
-                        try:
-                            parsed = urlparse(url_dup)
-                            key = parsed.path.lstrip('/')
-                            s3_client.delete_object(Bucket=BUCKET_NAME, Key=key)
-                        except: pass
                     eliminados_3 += 1
 
         if eliminados_3 > 0: print(f"   ✨ Fase 3: {eliminados_3} archivos eliminados por nombre.")
@@ -2698,13 +2704,12 @@ def limpieza_duplicados_startup():
             if not url: continue
 
             # --- LÓGICA SEGURA: Por defecto NUNCA borramos ---
-            # Si hay un error 404, solo avisamos en consola, no borramos de la DB.
             debe_borrarse = False 
             peso_kb = 0
             
             # CASO A: Archivos en la Nube (S3/Backblaze)
             if "backblazeb2.com" in url or "s3" in url:
-                if s3_client: # Solo si hay cliente S3 conectado
+                if s3_client:
                     try:
                         parsed = urlparse(url)
                         key = parsed.path.lstrip('/')
@@ -2713,42 +2718,35 @@ def limpieza_duplicados_startup():
                         meta = s3_client.head_object(Bucket=BUCKET_NAME, Key=key)
                         peso_kb = meta['ContentLength'] / 1024
                         
-                        # Si llegamos aquí, el archivo EXISTE. Actualizamos peso.
+                        # Si existe, actualizamos peso
                         c.execute("UPDATE Evidencias SET Tamanio_KB = %s WHERE id = %s", (peso_kb, ev_id))
                         actualizados_peso += 1
                         
                     except Exception as e:
                         error_msg = str(e)
                         if "404" in error_msg or "Not Found" in error_msg:
-                            # 🛑 CAMBIO CRÍTICO: SOLO AVISAR, NO BORRAR
                             print(f"⚠️ Alerta: Archivo no detectado en nube (404): {url}")
-                            print("   👉 Se mantiene en base de datos por seguridad.")
                             fantasmas_detectados += 1
-                            debe_borrarse = False # <--- FORZADO A FALSE PARA QUE NO SE BORRE
+                            debe_borrarse = False # MODO SEGURO: NO BORRAR
                         else:
                             pass
-                else:
-                    pass 
 
-            # CASO B: Archivos Locales
+            # CASO B: Archivos Locales (Si es Railway prod, esto suele fallar, pero lo dejamos seguro)
             elif "/local/" in url:
                 pass
             
-            # EJECUTAR BORRADO (En este modo seguro, debe_borrarse siempre es False)
+            # Si activaras el borrado, iría aquí.
             if debe_borrarse:
                 c.execute("DELETE FROM Evidencias WHERE id = %s", (ev_id,))
         
         conn.commit()
         print(f"✅ FASE 4 COMPLETADA: {actualizados_peso} pesos actualizados.")
-        if fantasmas_detectados > 0:
-            print(f"⚠️ OJO: Se detectaron {fantasmas_detectados} archivos que la nube no encuentra, pero NO se eliminaron.")
         
         # Actualizar métricas finales
         try:
             stats = calcular_estadisticas_reales()
             fecha_hoy = ahora_ecuador().date().isoformat()
             
-            # Usar conexión nueva para métricas para evitar conflictos
             conn_metricas = get_db_connection()
             c_met = conn_metricas.cursor()
             c_met.execute("""
