@@ -73,7 +73,7 @@ except Exception as e:
 ENDPOINT_B2 = "https://s3.us-east-005.backblazeb2.com"
 KEY_ID_B2 = "00508884373dab40000000001"
 APP_KEY_B2 = "K005jvkLLmLdUKhhVis1qLcnU4flx0g"
-BUCKET_NAME = "Proyecto-Grado-Karlos-2026"
+BUCKET_NAME = "Proyecto-Grado-Karlos-2025"
 
 try:
     my_config = Config(signature_version='s3v4', region_name='us-east-005')
