@@ -1164,18 +1164,30 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
             url_final = evidencia_existente.get('Url_Archivo') or evidencia_existente.get('url_archivo')
             tamanio_kb = evidencia_existente.get('Tamanio_KB') or evidencia_existente.get('tamanio_kb') or 0
         else:
+            # --- CAMBIO CRÍTICO: VALIDACIÓN DE NUBE OBLIGATORIA ---
+            if not s3_client:
+                raise HTTPException(status_code=500, detail="Error crítico: No hay conexión con el almacenamiento en la nube.")
+
             # Si es nuevo, subimos a Backblaze
             path_procesado = garantizar_limite_storage(path)
             tamanio_kb = os.path.getsize(path_procesado) / 1024
-            url_final = f"/local/{archivo.filename}"
-            if s3_client:
-                try:
-                    nube = f"evidencias/{int(ahora_ecuador().timestamp())}_{archivo.filename}"
-                    s3_client.upload_file(path_procesado, BUCKET_NAME, nube, ExtraArgs={'ACL':'public-read'})
-                    url_final = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nube}"
-                except: pass
+            
+            try:
+                nube = f"evidencias/{int(ahora_ecuador().timestamp())}_{archivo.filename}"
+                s3_client.upload_file(path_procesado, BUCKET_NAME, nube, ExtraArgs={'ACL':'public-read'})
+                
+                # Construimos la URL de la nube
+                url_final = f"https://{BUCKET_NAME}.s3.us-east-005.backblazeb2.com/{nube}"
+                
+                print(f"✅ Archivo subido exitosamente a S3: {url_final}")
+                
+            except Exception as e_s3:
+                print(f"❌ Error subiendo a S3: {e_s3}")
+                # ¡AQUÍ ESTÁ EL ARREGLO!
+                # Si falla la nube, LANZAMOS ERROR para no guardar basura en la BD
+                raise HTTPException(status_code=502, detail=f"Fallo al subir a la nube: {str(e_s3)}")
 
-        # 4. ASIGNACIÓN INTELIGENTE Y REPORTE DETALLADO (Lo que solicitaste)
+        # 4. ASIGNACIÓN INTELIGENTE Y REPORTE DETALLADO
         asignados_nuevos = []
         ya_tenian = []
         
@@ -1245,9 +1257,10 @@ async def subir_evidencia_ia(archivo: UploadFile = File(...)):
     except Exception as e:
         if temp_dir: shutil.rmtree(temp_dir)
         print(f"❌ Error IA: {e}")
-        return JSONResponse({"status": "error", "mensaje": f"Error procesando: {str(e)}"})
+        # Retornamos el error al frontend para que SweetAlert lo muestre
+        return JSONResponse({"status": "error", "mensaje": f"Error procesando: {str(e)}"}, status_code=500)
     
-    finally:  # <--- 3. AGREGA ESTE BLOQUE AL FINAL
+    finally: 
         if conn: conn.close()
         if temp_dir and os.path.exists(temp_dir): shutil.rmtree(temp_dir)
 
