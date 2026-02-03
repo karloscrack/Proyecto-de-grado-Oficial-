@@ -9,7 +9,7 @@
     
     <title>Mi Perfil - Unidad Educativa Despertar</title>
     
-    <link rel="icon" type="image/png" href="Img/Logo_pestaña.png">
+    <link rel="icon" type="image/png" href="Img/Logo_pestaña.webp">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -900,7 +900,7 @@ body.dark-mode .swal2-textarea {
     <header class="main-header">
         <div class="logo-container">
     <a href="perfil.html">
-        <img id="appLogo" src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
+        <img id="appLogo" src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.webp" alt="Logo">
     </a>
 </div>
         <div class="header-actions">
@@ -953,7 +953,7 @@ body.dark-mode .swal2-textarea {
 
     <div class="container">
         <div class="profile-card">
-            <img id="profilePhoto" src="Img/Logo_pestaña.png" alt="Foto Perfil" class="profile-img" onerror="this.src='Img/Logo_pestaña.png'">
+            <img id="profilePhoto" src="Img/Logo_pestaña.webp" alt="Foto Perfil" class="profile-img" onerror="this.src='Img/Logo_pestaña.webp'">
             <div class="profile-info">
                 <h1 id="userNameDisplay">Cargando datos...</h1>
                 <h2 id="userCedulaDisplay">Verificando...</h2>
@@ -1086,17 +1086,25 @@ body.dark-mode .swal2-textarea {
     <footer>
         <div class="footer-content">
             <div class="footer-logo">
-                <Img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
+                <img src="Img/Logo-Despertar (Oscuro).webp" alt="Logo de la Unidad Educativa Despertar" width="150" height="50" loading="lazy">
                 <h3>Unidad Educativa Particular Despertar</h3>
             </div>
             <div class="footer-links" style="margin-bottom:20px;">
                 <a href="https://uepdespertar.edu.ec/nosotros/" target="_blank">Sobre Nosotros</a>
             </div>
+            
             <div class="footer-social">
-                <a href="https://www.facebook.com/uepdespertar"><i class="fab fa-facebook-f"></i></a>
-                <a href="https://www.youtube.com/@DespertarSKAS"><i class="fab fa-youtube"></i></a>
-                <a href="https://www.instagram.com/skas_despertar"><i class="fab fa-instagram"></i></a>
+                <a href="https://www.facebook.com/uepdespertar" aria-label="Visítanos en Facebook">
+                    <i class="fab fa-facebook-f"></i>
+                </a>
+                <a href="https://www.youtube.com/@DespertarSKAS" aria-label="Mira nuestros videos en YouTube">
+                    <i class="fab fa-youtube"></i>
+                </a>
+                <a href="https://www.instagram.com/skas_despertar" aria-label="Síguenos en Instagram">
+                    <i class="fab fa-instagram"></i>
+                </a>
             </div>
+            
             <div class="copyright">
                 <p>© 2026 Plataforma Educativa - Unidad Educativa Particular Despertar.</p>
             </div>
@@ -1225,7 +1233,7 @@ body.dark-mode .swal2-textarea {
 
         function actualizarUI(datos) {
     // 🛡️ LECTURA BLINDADA DE DATOS
-    const fotoUrl = datos.url_foto || datos.Url_Foto || datos.Foto || 'Img/Logo_pestaña.png';
+    const fotoUrl = datos.url_foto || datos.Url_Foto || datos.Foto || 'Img/Logo_pestaña.webp';
     const temaBD = datos.tema || datos.Tema; // 1=Oscuro, 0=Claro
         const temaLocal = localStorage.getItem('global_theme');
         let usarOscuro = false;
@@ -1257,7 +1265,7 @@ body.dark-mode .swal2-textarea {
     if(imgPerfil) {
         imgPerfil.src = fotoUrl;
         // Si falla la carga, poner logo por defecto
-        imgPerfil.onerror = function() { this.src = 'Img/Logo_pestaña.png'; };
+        imgPerfil.onerror = function() { this.src = 'Img/Logo_pestaña.webp'; };
     }
     
     document.getElementById('userNameDisplay').textContent = `${nombre} ${apellido}`;
@@ -2055,8 +2063,8 @@ async function marcarTodasLeidas() {
         const icon = document.querySelector('#themeBtn i') || document.querySelector('#themeToggle i');
         
         // 3. Definir las rutas de tus logos
-        const logoClaro = 'Img/Logo-Despertar-SKAS-Unidad-Educativa23.png';
-        const logoOscuro = 'Img/Logo-Despertar (Oscuro).png'; 
+        const logoClaro = 'Img/Logo-Despertar-SKAS-Unidad-Educativa23.webp';
+        const logoOscuro = 'Img/Logo-Despertar (Oscuro).webp'; 
 
         // 4. Aplicar la clase al body
         if (esOscuro) {

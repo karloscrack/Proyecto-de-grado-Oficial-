@@ -3,21 +3,21 @@
 <head>
     <meta name="google-site-verification" content="BQxst52stl1zLQZZlPedu6HIolmqidBMFXey542IVak" />
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="description" content="Plataforma de Evidencias Digitales - Unidad Educativa Despertar">
     <meta name="theme-color" content="#6A0DAD">
     
     <title>Plataforma Educativa IA - Unidad Educativa Despertar</title>
     
-    <link rel="icon" type="image/png" href="Img/Logo_pestaña.png">
+    <link rel="icon" type="image/png" href="Img/Logo_pestaña.webp">
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600&display=swap" rel="stylesheet">
-
     <style>
         /* ==========================================================================
            1. SISTEMA DE DISEÑO & VARIABLES (DESIGN TOKENS) - COPIADO DE PERFIL.HTML
@@ -749,21 +749,17 @@
     <header class="main-header">
         <div class="logo-container">
     <a href="index.html">
-        <img id="appLogo" src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.png" alt="Logo">
+        <img id="appLogo" src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.webp" alt="Logo de la Unidad Educativa Despertar" width="150" height="50">
     </a>
 </div>
         <div class="header-actions">
-            <button onclick="toggleTheme()" class="btn-icon-header" id="themeBtn" title="Cambiar Tema">
-                <i class="fas fa-moon"></i>
-            </button>
+            <button onclick="toggleTheme()" class="btn-icon-header" id="themeBtn" aria-label="Cambiar modo oscuro/claro">
+    <i class="fas fa-moon"></i>
+</button>
 
-            <button onclick="window.location.href='biblioteca.html'" class="btn-logout-header" title="Ingresar al Portafolio">
-                <i class="fas fa-sign-in-alt"></i> <span>Ingresar</span>
-            </button>
-
-            <button class="menu-toggle" id="menuToggle">
-                <i class="fas fa-bars"></i>
-            </button>
+<button class="menu-toggle" id="menuToggle" aria-label="Abrir menú de navegación">
+    <i class="fas fa-bars"></i>
+</button>
         </div>
     </header>
 
@@ -899,6 +895,7 @@
 
             <div style="flex: 1; width: 100%; position: relative;">
                 <iframe id="frameLibro" 
+                        loading="lazy" 
                         src="" 
                         width="100%" 
                         height="100%" 
@@ -913,17 +910,25 @@
     <footer>
         <div class="footer-content">
             <div class="footer-logo">
-                <Img src="Img/Logo-Despertar (Oscuro).png" alt="Logo">
+                <img src="Img/Logo-Despertar (Oscuro).webp" alt="Logo de la Unidad Educativa Despertar" width="150" height="50" loading="lazy">
                 <h3>Unidad Educativa Particular Despertar</h3>
             </div>
             <div class="footer-links" style="margin-bottom:20px;">
                 <a href="https://uepdespertar.edu.ec/nosotros/" target="_blank">Sobre Nosotros</a>
             </div>
+            
             <div class="footer-social">
-                <a href="https://www.facebook.com/uepdespertar"><i class="fab fa-facebook-f"></i></a>
-                <a href="https://www.youtube.com/@DespertarSKAS"><i class="fab fa-youtube"></i></a>
-                <a href="https://www.instagram.com/skas_despertar"><i class="fab fa-instagram"></i></a>
+                <a href="https://www.facebook.com/uepdespertar" aria-label="Visítanos en Facebook">
+                    <i class="fab fa-facebook-f"></i>
+                </a>
+                <a href="https://www.youtube.com/@DespertarSKAS" aria-label="Mira nuestros videos en YouTube">
+                    <i class="fab fa-youtube"></i>
+                </a>
+                <a href="https://www.instagram.com/skas_despertar" aria-label="Síguenos en Instagram">
+                    <i class="fab fa-instagram"></i>
+                </a>
             </div>
+            
             <div class="copyright">
                 <p>© 2026 Plataforma Educativa - Unidad Educativa Particular Despertar.</p>
             </div>
@@ -957,8 +962,8 @@
         const icon = document.querySelector('#themeBtn i') || document.querySelector('#themeToggle i');
         
         // 3. Definir las rutas de tus logos
-        const logoClaro = 'Img/Logo-Despertar-SKAS-Unidad-Educativa23.png';
-        const logoOscuro = 'Img/Logo-Despertar (Oscuro).png'; 
+        const logoClaro = 'Img/Logo-Despertar-SKAS-Unidad-Educativa23.webp';
+        const logoOscuro = 'Img/Logo-Despertar (Oscuro).webp'; 
 
         // 4. Aplicar la clase al body
         if (esOscuro) {
