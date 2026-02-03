@@ -2112,8 +2112,68 @@ async function marcarTodasLeidas() {
         }
         
         // Función específica para Reportar múltiples desde la barra flotante
-        function reportarSeleccionados() {
-           alert("Por favor, reporta las evidencias individualmente desde el visor para detallar el problema de cada una.");
+        // ✅ NUEVA VERSIÓN: Reporte Masivo Automático
+        async function reportarSeleccionados() {
+            if (appState.seleccionados.length === 0) return alert("No has seleccionado nada.");
+
+            // 1. Pedir confirmación una sola vez
+            if (!confirm(`¿Estás seguro de reportar ${appState.seleccionados.length} evidencias como 'No soy yo'?`)) return;
+
+            const cedula = localStorage.getItem('usuario_cedula');
+            const btn = document.querySelector('.btn-float.danger'); // El botón rojo
+            const originalText = btn.innerHTML;
+            
+            // 2. Cambiar estado visual
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Reportando...';
+            btn.disabled = true;
+
+            let exitos = 0;
+            let errores = 0;
+
+            // 3. Bucle para enviar reporte por cada ID seleccionado
+            for (const idEvidencia of appState.seleccionados) {
+                const fd = new FormData();
+                fd.append('cedula', cedula);
+                fd.append('id_evidencia', idEvidencia);
+                fd.append('motivo', "Reporte masivo: No soy yo / Error (Desde selección múltiple)");
+
+                try {
+                    const res = await fetch(`${API_URL}/reportar_evidencia`, { method: 'POST', body: fd });
+                    const data = await res.json();
+                    
+                    if (data.status === 'ok') {
+                        exitos++;
+                    } else {
+                        errores++;
+                        console.error(`Error reportando ID ${idEvidencia}:`, data.mensaje);
+                    }
+                } catch (e) {
+                    errores++;
+                    console.error(`Error de red ID ${idEvidencia}:`, e);
+                }
+            }
+
+            // 4. Resultado final
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+
+            if (exitos > 0) {
+                // Notificación local de éxito
+                appState.notificaciones.unshift({
+                    id: Date.now(),
+                    titulo: "Reporte Masivo Enviado",
+                    mensaje: `Has reportado ${exitos} evidencias correctamente.`,
+                    tipo: "success",
+                    fecha: "Ahora",
+                    leida: false
+                });
+                renderNotificaciones();
+
+                alert(`✅ Se reportaron ${exitos} evidencias al administrador.`);
+                cancelarSeleccion(); // Salir del modo selección
+            } else {
+                alert("❌ No se pudo reportar ninguna evidencia. Revisa tu conexión.");
+            }
         }
         async function abrirHistorial() {
     const cedula = localStorage.getItem('usuario_cedula');

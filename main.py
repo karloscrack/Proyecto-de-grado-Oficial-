@@ -2027,22 +2027,59 @@ async def reportar_evidencia(
 
 @app.get("/obtener_solicitudes_por_cedula")
 async def obtener_solicitudes_por_cedula(cedula: str):
-    """Obtiene el historial de solicitudes de un estudiante con respuestas del admin"""
+    """
+    Obtiene historial y gestiona el AUTOBORRADO DE 1 HORA.
+    Lógica:
+    1. Si ya pasaron 60 min desde 'Fecha_Visto', se borra automáticamente.
+    2. Si es nueva (Fecha_Visto es NULL) y ya está RESUELTA, le ponemos la hora actual (empieza el temporizador).
+    3. Devuelve las que quedan.
+    """
     conn = None
     try:
         conn = get_db_connection()
         # Usamos cursor para evitar errores en Postgres
         c = conn.cursor(cursor_factory=RealDictCursor)
         
+        cedula = cedula.strip()
+
+        # --- A) LIMPIEZA AUTOMÁTICA (El temporizador de 1 hora) ---
+        # Borra solicitudes que NO son pendientes y que fueron vistas hace más de 1 hora
+        c.execute("""
+            DELETE FROM Solicitudes 
+            WHERE CI_Solicitante = %s 
+            AND Estado != 'PENDIENTE' 
+            AND Fecha_Visto IS NOT NULL 
+            AND Fecha_Visto < (NOW() AT TIME ZONE 'America/Guayaquil' - INTERVAL '1 hour')
+        """, (cedula,))
+        
+        filas_borradas = c.rowcount
+        if filas_borradas > 0:
+            print(f"🧹 Auto-limpieza: Se borraron {filas_borradas} notificaciones antiguas de {cedula}")
+
+        # --- B) MARCAR COMO VISTAS (Iniciar el temporizador) ---
+        # Si el estudiante está viendo esto ahora, marcamos la hora actual
+        # Solo para las que ya están resueltas (APROBADA/RECHAZADA) y no tenían fecha
+        c.execute("""
+            UPDATE Solicitudes 
+            SET Fecha_Visto = (NOW() AT TIME ZONE 'America/Guayaquil')
+            WHERE CI_Solicitante = %s 
+            AND Estado != 'PENDIENTE' 
+            AND Fecha_Visto IS NULL
+        """, (cedula,))
+        
+        conn.commit() # Guardamos los cambios de limpieza y marcado
+
+        # --- C) DEVOLVER LAS QUE QUEDAN ---
         c.execute("""
             SELECT * FROM Solicitudes 
             WHERE CI_Solicitante = %s 
             ORDER BY Fecha DESC
-        """, (cedula.strip(),))
+        """, (cedula,))
         
         rows = c.fetchall()
         # Convertimos fechas a formato JSON seguro
         return JSONResponse(jsonable_encoder(rows))
+
     except Exception as e:
         print(f"❌ Error historial estudiante: {e}")
         return JSONResponse([])
@@ -2406,6 +2443,8 @@ async def reset_database():
         })
     except Exception as e:
         return JSONResponse(content={"error": str(e)})
+    
+
 
 # =========================================================================
 # 14. ENDPOINTS CORS Y UTILIDADES
@@ -3031,6 +3070,21 @@ async def actualizar_tabla_usuarios():
         conn.commit()
         conn.close()
         return {"mensaje": "✅ Base de datos actualizada: Se agregó columna Tema."}
+    except Exception as e:
+        return {"error": str(e)}
+
+        # --- PEGAR ESTO JUSTO DEBAJO DE 'actualizar_tabla_usuarios' ---
+
+@app.get("/actualizar_tabla_solicitudes")
+async def actualizar_tabla_solicitudes():
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        # Creamos la columna Fecha_Visto si no existe
+        c.execute("ALTER TABLE Solicitudes ADD COLUMN IF NOT EXISTS Fecha_Visto TIMESTAMP NULL;")
+        conn.commit()
+        conn.close()
+        return {"mensaje": "✅ Tabla Solicitudes actualizada con Fecha_Visto"}
     except Exception as e:
         return {"error": str(e)}
 
