@@ -2599,9 +2599,9 @@ body.dark-mode .swal2-textarea {
                 </div>
                 ${esPendiente ? 
                     `<button class="btn-primary" onclick="procesarSolicitudDesdeCard('${_tipo}', ${_id})" 
-                               style="background:var(--info); padding:8px 15px;">
-                        <i class="fas fa-reply"></i> Responder
-                     </button>` : 
+           style="background:var(--info); padding:8px 15px;">
+    <i class="fas fa-reply"></i> Responder
+ </button>` : 
                     `<div style="font-size:0.85rem; text-align:right; color:var(--text-main);">
                         <div><strong>Resuelto por:</strong> ${_resueltoPor}</div>
                         ${_respuesta ? `<div style="color:var(--primary); margin-top:3px;"><em>"${_respuesta.substring(0,30)}..."</em></div>` : ''}
@@ -2633,14 +2633,23 @@ body.dark-mode .swal2-textarea {
 let solicitudActualId = null;
 
 async function enviarGestion(id, accion) {
+    // 1. Obtener ID válido
+    const solicitudId = id || solicitudActualId;
+    
+    // 2. Obtener mensaje
     const mensajeInput = document.getElementById('mensajeAdmin');
     const mensaje = mensajeInput ? mensajeInput.value : '';
 
-    // Si es "rechazar" (borrar), pedimos confirmación extra
+    if (!solicitudId) {
+        Swal.fire('Error', 'No se encontró el ID de la solicitud', 'error');
+        return;
+    }
+
+    // 3. Confirmación si es rechazo
     if (accion === 'rechazar') {
         const confirmacion = await Swal.fire({
             title: '¿Estás seguro?',
-            text: "Esta acción rechazará la solicitud y borrará los archivos relacionados si existen.",
+            text: "Esta acción rechazará la solicitud y borrará los archivos relacionados permanentemente.",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d32f2f',
@@ -2651,48 +2660,54 @@ async function enviarGestion(id, accion) {
     }
 
     try {
-        Swal.fire({ title: 'Procesando...', didOpen: () => Swal.showLoading() });
+        Swal.fire({ title: 'Procesando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+
+        // 4. PREPARAR DATOS COMO FORMULARIO (NO JSON)
+        // Esto es vital porque tu Python usa = Form(...)
+        const formData = new FormData();
+        formData.append('id_solicitud', solicitudId);
+        formData.append('accion', accion === 'aprobar' ? 'APROBADA' : 'RECHAZADA'); // Normalizamos a mayúsculas
+        formData.append('mensaje', mensaje);
+        // Recupera el nombre real guardado al iniciar sesión, o usa 'Administrador' si no hay nada
+        const nombreAdmin = localStorage.getItem('usuario_nombre') || 'Administrador';
+        formData.append('id_admin', nombreAdmin);
 
         const respuesta = await fetch(`${API_URL}/gestionar_solicitud`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                id: id,
-                accion: accion, // 'aprobar' o 'rechazar'
-                admin_cedula: localStorage.getItem('usuario_cedula'),
-                respuesta: mensaje
-            })
+            body: formData // ✅ Enviamos formData directamente
         });
 
         const data = await respuesta.json();
 
-        if (data.status === 'ok' || data.mensaje) {
+        if (respuesta.ok && data.status === 'ok') {
             Swal.fire('Éxito', 'Solicitud procesada correctamente', 'success');
             cerrarModal('modalResponderSolicitud');
-            await cargarSolicitudes(); // Recargar la lista
-            await actualizarDatosDashboard(); // Actualizar contadores
+            solicitudActualId = null; 
+            await cargarSolicitudes(); 
+            await actualizarDatosDashboard(); 
         } else {
-            throw new Error(data.error || 'Error desconocido');
+            throw new Error(data.mensaje || data.error || 'Error desconocido');
         }
     } catch (error) {
         console.error(error);
-        Swal.fire('Error', 'No se pudo procesar la solicitud: ' + error.message, 'error');
+        Swal.fire('Error', 'No se pudo procesar: ' + error.message, 'error');
     }
 }
 
 function procesarSolicitudDesdeCard(tipoRaw, solicitudId) {
-    // 1. Buscar solicitud en memoria
+    // GUARDAR ID GLOBALMENTE PARA QUE enviarGestion LO ENCUENTRE
+    solicitudActualId = solicitudId;
+
     const solicitud = solicitudes.find(s => (s.id || s.ID) == solicitudId);
     if (!solicitud) return;
 
-    // 2. Extraer datos (Blindado contra mayúsculas/minúsculas)
+    // Extraer datos (Blindado contra mayúsculas/minúsculas de PostgreSQL)
     const ci = solicitud.ci_solicitante || solicitud.CI_Solicitante;
     const detalle = solicitud.detalle || solicitud.Detalle || 'Sin detalles';
     
-    // Datos de la evidencia
-    const evidenciaUrl = solicitud.Url_Archivo || solicitud.url_archivo || solicitud.evidencia_url;
+    const evidenciaUrl = solicitud.Url_Archivo || solicitud.url_archivo || solicitud.evidencia_url || solicitud.evidencia_reportada_url || solicitud.Evidencia_Reportada_Url;
     const tipoArchivo = (solicitud.Tipo_Archivo || solicitud.tipo_archivo || 'imagen').toLowerCase();
-
+    
     // 3. Buscar nombre del usuario
     const usuario = usuarios.find(u => (u.cedula || u.CI) == ci);
     const nombreUsuario = usuario ? `${usuario.nombre} ${usuario.apellido}` : ci;

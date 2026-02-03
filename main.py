@@ -2201,9 +2201,10 @@ async def gestionar_solicitud(
         # ---------------------------------------------------------
         # 3. ACTUALIZAR HISTORIAL DE LA SOLICITUD
         # ---------------------------------------------------------
+        # CORRECCIÓN: La columna se llama 'Resuelto_Por', no 'Id_Admin'
         c.execute("""
             UPDATE Solicitudes 
-            SET Estado = %s, Respuesta = %s, Id_Admin = %s, Fecha_Resolucion = %s
+            SET Estado = %s, Respuesta = %s, Resuelto_Por = %s, Fecha_Resolucion = %s
             WHERE ID = %s
         """, (accion, mensaje, id_admin, ahora_ecuador(), id_solicitud))
         
