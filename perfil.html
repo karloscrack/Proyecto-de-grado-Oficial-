@@ -1360,14 +1360,13 @@ async function cargarNotificacionesEstudiante(cedula) {
             const rawEstado = sol.estado || sol.Estado || 'PENDIENTE';
             const estado = rawEstado.toUpperCase();
             
-            // --- ESTO ES LO QUE FALTABA (HE RESTAURADO ESTAS LÍNEAS) ---
+            // --- MENSAJES PERSONALIZADOS ---
             const esRecuperacion = rawTipo === 'RECUPERACION_CONTRASENA';
             const respuestaTexto = sol.Respuesta || sol.respuesta || 'En espera de revisión';
             
             const msgEstudiante = esRecuperacion ? 
                 'Petición de recuperación de contraseña realizada' : 
                 respuestaTexto;
-            // -----------------------------------------------------------
 
             return `
                 <div style="padding:15px; border-bottom:1px solid #eee; margin-bottom:10px; background:var(--bg-input); border-radius:8px; position:relative;">
@@ -1384,12 +1383,7 @@ async function cargarNotificacionesEstudiante(cedula) {
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
                         <small style="color:#888; font-size:0.75rem;">${new Date(sol.Fecha || sol.fecha).toLocaleDateString()}</small>
                         
-                        ${estado !== 'PENDIENTE' ? `
-                            <button onclick="borrarSolicitud(${sol.ID || sol.id})" style="background:var(--text-sec); color:white; border:none; padding:5px 10px; border-radius:5px; font-size:0.75rem; cursor:pointer;">
-                                <i class="fas fa-check"></i> Entendido
-                            </button>
-                        ` : ''}
-                    </div>
+                        </div>
                 </div>
             `;
         }).join('');
