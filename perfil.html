@@ -605,7 +605,11 @@
             background: #1a1a1a; color: white; padding: 30px 20px;
             text-align: center; margin-top: auto; border-top: 4px solid var(--primary);
         }
-        .footer-logo Img { height: 60px; margin-bottom: 10px; }
+        .footer-logo img { 
+    height: 60px; 
+    width: auto; /* IMPORTANTE: Mantiene la proporción correcta */
+    margin-bottom: 10px; 
+}
         .footer-social { margin: 20px 0; }
         .footer-social a { 
             display: inline-flex; width: 40px; height: 40px; 
@@ -900,7 +904,7 @@ body.dark-mode .swal2-textarea {
     <header class="main-header">
         <div class="logo-container">
     <a href="perfil.html">
-        <img id="appLogo" src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.webp?v=1" alt="Logo">
+        <img id="appLogo" src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.webp?v=1" alt="Logo" width="124" height="50">
     </a>
 </div>
         <div class="header-actions">
@@ -959,8 +963,8 @@ body.dark-mode .swal2-textarea {
                 <h2 id="userCedulaDisplay">Verificando...</h2>
                 <div class="badge-active"><i class="fas fa-check-circle"></i> Cuenta Verificada</div>
             </div>
-            <button class="btn-contact" onclick="abrirHubContacto()">
-                <i class="fas fa-envelope-open-text"></i> Contactar Admin
+            <button class="btn-contact" onclick="abrirHubContacto()" aria-label="Abrir centro de contacto">
+                <i class="fas fa-envelope-open-text" aria-hidden="true"></i> Contactar Admin
             </button>
         </div>
 
@@ -1798,22 +1802,29 @@ async function marcarTodasLeidas() {
             appState.filtrada.forEach((item, idx) => {
                 const card = document.createElement('div');
                 const isSelected = appState.seleccionados.includes(item.id);
+                
                 card.id = `ev-card-${item.id}`;
                 card.className = `evidence-card ${isSelected ? 'selected' : ''} animate-enter`;
                 card.style.animationDelay = `${idx * 40}ms`;
-                card.addEventListener('touchstart', (e) => handleTouchStart(e, item.id), {passive: true});
-                card.addEventListener('touchend', handleTouchEnd);
-                card.addEventListener('touchmove', handleTouchMove);
                 
+                // EVENTOS: Asignados una sola vez
                 card.onclick = () => handleClick(item.id, idx);
-                // Eventos Touch para selección (Long Press)
                 card.addEventListener('touchstart', (e) => handleTouchStart(e, item.id), {passive: true});
                 card.addEventListener('touchend', handleTouchEnd);
                 card.addEventListener('touchmove', handleTouchMove);
 
-                let content = item.tipo === 'imagen' ? `<img src="${item.url}" class="card-media" loading="lazy">` :
-                              item.tipo === 'video' ? `<video src="${item.url}#t=0.1" class="card-media"></video><div class="video-overlay"><i class="fas fa-play-circle"></i></div>` :
-                              `<div style="width:100%;height:100%;background:#f4f4f4;display:flex;align-items:center;justify-content:center;color:#666;"><i class="fas fa-file-alt" style="font-size:2.5rem;"></i></div>`;
+                // CONTENIDO CORREGIDO PARA LIGHTHOUSE
+                let content;
+                if (item.tipo === 'imagen') {
+                    // 
+                    // Agregamos: alt (accesibilidad), width/height (layout shift), loading (velocidad)
+                    content = `<img src="${item.url}" class="card-media" loading="lazy" alt="Evidencia escolar ID ${item.id}" width="300" height="300">`;
+                } else if (item.tipo === 'video') {
+                    // Agregamos: title (accesibilidad), preload (velocidad)
+                    content = `<video src="${item.url}#t=0.1" class="card-media" title="Video evidencia escolar ID ${item.id}" preload="metadata"></video><div class="video-overlay"><i class="fas fa-play-circle"></i></div>`;
+                } else {
+                    content = `<div style="width:100%;height:100%;background:#f4f4f4;display:flex;align-items:center;justify-content:center;color:#666;"><i class="fas fa-file-alt" style="font-size:2.5rem;"></i></div>`;
+                }
 
                 card.innerHTML = `<div class="selection-check"><i class="fas fa-check"></i></div>${content}`;
                 container.appendChild(card);
