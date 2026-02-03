@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="description" content="Acceso al Portafolio - Plataforma de Evidencias Digitales">
     <meta name="theme-color" content="#6A0DAD">
@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="preload" as="image" href="Img/Gemini_Generated_Image_pv6zv4pv6zv4pv6z~2.webp">
 
     <style>
         /* ==========================================================================
@@ -745,8 +746,9 @@
             }
             
             .footer-logo img {
-                height: 45px;
-            }
+    height: 45px;
+    width: auto; /* Esto arregla la deformación */
+}
             
             .footer-content h3 {
                 font-size: 1rem;
@@ -883,19 +885,36 @@
             max-width: 100%;
             box-sizing: border-box;
         }
+        /* NUEVO ESTILO: Para que el botón parezca un enlace */
+        button.forgot-pass {
+            background: none;
+            border: none;
+            padding: 0;
+            font-family: inherit;
+            width: 100%;
+            margin-top: 20px;
+            color: var(--text-sec);
+            font-size: 0.85rem;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        button.forgot-pass:hover {
+            color: var(--primary);
+            text-decoration: underline;
+        }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="login-page">
 
     <header class="main-header">
         <div class="logo-container">
-    <a href="index.html">
-        <img id="appLogo" src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.webp?v=1" alt="Logo">
-    </a>
-</div>
+            <a href="index.html">
+                <img id="appLogo" src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.webp?v=1" alt="Logo">
+            </a>
+        </div>
+        
         <div class="header-actions">
-            <button onclick="toggleTheme()" class="btn-icon-header" id="themeBtn" title="Cambiar Tema">
+            <button onclick="toggleTheme()" class="btn-icon-header" id="themeBtn" aria-label="Cambiar tema oscuro o claro">
                 <i class="fas fa-moon"></i>
             </button>
 
@@ -903,7 +922,7 @@
                 <i class="fas fa-arrow-left"></i> <span>Volver</span>
             </button>
 
-            <button class="menu-toggle" id="menuToggle">
+            <button class="menu-toggle" id="menuToggle" aria-label="Abrir menú de navegación">
                 <i class="fas fa-bars"></i>
             </button>
         </div>
@@ -927,7 +946,7 @@
         </ul>
     </div>
 
-    <div class="login-container">
+    <main class="login-container">
         <div class="login-card">
             <div class="login-icon-container">
                 <i class="fas fa-user-graduate"></i>
@@ -936,7 +955,6 @@
             <h2>Acceso al Portafolio</h2>
             <p>Ingresa tus credenciales institucionales.</p>
             
-            <!-- MENSAJE DE ERROR AHORA ESTÁ AQUÍ (más visible) -->
             <div id="errorMessage" class="error-box">
                 <i class="fas fa-exclamation-circle"></i> 
                 <span id="errorText">Credenciales incorrectas.</span>
@@ -962,10 +980,12 @@
                     Ingresar <i class="fas fa-sign-in-alt"></i>
                 </button>
 
-                <a onclick="abrirRecuperar()" class="forgot-pass">¿Olvidaste tu contraseña?</a>
+                <button type="button" onclick="abrirRecuperar()" class="forgot-pass">
+                    ¿Olvidaste tu contraseña?
+                </button>
             </form>
         </div>
-    </div>
+    </main>
 
     <div class="modal-overlay" id="modalRecuperar">
         <div class="modal-card">
@@ -1019,7 +1039,7 @@
     <footer>
         <div class="footer-content">
             <div class="footer-logo">
-                <img src="Img/Logo-Despertar (Oscuro).webp?v=1" alt="Logo de la Unidad Educativa Despertar" width="150" height="50" loading="lazy">
+                <img src="Img/Logo-Despertar (Oscuro).webp?v=1" alt="Logo de la Unidad Educativa Despertar" width="150" height="60" loading="lazy">
                 <h3>Unidad Educativa Particular Despertar</h3>
             </div>
             <div class="footer-links" style="margin-bottom:20px;">
@@ -1043,6 +1063,8 @@
             </div>
         </div>
     </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
     // --- URL DEL SERVIDOR (CORREGIDA PARA PRODUCCIÓN) ---
@@ -1267,11 +1289,23 @@
             const data = await res.json();
             
             if (data.status === 'ok') {
-                alert("✅ Solicitud enviada.\n\nEl administrador te enviará la contraseña a tu correo pronto.");
+                // Éxito con SweetAlert
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Solicitud Enviada!',
+                    text: 'El administrador te enviará la contraseña a tu correo pronto.',
+                    confirmButtonColor: '#6A0DAD'
+                });
                 cerrarRecuperar();
                 this.reset();
             } else {
-                alert("❌ Error: " + data.mensaje);
+                // Error con SweetAlert
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.mensaje,
+                    confirmButtonColor: '#d33'
+                });
             }
         } catch (error) {
             console.error(error);
