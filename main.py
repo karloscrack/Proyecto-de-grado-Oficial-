@@ -2515,6 +2515,8 @@ async def cambiar_contrasena(datos: PasswordRequest):
 @app.post("/descargar_evidencias_zip")
 async def descargar_evidencias_zip(ids: str = Form(...)):
     try:
+        from urllib.parse import unquote # Importante para decodificar URLs
+        
         lista_ids = ids.split(',')
         if not lista_ids:
             return JSONResponse({"error": "No hay IDs"}, status_code=400)
@@ -2523,66 +2525,99 @@ async def descargar_evidencias_zip(ids: str = Form(...)):
         c = conn.cursor(cursor_factory=RealDictCursor)
         
         # Consultar archivos
+        # Usamos una consulta segura para obtener solo los IDs solicitados
         placeholders = ','.join(['%s'] * len(lista_ids))
-        c.execute(f"SELECT Url_Archivo FROM Evidencias WHERE id IN ({placeholders})", tuple(lista_ids))
+        c.execute(f"SELECT id, Url_Archivo FROM Evidencias WHERE id IN ({placeholders})", tuple(lista_ids))
         resultados = c.fetchall()
         conn.close()
         
         if not resultados:
-            return JSONResponse({"error": "No se encontraron archivos"}, status_code=404)
+            return JSONResponse({"error": "No se encontraron archivos en la base de datos"}, status_code=404)
 
         # Crear ZIP en memoria
         zip_buffer = io.BytesIO()
         
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-            for i, item in enumerate(resultados):
-                url = item['Url_Archivo']
-                nombre_archivo = f"evidencia_{i+1}_{os.path.basename(url)}"
+            for item in resultados:
+                # 1. Obtener y limpiar datos
+                raw_url = item.get('Url_Archivo') or item.get('url_archivo') or ""
+                id_ev = item.get('id')
                 
+                if not raw_url: continue
+
+                # Decodificar URL (ej: cambia %20 por espacios)
+                url = unquote(raw_url)
+                
+                # Nombre limpio para el archivo dentro del ZIP
+                nombre_base = os.path.basename(url)
+                # Quitamos caracteres que Windows odia
+                nombre_base = "".join([c for c in nombre_base if c.isalnum() or c in "._- "])
+                nombre_zip = f"evidencia_{id_ev}_{nombre_base}"
+                
+                archivo_agregado = False
+
                 # CASO 1: Archivo en Nube (Backblaze/S3)
                 if "backblazeb2.com" in url or "s3" in url:
                     if s3_client and BUCKET_NAME:
                         try:
-                            # Extraer key de la URL
-                            partes = url.split(f"/file/{BUCKET_NAME}/")
-                            if len(partes) > 1:
-                                file_key = partes[1]
+                            # Lógica inteligente para encontrar la 'Key' (ruta interna)
+                            file_key = None
+                            
+                            if f"/file/{BUCKET_NAME}/" in url:
+                                file_key = url.split(f"/file/{BUCKET_NAME}/")[1]
+                            elif ".com/" in url:
+                                # Intento secundario de encontrar la ruta después del dominio
+                                file_key = url.split(".com/")[1]
+                            
+                            if file_key:
                                 # Descargar de S3 a memoria
                                 file_obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=file_key)
                                 file_content = file_obj['Body'].read()
-                                zip_file.writestr(nombre_archivo, file_content)
-                                print(f"📦 Agregado al ZIP (Nube): {nombre_archivo}")
+                                zip_file.writestr(nombre_zip, file_content)
+                                archivo_agregado = True
+                            else:
+                                raise Exception("No se pudo extraer la clave del archivo de la URL")
+                                
                         except Exception as e:
-                            print(f"⚠️ Error bajando de nube {url}: {e}")
-                            # Crear archivo de texto de error en el zip
-                            zip_file.writestr(f"ERROR_{nombre_archivo}.txt", f"No se pudo descargar: {str(e)}")
+                            print(f"⚠️ Error bajando ID {id_ev}: {e}")
+                            # EN LUGAR DE ROMPERSE (ERROR 500), CREAMOS UN TXT DE ERROR
+                            zip_file.writestr(f"ERROR_ID_{id_ev}.txt", f"No se pudo descargar este archivo.\nURL: {url}\nError: {str(e)}")
+                            archivo_agregado = True # Marcamos como procesado para no duplicar lógica
                 
-                # CASO 2: Archivo Local (Legado)
-                elif os.path.exists(url):
+                # CASO 2: Archivo Local (Fallback)
+                if not archivo_agregado and "/local/" in url:
+                    # Intento de ruta local (si aplica)
                     try:
-                        zip_file.write(url, nombre_archivo)
-                        print(f"📦 Agregado al ZIP (Local): {nombre_archivo}")
+                         # Limpiamos la ruta para buscar en el servidor
+                         local_path = url.replace("/local/", "").lstrip("/")
+                         full_local_path = os.path.join(BASE_DIR, local_path)
+                         
+                         if os.path.exists(full_local_path):
+                             zip_file.write(full_local_path, nombre_zip)
+                         else:
+                             zip_file.writestr(f"MISSING_ID_{id_ev}.txt", "El archivo local no existe en el servidor.")
                     except Exception as e:
-                        print(f"⚠️ Error archivo local: {e}")
+                        zip_file.writestr(f"ERROR_LOCAL_{id_ev}.txt", str(e))
 
+        # Finalizar el ZIP
         zip_buffer.seek(0)
         
         # Nombre del ZIP con fecha
         fecha_str = datetime.datetime.now().strftime("%Y%m%d_%H%M")
-        nombre_zip = f"evidencias_seleccion_{fecha_str}.zip"
+        nombre_descarga = f"seleccion_evidencias_{fecha_str}.zip"
         
         return StreamingResponse(
             zip_buffer, 
             media_type="application/zip",
-            headers={"Content-Disposition": f"attachment; filename={nombre_zip}"}
+            headers={
+                "Content-Disposition": f"attachment; filename={nombre_descarga}",
+                "Access-Control-Expose-Headers": "Content-Disposition"
+            }
         )
 
     except Exception as e:
-        print(f"❌ Error generando ZIP: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
-
-
-from urllib.parse import urlparse 
+        print(f"❌ Error CRÍTICO generando ZIP: {e}")
+        return JSONResponse({"error": f"Error interno del servidor: {str(e)}"}, status_code=500)
 
 def limpieza_duplicados_startup():
     """

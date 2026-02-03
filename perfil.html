@@ -136,7 +136,7 @@
         ::-webkit-scrollbar-thumb:hover { background: var(--primary-dark); }
 
         /* ==========================================================================
-           4. HEADER RESTAURADO (DISEÑO ORIGINAL)
+           4. HEADER UNIFICADO (DISEÑO IDÉNTICO AL INDEX)
            ========================================================================== */
         .main-header {
             position: fixed; top: 0; left: 0; width: 100%;
@@ -151,21 +151,35 @@
             transition: all 0.3s ease;
         }
 
-        .logo-container img {
-            height: 50px; width: auto;
+        /* --- LOGO DEL HEADER (CAMBIA CON EL TEMA) --- */
+        .logo-container { position: relative; display: flex; align-items: center; }
+
+        .logo-img {
+            height: 50px; width: auto; /* Mismo alto que en Index */
             transition: transform 0.3s var(--transition-bounce);
             filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
         }
-        .logo-container img:hover { transform: scale(1.05); }
+        .logo-container:hover .logo-img { transform: scale(1.05); }
 
+        /* Lógica de visualización SOLO para Header */
+        .header-logo-oscuro { display: none; }
+        .header-logo-claro { display: block; }
+
+        body.dark-mode .header-logo-claro { display: none !important; }
+        body.dark-mode .header-logo-oscuro { display: block !important; }
+
+        /* --- CONTENEDOR DE BOTONES (SOLUCIÓN AL ERROR VERTICAL) --- */
         .header-actions {
-            display: flex; align-items: center; gap: 15px;
+            display: flex; 
+            flex-direction: row; /* Fuerza la horizontalidad */
+            align-items: center; 
+            gap: 15px;
         }
 
-        /* Botones Circulares del Header (Tema y Notis) */
+        /* Botones Circulares */
         .btn-icon-header {
             background: transparent;
-            border: 2px solid var(--primary); /* Borde original */
+            border: 2px solid var(--primary);
             color: var(--primary);
             width: 42px; height: 42px;
             border-radius: 50%;
@@ -173,6 +187,7 @@
             font-size: 1.2rem; cursor: pointer;
             transition: 0.3s;
             position: relative;
+            flex-shrink: 0; /* Evita que se aplasten */
         }
         .btn-icon-header:hover {
             background: var(--primary-soft);
@@ -180,7 +195,7 @@
             box-shadow: 0 0 15px var(--primary-soft);
         }
 
-        /* Badge de Notificaciones - NUEVO: siempre visible si hay notificaciones */
+        /* Badge de Notificaciones */
         .noti-badge {
             position: absolute; top: -5px; right: -5px;
             background: var(--error); color: white;
@@ -192,7 +207,7 @@
             animation: popIn 0.3s var(--transition-bounce);
         }
 
-        /* Botón Salir (Estilo Píldora) */
+        /* Botón Salir */
         .btn-logout-header {
             background: var(--error); color: white; border: none;
             padding: 0 25px; height: 42px; border-radius: 50px;
@@ -200,6 +215,7 @@
             display: flex; align-items: center; gap: 8px;
             transition: 0.3s;
             box-shadow: 0 4px 10px rgba(211, 47, 47, 0.25);
+            white-space: nowrap; /* Evita que el texto baje */
         }
         .btn-logout-header:hover {
             background: #b71c1c; transform: translateY(-2px);
@@ -600,28 +616,41 @@
         .btn-submit { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 1.05rem; transition: 0.3s; }
         .btn-submit:hover { background: var(--primary-dark); transform: translateY(-2px); }
         
-        /* FOOTER */
+        /* ==========================================================================
+           10. FOOTER (IGUALADO AL INDEX PARA EVITAR SALTOS)
+           ========================================================================== */
         footer {
-            background: #1a1a1a; color: white; padding: 30px 20px;
-            text-align: center; margin-top: auto; border-top: 4px solid var(--primary);
+            background: #1a1a1a; 
+            color: white; 
+            padding: 30px 20px;
+            text-align: center; /* Esto centra todo sin moverlo de sitio */
+            margin-top: auto; 
+            border-top: 4px solid var(--primary);
         }
+        
+        /* Quitamos el 'display: flex' que causaba el salto */
         .footer-logo img { 
-    height: 60px; 
-    width: auto; /* IMPORTANTE: Mantiene la proporción correcta */
-    margin-bottom: 10px; 
-}
+            height: 60px; 
+            width: auto; 
+            margin-bottom: 10px; 
+            display: inline-block; /* Importante para que respete el text-align center */
+        }
+
         .footer-social { margin: 20px 0; }
+        
         .footer-social a { 
             display: inline-flex; width: 40px; height: 40px; 
             background: #333; color: white; border-radius: 50%; 
             align-items: center; justify-content: center; margin: 0 8px; 
             text-decoration: none; transition: 0.3s;
         }
+        
         .footer-social a:hover { background: var(--primary); transform: translateY(-3px); }
+        
         .footer-links a { color: #aaa; text-decoration: none; margin: 0 10px; }
         .footer-links a:hover { color: var(--primary); }
+        
         .copyright { font-size: 0.85rem; color: #888; border-top: 1px solid #333; padding-top: 15px; }
-
         /* ==========================================================================
            12. ANIMACIONES
            ========================================================================== */
@@ -658,15 +687,10 @@
         }
 
         .lb-media-item.zoomed {
-            /* EL TRUCO: Quitar límites y forzar tamaño grande */
-            max-width: none !important;
-            max-height: none !important;
-            width: auto;
-            height: auto;
-            min-width: 150%; /* 150% de la pantalla para obligar el scroll */
-            cursor: zoom-out;
-            cursor: grab;
-        }
+    min-width: 200%; /* Aumenta el zoom para forzar el scroll */
+    cursor: grab;
+    touch-action: pan-x pan-y; /* Permite mover la imagen con el dedo */
+}
 
         /* ==========================================================================
            6. RESPONSIVE Y TABLAS MÓVILES
@@ -904,7 +928,8 @@ body.dark-mode .swal2-textarea {
     <header class="main-header">
         <div class="logo-container">
     <a href="perfil.html">
-        <img id="appLogo" src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.webp?v=1" alt="Logo" width="124" height="50">
+        <img src="Img/Logo-Despertar-SKAS-Unidad-Educativa23.webp?v=1" alt="Logo Despertar" class="logo-img header-logo-claro" width="150" height="50">
+        <img src="Img/Logo-Despertar (Oscuro).webp?v=1" alt="Logo Despertar Oscuro" class="logo-img header-logo-oscuro" width="150" height="50">
     </a>
 </div>
         <div class="header-actions">
@@ -1376,70 +1401,62 @@ async function cargarNotificacionesEstudiante(cedula) {
     }
 }
 
-async function borrarSolicitud(id) {
-        if(!confirm("¿Ya leíste esto? Se borrará permanentemente para ahorrar espacio.")) return;
-
-        try {
-            const res = await fetch(`${API_URL}/confirmar_lectura_solicitud/${id}`, {
-                method: 'DELETE'
-            });
-            const data = await res.json();
-
-            if (data.status === 'ok') {
-                // --- CORRECCIÓN AQUÍ: Usamos la función correcta y pasamos la cédula ---
-                const cedula = localStorage.getItem('usuario_cedula');
-                cargarNotificacionesEstudiante(cedula); 
-                // -----------------------------------------------------------------------
-                
-                // Actualizar contador del menú
-                const badge = document.getElementById('notisBadge');
-                if(badge) {
-                    let count = parseInt(badge.textContent || 0);
-                    if(count > 0) badge.textContent = count - 1;
-                }
-            } else {
-                alert("Error al borrar: " + data.mensaje);
-            }
-        } catch (error) {
-            console.error(error);
-            alert("Error de conexión");
+// --- 1. FUNCIÓN MODIFICADA: Botón "Entendido" (Individual) ---
+    // NO borra de la base de datos, NO pide confirmación, SOLO quita el punto rojo.
+    function borrarSolicitud(id) {
+        // Guardamos el ID en memoria local para que no sume al punto rojo
+        const cedula = localStorage.getItem('usuario_cedula');
+        let leidasLocal = JSON.parse(localStorage.getItem(`notis_leidas_${cedula}`)) || [];
+        
+        // Si no estaba marcado como leído, lo guardamos
+        if(!leidasLocal.includes(id)) {
+            leidasLocal.push(id);
+            localStorage.setItem(`notis_leidas_${cedula}`, JSON.stringify(leidasLocal));
         }
+
+        // Actualizamos el contador rojo sin recargar
+        const badge = document.getElementById('notisBadge');
+        if(badge) {
+            let count = parseInt(badge.textContent || 0);
+            if(count > 0) {
+                count--;
+                badge.textContent = count;
+            }
+            // Si llega a 0, ocultamos la bolita
+            if(count === 0) badge.style.display = 'none';
+        }
+        
+        // Opcional: Ocultamos el botón "Entendido" de esta tarjeta para que sepa que ya le dio
+        // (Pero el mensaje sigue ahí visible)
+        const btn = document.querySelector(`button[onclick="borrarSolicitud(${id})"]`);
+        if(btn) btn.style.display = 'none';
     }
 
-// NUEVA FUNCIÓN PARA MARCAR LEÍDAS Y RECORDARLO
-async function marcarTodasLeidas() {
+    // --- 2. FUNCIÓN MODIFICADA: "Marcar leídas" (General) ---
+    // NO borra nada, NO pide confirmación. SOLO apaga la luz roja.
+    function marcarTodasLeidas() {
         const cedula = localStorage.getItem('usuario_cedula');
+        const badge = document.getElementById('notisBadge');
         
-        // Confirmación para asegurar que el estudiante entendió
-        if(!confirm("¿Confirmar que has leído todas las respuestas?\n\nSe borrarán del historial para liberar espacio en el sistema.")) return;
+        // 1. Apagar el foco rojo inmediatamente
+        if(badge) {
+            badge.style.display = 'none';
+            badge.textContent = '0';
+        }
 
-        try {
-            const formData = new FormData();
-            formData.append('cedula', cedula);
-
-            // Llamamos al nuevo endpoint de limpieza masiva
-            const res = await fetch(`${API_URL}/limpiar_notificaciones_resueltas`, {
-                method: 'POST',
-                body: formData
-            });
-
-            const data = await res.json();
-
-            if(data.status === 'ok') {
-                // Limpieza visual inmediata
-                const list = document.getElementById('notisList');
-                const badge = document.getElementById('notisBadge');
-                
-                if(badge) badge.style.display = 'none';
-                if(list) list.innerHTML = '<div style="padding:15px; text-align:center; color:#888;">No tienes peticiones registradas</div>';
-                
-                // Limpiar memoria local
-                localStorage.removeItem(`notis_leidas_${cedula}`);
-                
-                alert("✅ Historial limpiado. Gracias por ayudar a ahorrar espacio.");
-            }
-        } catch (e) {
-            console.error("Error limpiando:", e);
+        // 2. Guardar en memoria que ya vimos todo lo actual
+        // (Para que si recargas la página, el punto rojo no vuelva a salir)
+        if (typeof appState !== 'undefined' && appState.solicitudesCache) {
+            const idsActuales = appState.solicitudesCache.map(s => s.id || s.ID);
+            let leidasLocal = JSON.parse(localStorage.getItem(`notis_leidas_${cedula}`)) || [];
+            
+            // Combinar listas sin duplicados
+            const nuevasLeidas = [...new Set([...leidasLocal, ...idsActuales])];
+            
+            localStorage.setItem(`notis_leidas_${cedula}`, JSON.stringify(nuevasLeidas));
+            
+            // Refrescamos la lista visualmente para quitar los botones de "Entendido"
+            cargarNotificacionesEstudiante(cedula);
         }
     }
 
@@ -1657,8 +1674,8 @@ async function marcarTodasLeidas() {
                 const formData = new FormData();
                 formData.append('ids', appState.seleccionados.join(','));
 
-                // Endpoint de main.py: /descargar_seleccion_zip
-                const res = await fetch(`${API_URL}/descargar_seleccion_zip`, {
+                // CORRECCIÓN: El nombre del endpoint debe coincidir con main.py
+                const res = await fetch(`${API_URL}/descargar_evidencias_zip`, {
                     method: 'POST',
                     body: formData
                 });
@@ -1673,7 +1690,7 @@ async function marcarTodasLeidas() {
                     a.click();
                     a.remove();
                     window.URL.revokeObjectURL(url);
-                    cancelarSeleccion(); // Salir del modo selección tras descargar
+                    cancelarSeleccion(); 
                 } else {
                     const errorData = await res.json();
                     alert("Error descargando: " + (errorData.detail || "Error desconocido"));
@@ -2014,57 +2031,49 @@ async function marcarTodasLeidas() {
         // =========================================================================
 
         async function toggleTheme() {
-        const body = document.body;
-        
-        // 1. CAMBIO DE CLASE
-        body.classList.toggle('dark-mode'); 
-        const esOscuro = body.classList.contains('dark-mode');
-        
-        // 2. ANIMACIÓN DEL ICONO
-        let btn = document.querySelector('#themeBtn');
-        // Soporte para ambos tipos de botones por si acaso
-        if (!btn) btn = document.querySelector('#themeToggle');
-        
-        if (btn) {
-            const icon = btn.querySelector('i');
-            if (icon) {
-                icon.style.transform = 'rotate(360deg) scale(1.2)';
-                setTimeout(() => {
-                    icon.className = esOscuro ? 'fas fa-sun' : 'fas fa-moon';
-                    icon.style.transform = 'rotate(0deg) scale(1)';
-                }, 300);
+            const body = document.body;
+            
+            // 1. CAMBIO DE CLASE
+            body.classList.toggle('dark-mode'); 
+            const esOscuro = body.classList.contains('dark-mode');
+            
+            // 2. ANIMACIÓN DEL ICONO
+            let btn = document.querySelector('#themeBtn');
+            if (!btn) btn = document.querySelector('#themeToggle');
+            
+            if (btn) {
+                const icon = btn.querySelector('i');
+                if (icon) {
+                    icon.style.transform = 'rotate(360deg) scale(1.2)';
+                    setTimeout(() => {
+                        icon.className = esOscuro ? 'fas fa-sun' : 'fas fa-moon';
+                        icon.style.transform = 'rotate(0deg) scale(1)';
+                    }, 300);
+                }
             }
-        }
 
-        // 3. GUARDAR EN EL NAVEGADOR (Importante: usar 'global_theme' para coincidir con tu código existente)
-        localStorage.setItem('global_theme', esOscuro ? 'dark' : 'light');
+            // 3. GUARDAR EN EL NAVEGADOR
+            localStorage.setItem('global_theme', esOscuro ? 'dark' : 'light');
 
-        // 4. INTENTAR GUARDAR EN LA BASE DE DATOS (Solo si existe usuarioLogueado)
-        // En index/biblioteca esto suele ser undefined, así que usamos un try/catch silencioso
-        try {
-             // Verificamos si hay datos de usuario en localStorage (común en tu app)
-             const cedula = localStorage.getItem('usuario_cedula');
-             
-             if (cedula) {
-                await fetch(`${API_URL}/actualizar_tema`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        cedula: cedula, 
-                        tema: esOscuro ? 1 : 0 
-                    })
-                });
-             }
-        } catch (e) { 
-            console.log("No se pudo guardar tema en nube (usuario no logueado o error red)"); 
+            // 4. GUARDAR EN LA BASE DE DATOS
+            try {
+                 const cedula = localStorage.getItem('usuario_cedula');
+                 if (cedula) {
+                    await fetch(`${API_URL}/actualizar_tema`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            cedula: cedula, 
+                            tema: esOscuro ? 1 : 0 
+                        })
+                    });
+                 }
+            } catch (e) { 
+                console.log("No se pudo guardar tema en nube"); 
+            }
+            
+            // NOTA: Ya no llamamos a initTheme() aquí porque el CSS lo hace automático
         }
-
-        // 5. LLAMADA A LA FUNCIÓN CORRECTA
-        // En index.html y biblioteca.html tu función se llama initTheme
-        if (typeof initTheme === "function") {
-            initTheme(); 
-        }
-    }
         function initTheme() {
         // 1. Detectar si hay modo oscuro guardado o activo
         const saved = localStorage.getItem('global_theme');
@@ -2086,14 +2095,6 @@ async function marcarTodasLeidas() {
             if(icon) icon.className = 'fas fa-moon'; // Icono de luna en modo claro
         }
 
-        // 5. CAMBIO DE LOGOS (Header y Footer)
-        // Buscamos todas las imágenes que estén en contenedores de logo
-        const logos = document.querySelectorAll('.logo-container img, .footer-logo img');
-        
-        logos.forEach(img => {
-            // Si es oscuro usamos el logo blanco, si no, el original
-            img.src = esOscuro ? logoOscuro : logoClaro;
-        });
     }
         function toggleMenu() { document.getElementById('sideMenu').classList.toggle('active'); document.getElementById('overlayMenu').classList.toggle('active'); }
         function cerrarSesion() { localStorage.clear(); window.location.href = 'index.html'; }
